@@ -37,6 +37,7 @@ protocol SyncService: AnyObject {
     func synchronize(local cards: [LoadCard]) async throws -> [LoadCard]
     func deleteSharedHouseholdData() async throws
     func acceptShare(metadata: CKShare.Metadata) async throws
+    func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>)
 }
 
 @MainActor
@@ -153,6 +154,13 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         return merged
     }
 
+    func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>) {
+        let zoneID = CloudKitCardMapper.zoneID()
+        for cardID in cardIDs where recordLocations[cardID] == nil {
+            recordLocations[cardID] = CloudKitRecordLocation(scope: .privateDatabase, zoneID: zoneID)
+        }
+    }
+
     func deleteSharedHouseholdData() async throws {
         try ensureCloudKitEnabledForRuntime()
         let container = containerProvider()
@@ -261,11 +269,15 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         while startIndex < recordIDs.endIndex {
             let endIndex = recordIDs.index(startIndex, offsetBy: batchSize, limitedBy: recordIDs.endIndex) ?? recordIDs.endIndex
             let batch = Array(recordIDs[startIndex..<endIndex])
-            _ = try await database.modifyRecords(
+            let result = try await database.modifyRecords(
                 saving: [],
                 deleting: batch,
                 savePolicy: .changedKeys,
                 atomically: true
+            )
+            try CloudKitRecordOperationValidator.validateDeleteResults(
+                result.deleteResults,
+                expectedRecordIDs: batch
             )
             startIndex = endIndex
         }
@@ -314,17 +326,25 @@ final class CloudKitSyncService: ObservableObject, SyncService {
 
     private func save(_ records: [CKRecord], in database: CKDatabase, scope: CloudKitDatabaseScope) async throws {
         guard !records.isEmpty else { return }
-        _ = try await database.modifyRecords(
+        let result = try await database.modifyRecords(
             saving: records,
             deleting: [],
             savePolicy: .allKeys,
             atomically: false
         )
-        for record in records {
+        let savedRecords = try CloudKitRecordOperationValidator.savedRecords(
+            from: result.saveResults,
+            expectedRecordIDs: records.map(\.recordID)
+        )
+        for record in savedRecords {
             if let id = UUID(uuidString: record.recordID.recordName) {
                 recordLocations[id] = CloudKitRecordLocation(scope: scope, zoneID: record.recordID.zoneID)
             }
         }
+    }
+
+    func isPinnedToPrivateDatabaseForTesting(_ cardID: UUID) -> Bool {
+        recordLocations[cardID]?.scope == .privateDatabase
     }
 
     private func ensureCloudKitEnabledForRuntime() throws {
@@ -348,6 +368,68 @@ private enum CloudKitDatabaseScope {
 private struct CloudKitRecordLocation {
     var scope: CloudKitDatabaseScope
     var zoneID: CKRecordZone.ID
+}
+
+enum CloudKitRecordOperationValidator {
+    static func savedRecords(
+        from results: [CKRecord.ID: Result<CKRecord, any Error>],
+        expectedRecordIDs: [CKRecord.ID]
+    ) throws -> [CKRecord] {
+        var records: [CKRecord] = []
+        var failures: [String] = missingResultMessages(expectedRecordIDs: expectedRecordIDs, actualRecordIDs: Set(results.keys))
+
+        for recordID in expectedRecordIDs {
+            guard let result = results[recordID] else { continue }
+            switch result {
+            case .success(let record):
+                records.append(record)
+            case .failure(let error):
+                failures.append("\(recordID.recordName): \(error.localizedDescription)")
+            }
+        }
+
+        if !failures.isEmpty {
+            throw CloudKitPartialResultError(operation: "save", failures: failures)
+        }
+        return records
+    }
+
+    static func validateDeleteResults(
+        _ results: [CKRecord.ID: Result<Void, any Error>],
+        expectedRecordIDs: [CKRecord.ID]
+    ) throws {
+        var failures = missingResultMessages(expectedRecordIDs: expectedRecordIDs, actualRecordIDs: Set(results.keys))
+
+        for recordID in expectedRecordIDs {
+            guard let result = results[recordID] else { continue }
+            if case .failure(let error) = result {
+                failures.append("\(recordID.recordName): \(error.localizedDescription)")
+            }
+        }
+
+        if !failures.isEmpty {
+            throw CloudKitPartialResultError(operation: "delete", failures: failures)
+        }
+    }
+
+    private static func missingResultMessages(
+        expectedRecordIDs: [CKRecord.ID],
+        actualRecordIDs: Set<CKRecord.ID>
+    ) -> [String] {
+        expectedRecordIDs
+            .filter { !actualRecordIDs.contains($0) }
+            .map { "\($0.recordName): missing CloudKit result" }
+    }
+}
+
+struct CloudKitPartialResultError: LocalizedError, Equatable {
+    var operation: String
+    var failures: [String]
+
+    var errorDescription: String? {
+        let sample = failures.prefix(3).joined(separator: "; ")
+        return "CloudKit \(operation) failed for \(failures.count) record(s): \(sample)"
+    }
 }
 
 enum CloudKitRuntimeError: LocalizedError, Equatable {

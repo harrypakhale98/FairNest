@@ -4,6 +4,8 @@ import UserNotifications
 
 @MainActor
 final class AppServices: ObservableObject {
+    private static let acceptedSharePrivateCardIDsKey = "acceptedSharePrivateCardIDs"
+
     @Published var onboardingComplete: Bool {
         didSet {
             UserDefaults.standard.set(onboardingComplete, forKey: "onboardingComplete")
@@ -38,6 +40,7 @@ final class AppServices: ObservableObject {
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
             UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            UserDefaults.standard.removeObject(forKey: Self.acceptedSharePrivateCardIDsKey)
             UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
         }
         if ProcessInfo.processInfo.arguments.contains("-uiTestingCompleteOnboarding") {
@@ -79,6 +82,7 @@ final class AppServices: ObservableObject {
             await reminderScheduler.cancelAllFairNestReminders()
             lastSyncMessage = nil
             lastReminderMessage = nil
+            acceptedSharePrivateCardIDs = []
             writeWidgetSnapshot(cards: [], syncPending: false)
         } catch {
             if restoresSyncOnFailure {
@@ -113,6 +117,7 @@ final class AppServices: ObservableObject {
     }
 
     func handleAcceptedCloudKitShare() async {
+        protectCurrentLocalCardsFromSharedUpload()
         iCloudSyncEnabled = true
         pairingService.markShareAccepted()
         await syncCardsIfAvailable()
@@ -123,6 +128,7 @@ final class AppServices: ObservableObject {
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
             return
         }
+        applyPrivateUploadPins()
         guard !syncInProgress else { return }
         syncInProgress = true
         await syncService.refreshStatus()
@@ -179,6 +185,7 @@ final class AppServices: ObservableObject {
 
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {
         guard iCloudSyncEnabled else { return }
+        applyPrivateUploadPins()
         guard syncService.status == .available else {
             if syncInProgress {
                 pendingCardsForPush = cards
@@ -242,6 +249,30 @@ final class AppServices: ObservableObject {
     private func writeWidgetSnapshot(cards: [LoadCard], syncPending: Bool) {
         WidgetSnapshotStore.write(cards: cards, syncPending: syncPending)
         WidgetSnapshotStore.reloadTimelines()
+    }
+
+    private func protectCurrentLocalCardsFromSharedUpload() {
+        let localCardIDs = Set(cardStore.cards.filter { !$0.isDeleted }.map(\.id))
+        guard !localCardIDs.isEmpty else { return }
+        var pinnedCardIDs = acceptedSharePrivateCardIDs
+        pinnedCardIDs.formUnion(localCardIDs)
+        acceptedSharePrivateCardIDs = pinnedCardIDs
+        syncService.pinCardsToPrivateDatabase(localCardIDs)
+    }
+
+    private func applyPrivateUploadPins() {
+        syncService.pinCardsToPrivateDatabase(acceptedSharePrivateCardIDs)
+    }
+
+    private var acceptedSharePrivateCardIDs: Set<UUID> {
+        get {
+            let values = UserDefaults.standard.stringArray(forKey: Self.acceptedSharePrivateCardIDsKey) ?? []
+            return Set(values.compactMap(UUID.init(uuidString:)))
+        }
+        set {
+            let values = newValue.map(\.uuidString).sorted()
+            UserDefaults.standard.set(values, forKey: Self.acceptedSharePrivateCardIDsKey)
+        }
     }
 }
 
