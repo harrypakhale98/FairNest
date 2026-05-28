@@ -27,18 +27,18 @@ targets:
       path: FairNest/Supporting/FairNest.entitlements
       properties:
         com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.example.fairnest
+          - iCloud.com.hardikpakhale.fairnest
         com.apple.developer.icloud-services:
           - CloudKit
         com.apple.security.application-groups:
-          - group.com.example.fairnest
+          - group.com.hardikpakhale.fairnest
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.fairnest
+        PRODUCT_BUNDLE_IDENTIFIER: com.hardikpakhale.fairnest
         PRODUCT_NAME: FairNest
         INFOPLIST_FILE: FairNest/Supporting/Info.plist
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: DUHVN68KBA
     info:
       path: FairNest/Supporting/Info.plist
       properties:
@@ -56,8 +56,8 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         CKSharingSupported: true
         ITSAppUsesNonExemptEncryption: false
-        FairNestCloudKitContainerIdentifier: iCloud.com.example.fairnest
-        FairNestAppGroupIdentifier: group.com.example.fairnest
+        FairNestCloudKitContainerIdentifier: iCloud.com.hardikpakhale.fairnest
+        FairNestAppGroupIdentifier: group.com.hardikpakhale.fairnest
     dependencies:
       - target: FairNestWidgets
         embed: true
@@ -75,14 +75,14 @@ targets:
       path: FairNestWidgets/Supporting/FairNestWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.example.fairnest
+          - group.com.hardikpakhale.fairnest
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.fairnest.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.hardikpakhale.fairnest.widgets
         PRODUCT_NAME: FairNestWidgets
         INFOPLIST_FILE: FairNestWidgets/Supporting/Info.plist
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: DUHVN68KBA
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -94,7 +94,7 @@ targets:
         CFBundleVersion: "1"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
-        FairNestAppGroupIdentifier: group.com.example.fairnest
+        FairNestAppGroupIdentifier: group.com.hardikpakhale.fairnest
   FairNestTests:
     type: bundle.unit-test
     platform: iOS
@@ -103,7 +103,7 @@ targets:
       - FairNestTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.fairnest.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.hardikpakhale.fairnest.tests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
     dependencies:
@@ -116,7 +116,7 @@ targets:
       - FairNestUITests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.fairnest.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.hardikpakhale.fairnest.uitests
         GENERATE_INFOPLIST_FILE: YES
         TARGETED_DEVICE_FAMILY: "1,2"
     dependencies:

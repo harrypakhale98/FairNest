@@ -29,6 +29,20 @@ final class ReminderAndCheckInTests: XCTestCase {
         XCTAssertTrue(changes.contains { $0.owner == .partner })
     }
 
+    func testWeeklyCheckInDropsEmptyOwnershipPhrasesAndCleansTitles() {
+        let draft = WeeklyCheckInDraft(
+            feltHeavy: "",
+            gotDone: "",
+            needsOwnership: "we will. partner owns trash. we handle meal plan. I handle school forms",
+            appreciation: ""
+        )
+
+        let changes = WeeklyCheckInEngine.generateChanges(from: draft, cards: [])
+
+        XCTAssertEqual(changes.map(\.title), ["Trash", "Meal Plan", "School Forms"])
+        XCTAssertEqual(changes.map(\.owner), [.partner, .shared, .me])
+    }
+
     func testAppServicesSchedulesAndCancelsDueCardReminders() async {
         let reminderScheduler = CapturingReminderScheduler()
         let services = AppServices(

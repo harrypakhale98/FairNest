@@ -55,6 +55,14 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertTrue(PairingState.permissionDenied.message.contains("permission"))
     }
 
+    func testShareAcceptanceFailureMovesPairingIntoActionableError() {
+        let service = CloudKitPairingService()
+
+        service.markShareAcceptanceFailed(TestPairingError.expiredInvite)
+
+        XCTAssertEqual(service.state, .error("Invite expired"))
+    }
+
     func testWidgetTimelineScheduleIncludesReload() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let dates = WidgetTimelineSchedule.reloadDates(now: now)
@@ -143,5 +151,16 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
+    }
+}
+
+private enum TestPairingError: LocalizedError {
+    case expiredInvite
+
+    var errorDescription: String? {
+        switch self {
+        case .expiredInvite:
+            return "Invite expired"
+        }
     }
 }

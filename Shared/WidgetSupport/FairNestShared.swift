@@ -3,7 +3,7 @@ import WidgetKit
 
 enum FairNestShared {
     static var appGroupIdentifier: String {
-        Bundle.main.object(forInfoDictionaryKey: "FairNestAppGroupIdentifier") as? String ?? "group.com.example.fairnest"
+        Bundle.main.object(forInfoDictionaryKey: "FairNestAppGroupIdentifier") as? String ?? "group.com.hardikpakhale.fairnest"
     }
     static let widgetSnapshotKey = "FairNestWidgetSnapshot"
     static let homeWidgetKind = "FairNestHomeWidget"

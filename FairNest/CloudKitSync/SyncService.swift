@@ -44,7 +44,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     @Published private(set) var status: SyncStatus = .checking
 
     static var containerIdentifier: String {
-        Bundle.main.object(forInfoDictionaryKey: "FairNestCloudKitContainerIdentifier") as? String ?? "iCloud.com.example.fairnest"
+        Bundle.main.object(forInfoDictionaryKey: "FairNestCloudKitContainerIdentifier") as? String ?? "iCloud.com.hardikpakhale.fairnest"
     }
 
     private let containerProvider: () -> CKContainer

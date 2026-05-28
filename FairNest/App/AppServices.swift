@@ -90,7 +90,14 @@ final class AppServices: ObservableObject {
 
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {
         guard iCloudSyncEnabled else { return }
-        guard syncService.status == .available else { return }
+        guard syncService.status == .available else {
+            if syncInProgress {
+                pendingCardsForPush = cards
+            } else {
+                await syncCardsIfAvailable()
+            }
+            return
+        }
         guard !syncInProgress else {
             pendingCardsForPush = cards
             return

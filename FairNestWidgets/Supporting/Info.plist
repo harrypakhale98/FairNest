@@ -21,7 +21,7 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>FairNestAppGroupIdentifier</key>
-	<string>group.com.example.fairnest</string>
+	<string>group.com.hardikpakhale.fairnest</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

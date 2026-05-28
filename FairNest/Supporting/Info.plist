@@ -23,9 +23,9 @@
 	<key>CKSharingSupported</key>
 	<true/>
 	<key>FairNestAppGroupIdentifier</key>
-	<string>group.com.example.fairnest</string>
+	<string>group.com.hardikpakhale.fairnest</string>
 	<key>FairNestCloudKitContainerIdentifier</key>
-	<string>iCloud.com.example.fairnest</string>
+	<string>iCloud.com.hardikpakhale.fairnest</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

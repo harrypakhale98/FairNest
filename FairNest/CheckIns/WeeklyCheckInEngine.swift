@@ -34,18 +34,20 @@ enum WeeklyCheckInEngine {
 
 private struct RuleBasedOwnershipParser {
     func parse(_ text: String) -> [OwnershipChange] {
-        text
+        let changes = text
             .components(separatedBy: CharacterSet(charactersIn: "\n.;"))
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .prefix(3)
-            .map { phrase in
-                OwnershipChange(
-                    title: cleanedTitle(phrase),
+            .compactMap { phrase -> OwnershipChange? in
+                let title = cleanedTitle(phrase)
+                guard title.count > 2 else { return nil }
+                return OwnershipChange(
+                    title: title,
                     owner: inferredOwner(phrase.lowercased()),
                     reason: "Captured from the weekly check-in."
                 )
             }
+        return Array(changes.prefix(3))
     }
 
     private func inferredOwner(_ lower: String) -> CardOwner {
@@ -60,7 +62,9 @@ private struct RuleBasedOwnershipParser {
 
     private func cleanedTitle(_ phrase: String) -> String {
         phrase
-            .replacingOccurrences(of: #"(?i)\b(i|we|partner|they)\s+(will|can|should|owns?|take)\b"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)^\s*(i|we|partner|they)\s+(will|can|should)\b\s*"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)^\s*(i|we|partner|they)\s+(owns?|takes?|handles?)\s+"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)^\s*(owns?|takes?|handles?)\s+"#, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .capitalized
     }

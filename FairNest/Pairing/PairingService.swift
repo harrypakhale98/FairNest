@@ -65,6 +65,7 @@ protocol PairingService: AnyObject {
     func refresh() async
     func createPrivateShare() async
     func markShareAccepted()
+    func markShareAcceptanceFailed(_ error: Error?)
 }
 
 @MainActor
@@ -155,6 +156,10 @@ final class CloudKitPairingService: ObservableObject, PairingService {
 
     func markShareAccepted() {
         state = .paired
+    }
+
+    func markShareAcceptanceFailed(_ error: Error?) {
+        state = .error(error?.localizedDescription ?? "FairNest could not accept this iCloud share. Ask for a fresh invite and try again.")
     }
 
     private func existingZoneShare(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws -> CKShare? {

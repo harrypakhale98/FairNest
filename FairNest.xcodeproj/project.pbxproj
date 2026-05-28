@@ -100,7 +100,7 @@
 		07849BD29343650F5E2E3A9A /* WeeklyCheckInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyCheckInView.swift; sourceTree = "<group>"; };
 		079AA986748F9646AF854DE3 /* CardEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardEditorView.swift; sourceTree = "<group>"; };
 		0A871D8D36D7DE8D73D56F7A /* PairingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingService.swift; sourceTree = "<group>"; };
-		0AB2E9F741FA4C028871814D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		0AB2E9F741FA4C028871814D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		14C03C4E568675005F6227FE /* SyncAndCloudKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncAndCloudKitTests.swift; sourceTree = "<group>"; };
 		2F3574730DFC0481CAA58ACE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		324DA1E6E8E4942C148EBD38 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
@@ -117,13 +117,13 @@
 		5D792010FEE313001DBDEB90 /* OpenFairNestIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenFairNestIntent.swift; sourceTree = "<group>"; };
 		6161B65794748C69BA4857C0 /* ReminderAndCheckInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderAndCheckInTests.swift; sourceTree = "<group>"; };
 		627816AE4B4C56A7B7EDDC8A /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
-		6FE60B79F80F0871316DA8B5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6FE60B79F80F0871316DA8B5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7F1DEFB6317B3B38AB70044C /* LoadCardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadCardStore.swift; sourceTree = "<group>"; };
 		853F0B4B30F9C1D914EA4207 /* BrainDumpParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpParserTests.swift; sourceTree = "<group>"; };
 		86AA56526E012ABB4C7E1C8E /* CheckInStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInStore.swift; sourceTree = "<group>"; };
-		87B6D58A8FBE98F446962BD7 /* FairNestTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FairNestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		87B6D58A8FBE98F446962BD7 /* FairNestTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FairNestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8DA85861E0CFF7B9C392A740 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		91570EAD435EABF40FFE18F9 /* FairNestUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FairNestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		91570EAD435EABF40FFE18F9 /* FairNestUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FairNestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		92D4B6884883E85BCFC57EE5 /* HomeBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeBoardView.swift; sourceTree = "<group>"; };
 		987034954A9996C151170463 /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
 		B5E7A5BA518EDA92FCBE1A97 /* FairNestAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestAppDelegate.swift; sourceTree = "<group>"; };
@@ -140,12 +140,12 @@
 		D8C0F86F8C978A1FA96A5C7B /* FairNestWidgetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestWidgetIntent.swift; sourceTree = "<group>"; };
 		DCA8063146D6547526D3F1D0 /* BrainDumpModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpModels.swift; sourceTree = "<group>"; };
 		E2767C9A60325CA1DC1283D4 /* FairNestUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestUITests.swift; sourceTree = "<group>"; };
-		E537A5C38DBABDCF5337E3F1 /* FairNestWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = FairNestWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E537A5C38DBABDCF5337E3F1 /* FairNestWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FairNestWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E78E05220061017BFDA1C9E9 /* BrainDumpParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpParser.swift; sourceTree = "<group>"; };
 		EA5145BD4F1902CE7A470E53 /* LoadCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadCard.swift; sourceTree = "<group>"; };
 		EB017EECB76D9F0D16FE9B6F /* FairNestHomeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestHomeWidget.swift; sourceTree = "<group>"; };
 		EDD2E9758E98979F733B6513 /* FairNestWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestWidgetsBundle.swift; sourceTree = "<group>"; };
-		F06CE0A48F6F05E4C369B4CD /* FairNest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FairNest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F06CE0A48F6F05E4C369B4CD /* FairNest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FairNest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F44C512CCCFE91BC5B08B4CD /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		F5A568C82F30AFB3C474B71F /* FairNestShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestShared.swift; sourceTree = "<group>"; };
 		FC3A1C83C3B5FFD5A7E0C09E /* RuleBasedBrainDumpParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleBasedBrainDumpParser.swift; sourceTree = "<group>"; };
@@ -486,14 +486,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					13ADA637D4FBE9C260DB529E = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					954C793CE8C704A7DE667FA1 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					D6716E98BF978951329EE210 = {
@@ -644,7 +642,6 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = FairNestWidgets/Supporting/FairNestWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = FairNestWidgets/Supporting/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -652,7 +649,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest.widgets;
 				PRODUCT_NAME = FairNestWidgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -671,7 +668,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FairNest.app/FairNest";
@@ -682,6 +679,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -714,6 +712,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = DUHVN68KBA;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -730,6 +729,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = targeted;
@@ -750,7 +750,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest.tests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FairNest.app/FairNest";
@@ -768,7 +768,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = FairNest;
@@ -782,14 +782,13 @@
 				CODE_SIGN_ENTITLEMENTS = FairNest/Supporting/FairNest.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = FairNest/Supporting/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest;
 				PRODUCT_NAME = FairNest;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -803,14 +802,13 @@
 				CODE_SIGN_ENTITLEMENTS = FairNest/Supporting/FairNest.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = FairNest/Supporting/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest;
 				PRODUCT_NAME = FairNest;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -828,7 +826,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = FairNest;
@@ -841,7 +839,6 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = FairNestWidgets/Supporting/FairNestWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = FairNestWidgets/Supporting/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -849,7 +846,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hardikpakhale.fairnest.widgets;
 				PRODUCT_NAME = FairNestWidgets;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -861,6 +858,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -893,6 +891,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = DUHVN68KBA;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -916,6 +915,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = targeted;

@@ -167,11 +167,13 @@ struct WeeklyCheckInView: View {
 
     private func apply(_ changes: [OwnershipChange]) {
         for change in changes {
-            if let match = cardStore.activeCards.first(where: { $0.title.localizedCaseInsensitiveContains(change.title) || change.title.localizedCaseInsensitiveContains($0.title) }) {
+            let changeTitle = change.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !changeTitle.isEmpty else { continue }
+            if let match = cardStore.activeCards.first(where: { card in titlesMatch(card.title, changeTitle) }) {
                 cardStore.reassign(id: match.id, to: change.owner)
             } else {
                 let suggestion = BrainDumpSuggestion(
-                    title: change.title,
+                    title: changeTitle,
                     type: .task,
                     owner: change.owner,
                     effort: .medium,
@@ -180,5 +182,12 @@ struct WeeklyCheckInView: View {
                 _ = cardStore.add(suggestion)
             }
         }
+    }
+
+    private func titlesMatch(_ cardTitle: String, _ changeTitle: String) -> Bool {
+        let normalizedCardTitle = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedCardTitle.isEmpty else { return false }
+        return normalizedCardTitle.localizedCaseInsensitiveContains(changeTitle) ||
+            changeTitle.localizedCaseInsensitiveContains(normalizedCardTitle)
     }
 }

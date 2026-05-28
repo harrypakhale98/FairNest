@@ -10,17 +10,17 @@ FairNest is a local-first iOS household organization app built with SwiftUI, Wid
 - Widgets store generic card labels instead of raw household card titles.
 - The app has no ads, subscriptions, third-party analytics, custom backend, or paid API dependency.
 
-## Public Repository Defaults
+## Apple Identifier Setup
 
-This repository intentionally uses public-safe placeholder Apple identifiers:
+This checkout is configured with registered Apple identifiers for local development and device testing:
 
-- App bundle ID: `com.example.fairnest`
-- Widget bundle ID: `com.example.fairnest.widgets`
-- iCloud container: `iCloud.com.example.fairnest`
-- App Group: `group.com.example.fairnest`
-- Apple development team: unset
+- App bundle ID: `com.hardikpakhale.fairnest`
+- Widget bundle ID: `com.hardikpakhale.fairnest.widgets`
+- iCloud container: `iCloud.com.hardikpakhale.fairnest`
+- App Group: `group.com.hardikpakhale.fairnest`
+- Apple development team: `DUHVN68KBA`
 
-To run the app with CloudKit/App Groups, replace those placeholders in `project.yml` with identifiers registered to your Apple Developer account, then regenerate the Xcode project with:
+To use a different Apple Developer account, replace the identifiers and team in `project.yml` with values registered to that account, then regenerate the Xcode project with:
 
 ```sh
 xcodegen generate
