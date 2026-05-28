@@ -91,26 +91,52 @@ struct FoundationModelsBrainDumpParser: BrainDumpParser {
             .joined(separator: ". ")
         let deterministicResult = try? await fallback.parse(deterministicText, context: context)
         let deterministicSuggestion = deterministicResult?.suggestions.first
+        let doneCriteria = cleanedDetail(suggestion.doneCriteria, maxLength: 200)
         return BrainDumpSuggestion(
             title: title,
-            type: CardType(rawValue: suggestion.type) ?? .task,
-            owner: CardOwner(rawValue: suggestion.owner) ?? .unassigned,
+            type: cardType(from: suggestion.type),
+            owner: owner(from: suggestion.owner),
             effort: effort(from: suggestion.effort),
             dueDate: deterministicSuggestion?.dueDate,
             recurrence: deterministicSuggestion?.recurrence ?? .none,
-            notes: suggestion.notes,
-            doneCriteria: suggestion.doneCriteria.isEmpty ? "Card is complete." : suggestion.doneCriteria,
+            notes: cleanedDetail(suggestion.notes, maxLength: 400),
+            doneCriteria: doneCriteria.isEmpty ? "Card is complete." : doneCriteria,
             sourceSnippet: ""
         )
     }
 
+    private func cardType(from value: String) -> CardType {
+        let normalized = normalizedEnumValue(value)
+        return CardType.allCases.first {
+            $0.rawValue.lowercased() == normalized || $0.label.lowercased() == normalized
+        } ?? .task
+    }
+
+    private func owner(from value: String) -> CardOwner {
+        let normalized = normalizedEnumValue(value)
+        return CardOwner.allCases.first {
+            $0.rawValue.lowercased() == normalized || $0.label.lowercased() == normalized
+        } ?? .unassigned
+    }
+
     private func effort(from value: String) -> Effort {
-        switch value {
+        switch normalizedEnumValue(value) {
         case "tiny": .tiny
         case "light": .light
         case "heavy": .heavy
         default: .medium
         }
+    }
+
+    private func normalizedEnumValue(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func cleanedDetail(_ value: String, maxLength: Int) -> String {
+        let normalizedWhitespace = value
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(normalizedWhitespace.prefix(maxLength))
     }
     #endif
 }

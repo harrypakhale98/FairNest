@@ -100,11 +100,23 @@ struct RuleBasedBrainDumpParser: BrainDumpParser {
         if lower.contains("daily") || lower.contains("every day") {
             return .daily
         }
+        let calendar = Calendar.current
+        let weekdayPairs = calendar.weekdaySymbols.enumerated().map { ($0.element.lowercased(), $0.offset + 1) }
+        if let match = weekdayPairs.first(where: { weekday, _ in
+            lower.contains("every \(weekday)") ||
+                lower.contains("each \(weekday)") ||
+                lower.contains("on \(weekday)") ||
+                lower.contains("every \(weekday)s") ||
+                lower.contains("each \(weekday)s") ||
+                lower.contains("on \(weekday)s")
+        }) {
+            return .weekly(weekday: match.1)
+        }
         if lower.contains("weekly") || lower.contains("every week") {
-            return .weekly(weekday: Calendar.current.component(.weekday, from: today))
+            return .weekly(weekday: calendar.component(.weekday, from: today))
         }
         if lower.contains("monthly") || lower.contains("every month") {
-            return .monthly(day: Calendar.current.component(.day, from: today))
+            return .monthly(day: calendar.component(.day, from: today))
         }
         return .none
     }

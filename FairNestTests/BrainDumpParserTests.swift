@@ -17,12 +17,42 @@ final class BrainDumpParserTests: XCTestCase {
         XCTAssertTrue(result.suggestions.allSatisfy { !$0.title.isEmpty })
     }
 
+    func testWeekdayResponsibilityCreatesRealRecurrence() async throws {
+        let parser = RuleBasedBrainDumpParser()
+        let result = try await parser.parse(
+            "laundry every Sunday",
+            context: BrainDumpContext(today: Date(timeIntervalSince1970: 1_800_000_000))
+        )
+
+        let suggestion = try XCTUnwrap(result.suggestions.first)
+        XCTAssertEqual(suggestion.type, .recurringResponsibility)
+        XCTAssertEqual(suggestion.recurrence, .weekly(weekday: 1))
+        XCTAssertNotNil(suggestion.dueDate)
+    }
+
     func testSafetyLanguageDoesNotBecomeNormalTasks() async throws {
         let parser = RuleBasedBrainDumpParser()
         let result = try await parser.parse("I am afraid of my partner and they threatened me", context: BrainDumpContext())
 
         XCTAssertTrue(result.suggestions.isEmpty)
         XCTAssertNotNil(result.safetyNotice)
+    }
+
+    func testCommonCrisisAndAbuseLanguageDoesNotBecomeNormalTasks() async throws {
+        let parser = RuleBasedBrainDumpParser()
+        let phrases = [
+            "I want to die",
+            "There is domestic violence at home",
+            "My partner choked me",
+            "I'm scared to go home",
+            "They won't let me leave"
+        ]
+
+        for phrase in phrases {
+            let result = try await parser.parse(phrase, context: BrainDumpContext())
+            XCTAssertTrue(result.suggestions.isEmpty, phrase)
+            XCTAssertNotNil(result.safetyNotice, phrase)
+        }
     }
 
     func testFoundationParserFallsBackDeterministicallyForOrdinaryInput() async throws {

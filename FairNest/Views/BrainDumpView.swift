@@ -1,5 +1,9 @@
 import SwiftUI
 
+private enum BrainDumpFocusedField: Hashable {
+    case thoughts
+}
+
 struct BrainDumpView: View {
     @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
@@ -8,13 +12,17 @@ struct BrainDumpView: View {
     @State private var selectedIDs = Set<UUID>()
     @State private var safetyNotice: SafetyNotice?
     @State private var errorMessage: String?
+    @State private var saveConfirmation: String?
     @State private var isParsing = false
+    @State private var lastParsedText: String?
+    @FocusState private var focusedField: BrainDumpFocusedField?
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     TextEditor(text: $text)
+                        .focused($focusedField, equals: .thoughts)
                         .frame(minHeight: 160)
                         .accessibilityLabel("Household thoughts")
                         .accessibilityHint("Enter household tasks, reminders, decisions, or appreciation to turn into reviewable cards.")
@@ -27,11 +35,27 @@ struct BrainDumpView: View {
 
                 Section {
                     Button {
+                        focusedField = nil
                         Task { await parse() }
                     } label: {
                         Label(isParsing ? "Reading" : "Suggest Cards", systemImage: "sparkles")
                     }
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isParsing)
+                    .accessibilityLabel(isParsing ? "Reading brain dump" : "Suggest Cards")
+
+                    if isParsing {
+                        HStack {
+                            ProgressView()
+                            Text("Reading your thoughts on device")
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+
+                    if hasStaleReview {
+                        Label("Text changed. Suggest cards again before saving.", systemImage: "arrow.triangle.2.circlepath")
+                            .foregroundStyle(.secondary)
+                    }
 
                     if let safetyNotice {
                         SafetyNoticeRow(notice: safetyNotice)
@@ -45,7 +69,7 @@ struct BrainDumpView: View {
                         )
                     } else {
                         ForEach($suggestions) { $suggestion in
-                            SuggestionReviewRow(
+                            BrainDumpSuggestionReviewRow(
                                 suggestion: $suggestion,
                                 isSelected: selectionBinding(for: suggestion.id)
                             )
@@ -53,6 +77,14 @@ struct BrainDumpView: View {
                     }
                 } header: {
                     Text("Review before saving")
+                }
+
+                if let saveConfirmation {
+                    Section {
+                        Label(saveConfirmation, systemImage: "checkmark.circle")
+                            .foregroundStyle(.green)
+                            .accessibilityIdentifier("brainDumpSaveConfirmation")
+                    }
                 }
 
                 if let errorMessage {
@@ -64,6 +96,10 @@ struct BrainDumpView: View {
                 }
             }
             .navigationTitle("Brain Dump")
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: text) { _, _ in
+                saveConfirmation = nil
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
@@ -72,40 +108,78 @@ struct BrainDumpView: View {
                     .disabled(!hasSavableSelection)
                     .accessibilityIdentifier("saveBrainDumpSuggestions")
                 }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        focusedField = nil
+                    }
+                    .fontWeight(.semibold)
+                    .accessibilityIdentifier("dismissBrainDumpKeyboard")
+                }
             }
         }
     }
 
     private var hasSavableSelection: Bool {
-        suggestions.contains { suggestion in
+        isReviewCurrent && suggestions.contains { suggestion in
             selectedIDs.contains(suggestion.id) &&
                 !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }
 
+    private var hasStaleReview: Bool {
+        !suggestions.isEmpty && !isReviewCurrent
+    }
+
+    private var isReviewCurrent: Bool {
+        lastParsedText == normalized(text)
+    }
+
     private func parse() async {
+        focusedField = nil
+        let input = normalized(text)
         isParsing = true
+        suggestions = []
+        selectedIDs = []
+        safetyNotice = nil
+        errorMessage = nil
+        saveConfirmation = nil
         defer { isParsing = false }
         do {
-            let result = try await services.parser.parse(text, context: BrainDumpContext())
+            let result = try await services.parser.parse(input, context: BrainDumpContext())
             suggestions = result.suggestions
             selectedIDs = Set(result.suggestions.map(\.id))
             safetyNotice = result.safetyNotice
+            lastParsedText = input
             errorMessage = nil
         } catch {
+            lastParsedText = nil
             errorMessage = error.localizedDescription
         }
     }
 
     private func saveSelected() {
-        for suggestion in suggestions where selectedIDs.contains(suggestion.id) &&
-            !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            _ = cardStore.add(suggestion)
+        focusedField = nil
+        let selectedSuggestions = suggestions.filter { suggestion in
+            selectedIDs.contains(suggestion.id) &&
+                !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        text = ""
-        suggestions = []
-        selectedIDs = []
-        safetyNotice = nil
+
+        do {
+            let savedCards = try cardStore.addReviewed(selectedSuggestions)
+            let cardWord = savedCards.count == 1 ? "card" : "cards"
+            saveConfirmation = "Saved \(savedCards.count) \(cardWord)."
+            errorMessage = nil
+            text = ""
+            suggestions = []
+            selectedIDs = []
+            safetyNotice = nil
+            lastParsedText = nil
+        } catch {
+            saveConfirmation = nil
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func selectionBinding(for id: UUID) -> Binding<Bool> {
@@ -120,22 +194,48 @@ struct BrainDumpView: View {
             }
         )
     }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
-private struct SuggestionReviewRow: View {
+struct BrainDumpSuggestionReviewRow: View {
     @Binding var suggestion: BrainDumpSuggestion
     @Binding var isSelected: Bool
+    @State private var hasDueDate: Bool
+
+    init(suggestion: Binding<BrainDumpSuggestion>, isSelected: Binding<Bool>) {
+        _suggestion = suggestion
+        _isSelected = isSelected
+        _hasDueDate = State(initialValue: suggestion.wrappedValue.dueDate != nil)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: $isSelected) {
-                Label(suggestion.type.label, systemImage: suggestion.type.symbolName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(suggestion.title.isEmpty ? "Untitled card" : suggestion.title)
+                            .font(.headline)
+                        Text(suggestion.type.label)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: suggestion.type.symbolName)
+                }
             }
 
             TextField("Title", text: $suggestion.title, axis: .vertical)
                 .font(.headline)
+                .accessibilityIdentifier("brainDumpSuggestionTitle")
+
+            Picker("Type", selection: $suggestion.type) {
+                ForEach(CardType.allCases) { type in
+                    Label(type.label, systemImage: type.symbolName).tag(type)
+                }
+            }
 
             Picker("Owner", selection: $suggestion.owner) {
                 ForEach(CardOwner.allCases) { owner in
@@ -148,8 +248,72 @@ private struct SuggestionReviewRow: View {
                     Text(effort.label).tag(effort)
                 }
             }
+
+            Toggle("Due date", isOn: dueDateEnabled)
+
+            if hasDueDate {
+                DatePicker(
+                    "When",
+                    selection: Binding(
+                        get: { suggestion.dueDate ?? Date() },
+                        set: { suggestion.dueDate = $0 }
+                    ),
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+            }
+
+            Picker("Recurrence", selection: $suggestion.recurrence) {
+                ForEach(recurrenceOptions, id: \.self) { recurrence in
+                    Text(recurrence.label).tag(recurrence)
+                }
+            }
+
+            TextField("Done criteria", text: $suggestion.doneCriteria, axis: .vertical)
+                .accessibilityIdentifier("brainDumpSuggestionDoneCriteria")
+
+            TextField("Notes", text: $suggestion.notes, axis: .vertical)
+                .accessibilityIdentifier("brainDumpSuggestionNotes")
         }
         .padding(.vertical, 4)
+    }
+
+    private var dueDateEnabled: Binding<Bool> {
+        Binding(
+            get: { hasDueDate },
+            set: { enabled in
+                hasDueDate = enabled
+                suggestion.dueDate = enabled ? (suggestion.dueDate ?? Date()) : nil
+            }
+        )
+    }
+
+    private var recurrenceOptions: [Recurrence] {
+        var options: [Recurrence] = [.none, .daily]
+        let calendar = Calendar.current
+        let weeklyDay: Int
+        if case .weekly(let weekday) = suggestion.recurrence {
+            weeklyDay = weekday
+        } else if let dueDate = suggestion.dueDate {
+            weeklyDay = calendar.component(.weekday, from: dueDate)
+        } else {
+            weeklyDay = calendar.component(.weekday, from: Date())
+        }
+        options.append(.weekly(weekday: weeklyDay))
+
+        let monthlyDay: Int
+        if case .monthly(let day) = suggestion.recurrence {
+            monthlyDay = day
+        } else if let dueDate = suggestion.dueDate {
+            monthlyDay = calendar.component(.day, from: dueDate)
+        } else {
+            monthlyDay = calendar.component(.day, from: Date())
+        }
+        options.append(.monthly(day: monthlyDay))
+
+        if !options.contains(suggestion.recurrence) {
+            options.append(suggestion.recurrence)
+        }
+        return options
     }
 }
 

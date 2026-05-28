@@ -1,5 +1,9 @@
 import SwiftUI
 
+private enum OnboardingFocusedField: Hashable {
+    case firstBrainDump
+}
+
 struct OnboardingView: View {
     @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
@@ -10,6 +14,8 @@ struct OnboardingView: View {
     @State private var notice: SafetyNotice?
     @State private var isParsing = false
     @State private var errorMessage: String?
+    @State private var lastParsedBrainDump: String?
+    @FocusState private var focusedField: OnboardingFocusedField?
 
     var body: some View {
         NavigationStack {
@@ -48,9 +54,11 @@ struct OnboardingView: View {
 
                     Spacer()
 
-                    Button(step == 2 ? "Start FairNest" : "Continue") {
+                    Button(primaryActionTitle) {
                         if step < 2 {
                             step += 1
+                        } else if shouldParseBeforeFinish {
+                            Task { await parse() }
                         } else {
                             saveAndFinish()
                         }
@@ -89,6 +97,7 @@ struct OnboardingView: View {
         Form {
             Section {
                 TextEditor(text: $brainDump)
+                    .focused($focusedField, equals: .firstBrainDump)
                     .frame(minHeight: 120)
                     .accessibilityLabel("First brain dump")
                     .accessibilityHint("Enter a few household thoughts to create reviewable starter cards.")
@@ -101,24 +110,44 @@ struct OnboardingView: View {
 
             Section {
                 Button {
+                    focusedField = nil
                     Task { await parse() }
                 } label: {
                     Label(isParsing ? "Parsing" : "Suggest Cards", systemImage: "sparkles")
                 }
                 .disabled(brainDump.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isParsing)
+                .accessibilityLabel(isParsing ? "Reading first brain dump" : "Suggest Cards")
+
+                if isParsing {
+                    HStack {
+                        ProgressView()
+                        Text("Reading your thoughts on device")
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+
+                if hasStaleReview {
+                    Label("Text changed. Suggest cards again before saving.", systemImage: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(.secondary)
+                }
 
                 if let notice {
                     safetyNoticeView(notice)
                 }
 
-                ForEach($suggestions) { $suggestion in
-                    Toggle(isOn: selectionBinding(for: suggestion.id)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            TextField("Title", text: $suggestion.title)
-                            Text(suggestion.type.label)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                if suggestions.isEmpty, notice == nil {
+                    ContentUnavailableView(
+                        "No suggestions yet",
+                        systemImage: "text.badge.plus",
+                        description: Text("Add a few thoughts above and review the suggested cards before saving.")
+                    )
+                } else {
+                    ForEach($suggestions) { $suggestion in
+                        BrainDumpSuggestionReviewRow(
+                            suggestion: $suggestion,
+                            isSelected: selectionBinding(for: suggestion.id)
+                        )
                     }
                 }
             } header: {
@@ -132,6 +161,33 @@ struct OnboardingView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+                .fontWeight(.semibold)
+                .accessibilityIdentifier("dismissOnboardingBrainDumpKeyboard")
+            }
+        }
+    }
+
+    private var primaryActionTitle: String {
+        if step < 2 {
+            return "Continue"
+        }
+        return shouldParseBeforeFinish ? "Review Cards" : "Start FairNest"
+    }
+
+    private var shouldParseBeforeFinish: Bool {
+        let input = normalized(brainDump)
+        return !input.isEmpty && lastParsedBrainDump != input
+    }
+
+    private var hasStaleReview: Bool {
+        !suggestions.isEmpty && lastParsedBrainDump != normalized(brainDump)
     }
 
     private func selectionBinding(for id: UUID) -> Binding<Bool> {
@@ -148,25 +204,39 @@ struct OnboardingView: View {
     }
 
     private func parse() async {
+        focusedField = nil
+        let input = normalized(brainDump)
         isParsing = true
+        suggestions = []
+        selectedSuggestionIDs = []
+        notice = nil
+        errorMessage = nil
         defer { isParsing = false }
         do {
-            let result = try await services.parser.parse(brainDump, context: BrainDumpContext())
+            let result = try await services.parser.parse(input, context: BrainDumpContext())
             notice = result.safetyNotice
             suggestions = result.suggestions
             selectedSuggestionIDs = Set(result.suggestions.map(\.id))
+            lastParsedBrainDump = input
             errorMessage = nil
         } catch {
+            lastParsedBrainDump = nil
             errorMessage = error.localizedDescription
         }
     }
 
     private func saveAndFinish() {
-        for suggestion in suggestions where selectedSuggestionIDs.contains(suggestion.id) &&
-            !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            _ = cardStore.add(suggestion)
+        focusedField = nil
+        let selectedSuggestions = suggestions.filter { suggestion in
+            selectedSuggestionIDs.contains(suggestion.id) &&
+                !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        services.completeOnboarding()
+        do {
+            _ = try cardStore.addReviewed(selectedSuggestions)
+            services.completeOnboarding()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func safetyNoticeView(_ notice: SafetyNotice) -> some View {
@@ -181,5 +251,9 @@ struct OnboardingView: View {
         } icon: {
             Image(systemName: "exclamationmark.triangle")
         }
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

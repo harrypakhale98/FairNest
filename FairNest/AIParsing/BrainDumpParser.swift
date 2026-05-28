@@ -17,10 +17,46 @@ enum BrainDumpParserError: LocalizedError {
 
 enum SafetyClassifier {
     static func noticeIfNeeded(for text: String) -> SafetyNotice? {
-        let normalized = text.lowercased()
-        let selfHarm = ["kill myself", "suicide", "hurt myself", "end my life", "self harm"]
-        let immediateDanger = ["call 911", "emergency", "in danger right now", "weapon", "threatened me"]
-        let abuse = ["hit me", "hits me", "afraid of my partner", "coerced", "forced me", "controls my money", "won't let me leave"]
+        let normalized = normalize(text)
+        let selfHarm = [
+            "kill myself",
+            "suicide",
+            "hurt myself",
+            "harm myself",
+            "end my life",
+            "self harm",
+            "self-harm",
+            "want to die",
+            "wanted to die",
+            "die by suicide",
+            "cut myself"
+        ]
+        let immediateDanger = [
+            "call 911",
+            "emergency",
+            "in danger right now",
+            "weapon",
+            "threatened me",
+            "threatened to hurt",
+            "scared to go home",
+            "afraid to go home"
+        ]
+        let abuse = [
+            "hit me",
+            "hits me",
+            "partner hit",
+            "partner hurts",
+            "afraid of my partner",
+            "scared of my partner",
+            "domestic violence",
+            "choked me",
+            "strangled me",
+            "coerced",
+            "forced me",
+            "controls my money",
+            "won't let me leave",
+            "wont let me leave"
+        ]
 
         if containsAny(selfHarm + immediateDanger + abuse, in: normalized) {
             return SafetyNotice(
@@ -33,5 +69,15 @@ enum SafetyClassifier {
 
     private static func containsAny(_ needles: [String], in haystack: String) -> Bool {
         needles.contains { haystack.contains($0) }
+    }
+
+    private static func normalize(_ text: String) -> String {
+        text
+            .lowercased()
+            .folding(options: [.diacriticInsensitive, .widthInsensitive], locale: .current)
+            .replacingOccurrences(of: "’", with: "'")
+            .replacingOccurrences(of: "‘", with: "'")
+            .replacingOccurrences(of: "“", with: "\"")
+            .replacingOccurrences(of: "”", with: "\"")
     }
 }
