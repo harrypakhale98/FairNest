@@ -1,7 +1,11 @@
 import SwiftUI
 
-private enum BrainDumpFocusedField: Hashable {
+enum BrainDumpInputFocus: Hashable {
     case thoughts
+    case firstBrainDump
+    case suggestionTitle(UUID)
+    case suggestionDoneCriteria(UUID)
+    case suggestionNotes(UUID)
 }
 
 struct BrainDumpView: View {
@@ -15,7 +19,7 @@ struct BrainDumpView: View {
     @State private var saveConfirmation: String?
     @State private var isParsing = false
     @State private var lastParsedText: String?
-    @FocusState private var focusedField: BrainDumpFocusedField?
+    @FocusState private var focusedField: BrainDumpInputFocus?
 
     var body: some View {
         NavigationStack {
@@ -35,7 +39,7 @@ struct BrainDumpView: View {
 
                 Section {
                     Button {
-                        focusedField = nil
+                        dismissKeyboard()
                         Task { await parse() }
                     } label: {
                         Label(isParsing ? "Reading" : "Suggest Cards", systemImage: "sparkles")
@@ -71,7 +75,8 @@ struct BrainDumpView: View {
                         ForEach($suggestions) { $suggestion in
                             BrainDumpSuggestionReviewRow(
                                 suggestion: $suggestion,
-                                isSelected: selectionBinding(for: suggestion.id)
+                                isSelected: selectionBinding(for: suggestion.id),
+                                focusedField: $focusedField
                             )
                         }
                     }
@@ -112,7 +117,7 @@ struct BrainDumpView: View {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") {
-                        focusedField = nil
+                        dismissKeyboard()
                     }
                     .fontWeight(.semibold)
                     .accessibilityIdentifier("dismissBrainDumpKeyboard")
@@ -137,7 +142,7 @@ struct BrainDumpView: View {
     }
 
     private func parse() async {
-        focusedField = nil
+        dismissKeyboard()
         let input = normalized(text)
         isParsing = true
         suggestions = []
@@ -160,7 +165,7 @@ struct BrainDumpView: View {
     }
 
     private func saveSelected() {
-        focusedField = nil
+        dismissKeyboard()
         let selectedSuggestions = suggestions.filter { suggestion in
             selectedIDs.contains(suggestion.id) &&
                 !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -198,17 +203,27 @@ struct BrainDumpView: View {
     private func normalized(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    private func dismissKeyboard() {
+        focusedField = nil
+    }
 }
 
 struct BrainDumpSuggestionReviewRow: View {
     @Binding var suggestion: BrainDumpSuggestion
     @Binding var isSelected: Bool
     @State private var hasDueDate: Bool
+    var focusedField: FocusState<BrainDumpInputFocus?>.Binding
 
-    init(suggestion: Binding<BrainDumpSuggestion>, isSelected: Binding<Bool>) {
+    init(
+        suggestion: Binding<BrainDumpSuggestion>,
+        isSelected: Binding<Bool>,
+        focusedField: FocusState<BrainDumpInputFocus?>.Binding
+    ) {
         _suggestion = suggestion
         _isSelected = isSelected
         _hasDueDate = State(initialValue: suggestion.wrappedValue.dueDate != nil)
+        self.focusedField = focusedField
     }
 
     var body: some View {
@@ -228,6 +243,7 @@ struct BrainDumpSuggestionReviewRow: View {
             }
 
             TextField("Title", text: $suggestion.title, axis: .vertical)
+                .focused(focusedField, equals: .suggestionTitle(suggestion.id))
                 .font(.headline)
                 .accessibilityIdentifier("brainDumpSuggestionTitle")
 
@@ -269,9 +285,11 @@ struct BrainDumpSuggestionReviewRow: View {
             }
 
             TextField("Done criteria", text: $suggestion.doneCriteria, axis: .vertical)
+                .focused(focusedField, equals: .suggestionDoneCriteria(suggestion.id))
                 .accessibilityIdentifier("brainDumpSuggestionDoneCriteria")
 
             TextField("Notes", text: $suggestion.notes, axis: .vertical)
+                .focused(focusedField, equals: .suggestionNotes(suggestion.id))
                 .accessibilityIdentifier("brainDumpSuggestionNotes")
         }
         .padding(.vertical, 4)

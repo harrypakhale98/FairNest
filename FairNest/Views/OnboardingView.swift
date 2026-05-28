@@ -1,9 +1,5 @@
 import SwiftUI
 
-private enum OnboardingFocusedField: Hashable {
-    case firstBrainDump
-}
-
 struct OnboardingView: View {
     @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
@@ -15,7 +11,7 @@ struct OnboardingView: View {
     @State private var isParsing = false
     @State private var errorMessage: String?
     @State private var lastParsedBrainDump: String?
-    @FocusState private var focusedField: OnboardingFocusedField?
+    @FocusState private var focusedField: BrainDumpInputFocus?
 
     var body: some View {
         NavigationStack {
@@ -110,7 +106,7 @@ struct OnboardingView: View {
 
             Section {
                 Button {
-                    focusedField = nil
+                    dismissKeyboard()
                     Task { await parse() }
                 } label: {
                     Label(isParsing ? "Parsing" : "Suggest Cards", systemImage: "sparkles")
@@ -146,7 +142,8 @@ struct OnboardingView: View {
                     ForEach($suggestions) { $suggestion in
                         BrainDumpSuggestionReviewRow(
                             suggestion: $suggestion,
-                            isSelected: selectionBinding(for: suggestion.id)
+                            isSelected: selectionBinding(for: suggestion.id),
+                            focusedField: $focusedField
                         )
                     }
                 }
@@ -166,7 +163,7 @@ struct OnboardingView: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {
-                    focusedField = nil
+                    dismissKeyboard()
                 }
                 .fontWeight(.semibold)
                 .accessibilityIdentifier("dismissOnboardingBrainDumpKeyboard")
@@ -204,7 +201,7 @@ struct OnboardingView: View {
     }
 
     private func parse() async {
-        focusedField = nil
+        dismissKeyboard()
         let input = normalized(brainDump)
         isParsing = true
         suggestions = []
@@ -226,7 +223,7 @@ struct OnboardingView: View {
     }
 
     private func saveAndFinish() {
-        focusedField = nil
+        dismissKeyboard()
         let selectedSuggestions = suggestions.filter { suggestion in
             selectedSuggestionIDs.contains(suggestion.id) &&
                 !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -255,5 +252,9 @@ struct OnboardingView: View {
 
     private func normalized(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func dismissKeyboard() {
+        focusedField = nil
     }
 }
