@@ -39,6 +39,7 @@ targets:
         INFOPLIST_FILE: FairNest/Supporting/Info.plist
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: DUHVN68KBA
+        TARGETED_DEVICE_FAMILY: "1"
     info:
       path: FairNest/Supporting/Info.plist
       properties:
