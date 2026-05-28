@@ -26,6 +26,7 @@ final class AppServices: ObservableObject {
     let reminderScheduler: ReminderScheduler
     let syncService: CloudKitSyncService
     let pairingService: CloudKitPairingService
+    private let syncEngine: any SyncService
     private var pendingCardsForPush: [LoadCard]?
     private var suppressNextCardPush = false
 
@@ -35,6 +36,7 @@ final class AppServices: ObservableObject {
         parser: BrainDumpParser? = nil,
         reminderScheduler: ReminderScheduler = LocalReminderScheduler(),
         syncService: CloudKitSyncService = CloudKitSyncService(),
+        syncEngine: (any SyncService)? = nil,
         pairingService: CloudKitPairingService = CloudKitPairingService()
     ) {
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
@@ -56,6 +58,7 @@ final class AppServices: ObservableObject {
         self.parser = parser ?? Self.defaultParser()
         self.reminderScheduler = reminderScheduler
         self.syncService = syncService
+        self.syncEngine = syncEngine ?? syncService
         self.pairingService = pairingService
     }
 
@@ -97,7 +100,7 @@ final class AppServices: ObservableObject {
         iCloudSyncEnabled = false
         var sharedDeletionError: Error?
         do {
-            try await syncService.deleteSharedHouseholdData()
+            try await syncEngine.deleteSharedHouseholdData()
         } catch {
             sharedDeletionError = error
         }
@@ -131,23 +134,23 @@ final class AppServices: ObservableObject {
         applyPrivateUploadPins()
         guard !syncInProgress else { return }
         syncInProgress = true
-        await syncService.refreshStatus()
-        guard syncService.status == .available else {
-            writeWidgetSnapshot(cards: cardStore.cards, syncPending: syncService.status == .offline || syncService.status == .pending)
+        await syncEngine.refreshStatus()
+        guard syncEngine.status == .available else {
+            writeWidgetSnapshot(cards: cardStore.cards, syncPending: syncEngine.status == .offline || syncEngine.status == .pending)
             await finishSyncAndFlushPending()
             return
         }
         do {
             let localBeforeFetch = cardStore.cards
-            let remote = try await syncService.fetchCards()
-            let merged = syncService.merge(local: localBeforeFetch, remote: remote)
-            try await syncService.upload(cards: merged)
+            let remote = try await syncEngine.fetchCards()
+            let merged = syncEngine.merge(local: localBeforeFetch, remote: remote)
+            try await syncEngine.upload(cards: merged)
             let currentLocal = cardStore.cards
-            let finalCards = currentLocal == localBeforeFetch ? merged : syncService.merge(local: currentLocal, remote: merged)
+            let finalCards = currentLocal == localBeforeFetch ? merged : syncEngine.merge(local: currentLocal, remote: merged)
             suppressNextCardPush = true
             try cardStore.replaceAllThrowing(with: finalCards)
             if finalCards != merged {
-                try await syncService.upload(cards: finalCards)
+                try await syncEngine.upload(cards: finalCards)
             }
             writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
@@ -186,7 +189,7 @@ final class AppServices: ObservableObject {
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {
         guard iCloudSyncEnabled else { return }
         applyPrivateUploadPins()
-        guard syncService.status == .available else {
+        guard syncEngine.status == .available else {
             if syncInProgress {
                 pendingCardsForPush = cards
             } else {
@@ -200,10 +203,20 @@ final class AppServices: ObservableObject {
         }
         syncInProgress = true
         do {
-            try await syncService.upload(cards: cards)
-            writeWidgetSnapshot(cards: cards, syncPending: false)
+            let localBeforeFetch = cardStore.cards
+            let remote = try await syncEngine.fetchCards()
+            let merged = syncEngine.merge(local: localBeforeFetch, remote: remote)
+            let currentLocal = cardStore.cards
+            let finalCards = currentLocal == localBeforeFetch ? merged : syncEngine.merge(local: currentLocal, remote: merged)
+            if finalCards != currentLocal {
+                suppressNextCardPush = true
+                try cardStore.replaceAllThrowing(with: finalCards)
+            }
+            try await syncEngine.upload(cards: finalCards)
+            writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
         } catch {
+            suppressNextCardPush = false
             writeWidgetSnapshot(cards: cards, syncPending: true)
             lastSyncMessage = error.localizedDescription
         }
@@ -261,11 +274,11 @@ final class AppServices: ObservableObject {
         var pinnedCardIDs = acceptedSharePrivateCardIDs
         pinnedCardIDs.formUnion(localCardIDs)
         acceptedSharePrivateCardIDs = pinnedCardIDs
-        syncService.pinCardsToPrivateDatabase(localCardIDs)
+        syncEngine.pinCardsToPrivateDatabase(localCardIDs)
     }
 
     private func applyPrivateUploadPins() {
-        syncService.pinCardsToPrivateDatabase(acceptedSharePrivateCardIDs)
+        syncEngine.pinCardsToPrivateDatabase(acceptedSharePrivateCardIDs)
     }
 
     private var acceptedSharePrivateCardIDs: Set<UUID> {

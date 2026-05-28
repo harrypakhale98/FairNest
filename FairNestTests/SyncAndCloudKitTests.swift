@@ -103,6 +103,36 @@ final class SyncAndCloudKitTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testPushCardsFetchesAndMergesRemoteBeforeUploading() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+        }
+        let id = UUID()
+        let olderLocal = LoadCard(id: id, title: "Older local", updatedAt: Date(timeIntervalSince1970: 10))
+        let newerRemote = LoadCard(id: id, title: "Newer remote", updatedAt: Date(timeIntervalSince1970: 20))
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        try cardStore.replaceAllThrowing(with: [olderLocal])
+        let syncEngine = CapturingSyncEngine(status: .available, remoteCards: [newerRemote])
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        await services.pushCardsIfAvailable(cardStore.cards)
+
+        XCTAssertEqual(syncEngine.fetchCount, 1)
+        XCTAssertEqual(syncEngine.uploadedBatches.last?.first?.title, "Newer remote")
+        XCTAssertEqual(cardStore.cards.first?.title, "Newer remote")
+    }
+
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
     }
@@ -111,5 +141,48 @@ final class SyncAndCloudKitTests: XCTestCase {
 private struct TestCloudKitPartialFailure: LocalizedError {
     var errorDescription: String? {
         "Simulated partial failure"
+    }
+}
+
+@MainActor
+private final class CapturingSyncEngine: SyncService {
+    var status: SyncStatus
+    var remoteCards: [LoadCard]
+    var uploadedBatches: [[LoadCard]] = []
+    var fetchCount = 0
+    var pinnedCardIDs = Set<UUID>()
+
+    init(status: SyncStatus, remoteCards: [LoadCard]) {
+        self.status = status
+        self.remoteCards = remoteCards
+    }
+
+    func refreshStatus() async {}
+
+    func merge(local: [LoadCard], remote: [LoadCard]) -> [LoadCard] {
+        ConflictResolver.merge(local: local, remote: remote)
+    }
+
+    func upload(cards: [LoadCard]) async throws {
+        uploadedBatches.append(cards)
+    }
+
+    func fetchCards() async throws -> [LoadCard] {
+        fetchCount += 1
+        return remoteCards
+    }
+
+    func synchronize(local cards: [LoadCard]) async throws -> [LoadCard] {
+        let merged = merge(local: cards, remote: remoteCards)
+        try await upload(cards: merged)
+        return merged
+    }
+
+    func deleteSharedHouseholdData() async throws {}
+
+    func acceptShare(metadata: CKShare.Metadata) async throws {}
+
+    func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>) {
+        pinnedCardIDs.formUnion(cardIDs)
     }
 }
