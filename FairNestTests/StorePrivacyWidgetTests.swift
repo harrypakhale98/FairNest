@@ -129,6 +129,24 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertFalse(json.contains(privateTitle))
     }
 
+    func testWidgetSnapshotClearRemovesStoredMetadata() {
+        let suiteName = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let card = LoadCard(title: "Private title", type: .task, owner: .partner, status: .planned, effort: .heavy)
+
+        XCTAssertTrue(WidgetSnapshotStore.write(cards: [card], defaults: defaults))
+        XCTAssertFalse(WidgetSnapshotStore.read(defaults: defaults).cards.isEmpty)
+
+        XCTAssertTrue(WidgetSnapshotStore.clear(defaults: defaults))
+        XCTAssertTrue(WidgetSnapshotStore.read(defaults: defaults).cards.isEmpty)
+    }
+
+    func testWidgetSnapshotWriteAndClearReportUnavailableDefaults() {
+        XCTAssertFalse(WidgetSnapshotStore.write(cards: [], defaults: nil))
+        XCTAssertFalse(WidgetSnapshotStore.clear(defaults: nil))
+    }
+
     func testPrivacyManifestDeclaresUserDefaultsRequiredReasonAPI() throws {
         let manifestURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

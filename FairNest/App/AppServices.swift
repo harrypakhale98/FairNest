@@ -247,7 +247,11 @@ final class AppServices: ObservableObject {
     }
 
     private func writeWidgetSnapshot(cards: [LoadCard], syncPending: Bool) {
-        WidgetSnapshotStore.write(cards: cards, syncPending: syncPending)
+        if cards.isEmpty, !syncPending {
+            WidgetSnapshotStore.clear()
+        } else {
+            WidgetSnapshotStore.write(cards: cards, syncPending: syncPending)
+        }
         WidgetSnapshotStore.reloadTimelines()
     }
 

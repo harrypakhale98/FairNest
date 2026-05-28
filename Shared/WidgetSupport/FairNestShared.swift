@@ -128,12 +128,20 @@ struct WidgetHouseholdSnapshot: Codable, Equatable {
 }
 
 enum WidgetSnapshotStore {
-    static func write(cards: [LoadCard], syncPending: Bool = false, date: Date = Date()) {
+    @discardableResult
+    static func write(
+        cards: [LoadCard],
+        syncPending: Bool = false,
+        date: Date = Date(),
+        defaults: UserDefaults? = FairNestShared.sharedDefaults
+    ) -> Bool {
         let summaries = summaries(for: cards)
         let snapshot = WidgetHouseholdSnapshot(generatedAt: date, syncPending: syncPending, cards: summaries)
-        if let data = try? JSONEncoder.fairNest.encode(snapshot) {
-            FairNestShared.sharedDefaults?.set(data, forKey: FairNestShared.widgetSnapshotKey)
+        guard let data = try? JSONEncoder.fairNest.encode(snapshot), let defaults else {
+            return false
         }
+        defaults.set(data, forKey: FairNestShared.widgetSnapshotKey)
+        return true
     }
 
     static func summaries(for cards: [LoadCard]) -> [WidgetCardSummary] {
@@ -160,12 +168,19 @@ enum WidgetSnapshotStore {
             }
     }
 
-    static func read() -> WidgetHouseholdSnapshot {
-        guard let data = FairNestShared.sharedDefaults?.data(forKey: FairNestShared.widgetSnapshotKey),
+    static func read(defaults: UserDefaults? = FairNestShared.sharedDefaults) -> WidgetHouseholdSnapshot {
+        guard let data = defaults?.data(forKey: FairNestShared.widgetSnapshotKey),
               let snapshot = try? JSONDecoder.fairNest.decode(WidgetHouseholdSnapshot.self, from: data) else {
             return .empty
         }
         return snapshot
+    }
+
+    @discardableResult
+    static func clear(defaults: UserDefaults? = FairNestShared.sharedDefaults) -> Bool {
+        guard let defaults else { return false }
+        defaults.removeObject(forKey: FairNestShared.widgetSnapshotKey)
+        return true
     }
 
     static func reloadTimelines() {
