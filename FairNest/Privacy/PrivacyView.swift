@@ -114,7 +114,7 @@ struct PrivacyView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This can remove iCloud household data where this account has permission. Export first if you need a copy.")
+            Text("This removes iCloud household cards where this account has permission, then clears local cards, check-ins, temporary exports, and scheduled FairNest reminders on this device. iCloud Sync will be turned off.")
         }
     }
 
@@ -139,12 +139,16 @@ struct PrivacyView: View {
     }
 
     private func clearExportFile() {
-        if let exportURL {
-            try? FileManager.default.removeItem(at: exportURL)
+        do {
+            if let exportURL, FileManager.default.fileExists(atPath: exportURL.path) {
+                try FileManager.default.removeItem(at: exportURL)
+            }
+            try PrivacyExportService.removeTemporaryExports()
+            exportURL = nil
+            message = "Temporary export file cleared."
+        } catch {
+            message = "FairNest could not clear the temporary export file: \(error.localizedDescription)"
         }
-        PrivacyExportService.removeTemporaryExports()
-        exportURL = nil
-        message = "Temporary export file cleared."
     }
 
     private func refreshPrivacyStatus() async {

@@ -265,7 +265,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
                 saving: [],
                 deleting: batch,
                 savePolicy: .changedKeys,
-                atomically: false
+                atomically: true
             )
             startIndex = endIndex
         }

@@ -121,6 +121,24 @@ final class ReminderAndCheckInTests: XCTestCase {
         } catch {
             XCTAssertEqual(error.localizedDescription, TestReminderError.schedulingFailed.localizedDescription)
         }
+        XCTAssertEqual(services.lastReminderMessage, TestReminderError.schedulingFailed.localizedDescription)
+    }
+
+    func testSchedulingCurrentCardsCancelsOrphanedDueReminder() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        let orphanedCardID = UUID()
+        reminderScheduler.pendingIdentifiers = [
+            ReminderRequestFactory.cardReminderIdentifier(for: orphanedCardID)
+        ]
+        let services = AppServices(
+            cardStore: LocalCardStore(fileURL: tempURL()),
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            reminderScheduler: reminderScheduler
+        )
+
+        try await services.scheduleRemindersForCurrentCards()
+
+        XCTAssertEqual(reminderScheduler.cancelledCardIDs, [orphanedCardID])
     }
 
     func testPrivacyDeleteClearsDataDisablesSyncAndCancelsReminders() async throws {
@@ -158,6 +176,50 @@ final class ReminderAndCheckInTests: XCTestCase {
         XCTAssertTrue(checkInStore.records.isEmpty)
         XCTAssertTrue(reminderScheduler.cancelledAllFairNestReminders)
         XCTAssertFalse(FileManager.default.fileExists(atPath: exportURL.path))
+    }
+
+    func testPrivacyDeleteFailureDoesNotCancelRemindersOrRemoveTemporaryExport() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+        }
+        let reminderScheduler = CapturingReminderScheduler()
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInURL = tempURL()
+        let checkInStore = LocalCheckInStore(fileURL: checkInURL)
+        _ = cardStore.add(BrainDumpSuggestion(title: "Keep private", type: .task))
+        try checkInStore.save(CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: []
+        ))
+        let exportURL = try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportToTemporaryFile()
+        defer { try? FileManager.default.removeItem(at: exportURL) }
+        try FileManager.default.removeItem(at: checkInURL)
+        try FileManager.default.createDirectory(at: checkInURL, withIntermediateDirectories: true)
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: checkInStore,
+            reminderScheduler: reminderScheduler
+        )
+        services.iCloudSyncEnabled = true
+
+        do {
+            try await services.deleteAllLocalDataForPrivacy()
+            XCTFail("Expected privacy deletion to surface the local persistence failure.")
+        } catch {
+            XCTAssertFalse(error.localizedDescription.isEmpty)
+        }
+
+        XCTAssertTrue(services.iCloudSyncEnabled)
+        XCTAssertFalse(reminderScheduler.cancelledAllFairNestReminders)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: exportURL.path))
     }
 
     private func tempURL() -> URL {

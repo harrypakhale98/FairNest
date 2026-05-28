@@ -212,6 +212,20 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: exportURL.path))
     }
 
+    func testExportToTemporaryFileRemovesPreviousTemporaryExport() throws {
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        let service = PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore)
+
+        let firstExportURL = try service.exportToTemporaryFile()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: firstExportURL.path))
+        let secondExportURL = try service.exportToTemporaryFile()
+        defer { try? FileManager.default.removeItem(at: secondExportURL) }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: firstExportURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: secondExportURL.path))
+    }
+
     func testPrivacyExportDeleteRestoresLocalDataWhenCheckInDeleteFails() throws {
         let cardStore = LocalCardStore(fileURL: tempURL())
         let checkInURL = tempURL()
@@ -270,6 +284,40 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertTrue(services.iCloudSyncEnabled)
         XCTAssertEqual(cardStore.cards.first?.id, card.id)
         XCTAssertEqual(checkInStore.records, [record])
+    }
+
+    func testSharedPrivacyDeleteKeepsSyncOffAndClearsLocalDataWhenCloudKitFails() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+        }
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        _ = cardStore.add(BrainDumpSuggestion(title: "Do not re-upload", type: .task))
+        try checkInStore.save(CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: []
+        ))
+        let services = AppServices(cardStore: cardStore, checkInStore: checkInStore)
+        services.iCloudSyncEnabled = true
+
+        do {
+            try await services.deleteSharedHouseholdDataForPrivacy()
+            XCTFail("Expected CloudKit deletion to fail in the test runtime.")
+        } catch {
+            XCTAssertFalse(error.localizedDescription.isEmpty)
+        }
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertTrue(cardStore.cards.isEmpty)
+        XCTAssertTrue(checkInStore.records.isEmpty)
     }
 
     func testCheckInStoreRollsBackWhenPersistenceFails() throws {

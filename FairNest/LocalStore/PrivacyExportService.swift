@@ -25,10 +25,10 @@ struct PrivacyExportService {
     }
 
     func exportToTemporaryFile() throws -> URL {
-        Self.removeTemporaryExports()
+        try Self.removeTemporaryExports()
         let data = try exportData()
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("FairNest Export-\(Int(Date().timeIntervalSince1970))")
+            .appendingPathComponent("FairNest Export-\(UUID().uuidString)")
             .appendingPathExtension("json")
         try data.write(to: url, options: [.atomic, .completeFileProtection])
         return url
@@ -40,19 +40,34 @@ struct PrivacyExportService {
         do {
             try cardStore.deleteAllLocalDataThrowing()
             try checkInStore.deleteAll()
-            Self.removeTemporaryExports()
+            try Self.removeTemporaryExports()
         } catch {
-            try? cardStore.replaceAllThrowing(with: previousCards)
-            try? checkInStore.replaceAllThrowing(with: previousCheckIns)
+            do {
+                try cardStore.replaceAllThrowing(with: previousCards)
+                try checkInStore.replaceAllThrowing(with: previousCheckIns)
+            } catch let rollbackError {
+                throw PrivacyExportServiceError.rollbackFailed(original: error, rollback: rollbackError)
+            }
             throw error
         }
     }
 
-    static func removeTemporaryExports() {
+    static func removeTemporaryExports() throws {
         let directory = FileManager.default.temporaryDirectory
-        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         for file in files where file.lastPathComponent.hasPrefix("FairNest Export-") && file.pathExtension == "json" {
-            try? FileManager.default.removeItem(at: file)
+            try FileManager.default.removeItem(at: file)
+        }
+    }
+}
+
+enum PrivacyExportServiceError: LocalizedError {
+    case rollbackFailed(original: Error, rollback: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case let .rollbackFailed(original, rollback):
+            return "FairNest could not finish deleting local data (\(original.localizedDescription)) or restore the previous local data (\(rollback.localizedDescription))."
         }
     }
 }

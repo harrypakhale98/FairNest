@@ -28,6 +28,11 @@ enum ReminderRequestFactory {
         "\(cardReminderIdentifierPrefix)\(cardID.uuidString)"
     }
 
+    static func cardID(fromReminderIdentifier identifier: String) -> UUID? {
+        guard isCardReminderIdentifier(identifier) else { return nil }
+        return UUID(uuidString: String(identifier.dropFirst(cardReminderIdentifierPrefix.count)))
+    }
+
     static func dueTaskRequest(for card: LoadCard, calendar: Calendar = .current) -> ReminderRequest? {
         guard let dueDate = card.dueDate else { return nil }
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)

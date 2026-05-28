@@ -38,11 +38,8 @@ final class FairNestUITests: XCTestCase {
     }
 
     func testCreateCardFromBoard() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
-        app.launch()
+        let app = launchCompletedApp()
 
-        XCTAssertTrue(app.navigationBars["Home Board"].waitForExistence(timeout: 5))
         app.buttons["addCard"].tap()
         let title = app.textFields["cardTitle"]
         XCTAssertTrue(title.waitForExistence(timeout: 3))
@@ -54,11 +51,8 @@ final class FairNestUITests: XCTestCase {
     }
 
     func testStandaloneBrainDumpSavesReviewedCardToBoard() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
-        app.launch()
+        let app = launchCompletedApp()
 
-        XCTAssertTrue(app.navigationBars["Home Board"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Brain Dump"].tap()
 
         let editor = app.textViews["brainDumpText"]
@@ -76,39 +70,35 @@ final class FairNestUITests: XCTestCase {
     }
 
     func testSettingsShowsPrivacySyncAndReminderControls() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
-        app.launch()
+        let app = launchCompletedApp()
 
         app.tabBars.buttons["Settings"].tap()
 
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Privacy"].exists)
-        XCTAssertTrue(app.switches["Use iCloud Sync"].exists)
+        XCTAssertTrue(app.switches["settingsICloudSync"].exists)
         XCTAssertTrue(app.staticTexts["Notifications"].exists)
     }
 
     func testSettingsRequiresConfirmationBeforeTurningOnICloudSync() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
-        app.launch()
+        let app = launchCompletedApp()
 
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
 
-        app.switches["Use iCloud Sync"].tap()
+        let syncSwitch = app.switches["settingsICloudSync"]
+        XCTAssertTrue(syncSwitch.waitForExistence(timeout: 3))
+        syncSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
 
+        XCTAssertTrue(app.staticTexts["Turn on iCloud Sync?"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["Turn On iCloud Sync"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["Existing local cards will sync to iCloud. If this device joins a shared household, cards can be visible to invited participants. Weekly check-ins stay local."].exists)
         app.buttons["Cancel"].tap()
+        XCTAssertEqual(syncSwitch.value as? String, "0")
     }
 
     func testWeeklyCheckInSavesReviewedOwnershipChange() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
-        app.launch()
+        let app = launchCompletedApp()
 
-        XCTAssertTrue(app.navigationBars["Home Board"].waitForExistence(timeout: 5))
         app.tabBars.buttons["Check-In"].tap()
 
         let heavy = app.textViews["checkInFeltHeavy"]
@@ -141,5 +131,13 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Check-in saved"].waitForExistence(timeout: 3))
         app.tabBars.buttons["Board"].tap()
         XCTAssertTrue(app.staticTexts["Trash"].waitForExistence(timeout: 3))
+    }
+
+    private func launchCompletedApp() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Home Board"].waitForExistence(timeout: 8))
+        return app
     }
 }

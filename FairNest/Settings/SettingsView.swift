@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var cloudStatusRefreshInProgress = false
     @State private var notificationActionInProgress = false
     @State private var reminderRemovalInProgress = false
+    @State private var iCloudSyncToggleValue = false
 
     var body: some View {
         NavigationStack {
@@ -30,7 +31,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Use iCloud Sync", isOn: iCloudSyncBinding)
+                    Toggle("Use iCloud Sync", isOn: $iCloudSyncToggleValue)
                         .accessibilityIdentifier("settingsICloudSync")
                     if services.iCloudSyncEnabled {
                         LabeledContent("Status", value: syncService.status.label)
@@ -75,7 +76,7 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settingsReminderAction")
                     }
 
-                    if notificationsEnabled {
+                    if notificationsEnabled || hasScheduledFairNestReminders {
                         if hasWeeklyCheckInReminder {
                             Text("Weekly check-in: \(weeklyReminderScheduleLabel).")
                                 .font(.footnote)
@@ -90,19 +91,19 @@ struct SettingsView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
-                        if hasScheduledFairNestReminders {
-                            Button(role: .destructive) {
-                                showingReminderRemovalConfirmation = true
-                            } label: {
-                                Label("Remove All FairNest Reminders", systemImage: "bell.slash")
-                            }
-                            .disabled(reminderRemovalInProgress)
-                            .accessibilityIdentifier("settingsRemoveAllReminders")
-                        }
-
                         Text("Reminder alerts use private wording on the Lock Screen. Open FairNest to see card details.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+
+                    if hasScheduledFairNestReminders {
+                        Button(role: .destructive) {
+                            showingReminderRemovalConfirmation = true
+                        } label: {
+                            Label("Remove All FairNest Reminders", systemImage: "bell.slash")
+                        }
+                        .disabled(reminderRemovalInProgress)
+                        .accessibilityIdentifier("settingsRemoveAllReminders")
                     }
 
                     if notificationActionInProgress || reminderRemovalInProgress {
@@ -113,6 +114,12 @@ struct SettingsView: View {
 
                     if let notificationMessage {
                         Text(notificationMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let lastReminderMessage = services.lastReminderMessage {
+                        Text("Reminder issue: \(lastReminderMessage)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -132,15 +139,16 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .confirmationDialog(
+            .alert(
                 "Turn on iCloud Sync?",
-                isPresented: $showingICloudSyncConfirmation,
-                titleVisibility: .visible
+                isPresented: $showingICloudSyncConfirmation
             ) {
                 Button("Turn On iCloud Sync") {
                     Task { await enableICloudSync() }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("Cancel", role: .cancel) {
+                    iCloudSyncToggleValue = services.iCloudSyncEnabled
+                }
             } message: {
                 Text("Existing local cards will sync to iCloud. If this device joins a shared household, cards can be visible to invited participants. Weekly check-ins stay local.")
             }
@@ -157,6 +165,7 @@ struct SettingsView: View {
                 Text("This removes weekly check-in reminders and due-card reminders from this device. Notification permission itself is managed in iOS Settings.")
             }
             .task {
+                iCloudSyncToggleValue = services.iCloudSyncEnabled
                 await refreshSettingsState()
             }
             .refreshable {
@@ -167,20 +176,18 @@ struct SettingsView: View {
                 Task { await refreshSettingsState() }
             }
             .onChange(of: services.iCloudSyncEnabled) { _, enabled in
-                guard enabled else { return }
-                Task { await refreshCloudStatus() }
+                iCloudSyncToggleValue = enabled
+                if enabled {
+                    Task { await refreshCloudStatus() }
+                }
             }
-        }
-    }
-
-    private var iCloudSyncBinding: Binding<Bool> {
-        Binding {
-            services.iCloudSyncEnabled
-        } set: { enabled in
-            if enabled {
-                showingICloudSyncConfirmation = true
-            } else {
-                services.iCloudSyncEnabled = false
+            .onChange(of: iCloudSyncToggleValue) { _, enabled in
+                handleICloudSyncToggleChanged(enabled)
+            }
+            .onChange(of: showingICloudSyncConfirmation) { _, isPresented in
+                if !isPresented && !services.iCloudSyncEnabled {
+                    iCloudSyncToggleValue = false
+                }
             }
         }
     }
@@ -207,7 +214,7 @@ struct SettingsView: View {
 
     private var notificationActionTitle: String {
         guard notificationsEnabled else { return "Enable Gentle Reminders" }
-        return hasWeeklyCheckInReminder ? "Reschedule Gentle Reminders" : "Schedule Gentle Reminders"
+        return hasWeeklyCheckInReminder ? "Update Gentle Reminders" : "Schedule Gentle Reminders"
     }
 
     private var hasWeeklyCheckInReminder: Bool {
@@ -254,8 +261,19 @@ struct SettingsView: View {
     private static let weeklyCheckInHour = 18
     private static let weeklyCheckInMinute = 0
 
+    private func handleICloudSyncToggleChanged(_ enabled: Bool) {
+        if enabled {
+            if !services.iCloudSyncEnabled {
+                showingICloudSyncConfirmation = true
+            }
+        } else if services.iCloudSyncEnabled {
+            services.iCloudSyncEnabled = false
+        }
+    }
+
     private func enableICloudSync() async {
         services.iCloudSyncEnabled = true
+        iCloudSyncToggleValue = true
         await refreshCloudStatus()
     }
 

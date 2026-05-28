@@ -37,6 +37,8 @@ final class AppServices: ObservableObject {
     ) {
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
+            UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
         }
         if ProcessInfo.processInfo.arguments.contains("-uiTestingCompleteOnboarding") {
             UserDefaults.standard.set(true, forKey: "onboardingComplete")
@@ -66,6 +68,10 @@ final class AppServices: ObservableObject {
     }
 
     func deleteAllLocalDataForPrivacy() async throws {
+        try await deleteAllLocalDataForPrivacy(restoresSyncOnFailure: true)
+    }
+
+    private func deleteAllLocalDataForPrivacy(restoresSyncOnFailure: Bool) async throws {
         let previousSyncEnabled = iCloudSyncEnabled
         iCloudSyncEnabled = false
         do {
@@ -75,15 +81,35 @@ final class AppServices: ObservableObject {
             lastReminderMessage = nil
             writeWidgetSnapshot(cards: [], syncPending: false)
         } catch {
-            iCloudSyncEnabled = previousSyncEnabled
+            if restoresSyncOnFailure {
+                iCloudSyncEnabled = previousSyncEnabled
+            }
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
             throw error
         }
     }
 
     func deleteSharedHouseholdDataForPrivacy() async throws {
-        try await syncService.deleteSharedHouseholdData()
-        try await deleteAllLocalDataForPrivacy()
+        iCloudSyncEnabled = false
+        var sharedDeletionError: Error?
+        do {
+            try await syncService.deleteSharedHouseholdData()
+        } catch {
+            sharedDeletionError = error
+        }
+
+        do {
+            try await deleteAllLocalDataForPrivacy(restoresSyncOnFailure: false)
+        } catch {
+            if let sharedDeletionError {
+                throw PrivacyDeletionError.sharedAndLocalDeletionFailed(shared: sharedDeletionError, local: error)
+            }
+            throw error
+        }
+
+        if let sharedDeletionError {
+            throw sharedDeletionError
+        }
     }
 
     func handleAcceptedCloudKitShare() async {
@@ -142,8 +168,13 @@ final class AppServices: ObservableObject {
     }
 
     func scheduleRemindersForCurrentCards() async throws {
-        try await reconcileDueReminders(for: cardStore.cards)
-        lastReminderMessage = nil
+        do {
+            try await reconcileDueReminders(for: cardStore.cards)
+            lastReminderMessage = nil
+        } catch {
+            lastReminderMessage = error.localizedDescription
+            throw error
+        }
     }
 
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {
@@ -175,12 +206,28 @@ final class AppServices: ObservableObject {
     private func reconcileDueReminders(for cards: [LoadCard]) async throws {
         let status = await reminderScheduler.authorizationStatus()
         guard status == .authorized || status == .provisional || status == .ephemeral else { return }
+        let currentCardIDs = Set(cards.map(\.id))
+        let pendingIdentifiers = await reminderScheduler.pendingFairNestReminderIdentifiers()
+        for identifier in pendingIdentifiers where ReminderRequestFactory.isCardReminderIdentifier(identifier) {
+            guard let cardID = ReminderRequestFactory.cardID(fromReminderIdentifier: identifier),
+                  !currentCardIDs.contains(cardID) else { continue }
+            await reminderScheduler.cancelReminder(for: cardID)
+        }
+
+        var firstSchedulingError: Error?
         for card in cards {
             if card.isDeleted || card.status == .done || card.dueDate == nil {
                 await reminderScheduler.cancelReminder(for: card.id)
             } else {
-                try await reminderScheduler.scheduleDueTask(card)
+                do {
+                    try await reminderScheduler.scheduleDueTask(card)
+                } catch {
+                    firstSchedulingError = firstSchedulingError ?? error
+                }
             }
+        }
+        if let firstSchedulingError {
+            throw firstSchedulingError
         }
     }
 
@@ -194,5 +241,16 @@ final class AppServices: ObservableObject {
     private func writeWidgetSnapshot(cards: [LoadCard], syncPending: Bool) {
         WidgetSnapshotStore.write(cards: cards, syncPending: syncPending)
         WidgetSnapshotStore.reloadTimelines()
+    }
+}
+
+private enum PrivacyDeletionError: LocalizedError {
+    case sharedAndLocalDeletionFailed(shared: Error, local: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case let .sharedAndLocalDeletionFailed(shared, local):
+            return "FairNest could not finish deleting shared iCloud data (\(shared.localizedDescription)) or local device data (\(local.localizedDescription)). iCloud Sync remains off so local cards are not uploaded again."
+        }
     }
 }
