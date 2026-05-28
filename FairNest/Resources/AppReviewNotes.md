@@ -1,4 +1,4 @@
-# App Review Notes Draft
+# App Review Notes
 
 FairNest is free and has no ads, subscriptions, in-app purchases, custom backend, or third-party analytics.
 

@@ -1,4 +1,4 @@
-# FairNest Privacy Policy Draft
+# FairNest Privacy Policy
 
 FairNest is a private household organization app. It does not sell data, show ads, use third-party analytics, use a custom server, or use paid APIs.
 
