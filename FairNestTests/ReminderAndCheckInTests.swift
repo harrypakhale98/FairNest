@@ -8,12 +8,20 @@ final class ReminderAndCheckInTests: XCTestCase {
         let due = Date(timeIntervalSince1970: 1_800_000_000)
         let card = LoadCard(title: "Set out trash", type: .recurringResponsibility, dueDate: due)
 
-        let request = ReminderRequestFactory.dueTaskRequest(for: card)
+        let request = ReminderRequestFactory.dueTaskRequest(for: card, now: due.addingTimeInterval(-3600))
 
         XCTAssertEqual(request?.title, "Shared responsibility")
         XCTAssertEqual(request?.body, "Open FairNest to review this item.")
         XCTAssertFalse(request?.body.contains("Set out trash") ?? true)
         XCTAssertEqual(request?.repeats, false)
+    }
+
+    func testReminderFactorySkipsPastDueTaskRequest() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let card = LoadCard(title: "Overdue", status: .planned, dueDate: now.addingTimeInterval(-60))
+
+        XCTAssertNil(ReminderRequestFactory.dueTaskRequest(for: card, now: now))
+        XCTAssertFalse(ReminderRequestFactory.shouldScheduleDueTask(for: card, now: now))
     }
 
     func testWeeklyCheckInOutputsAtMostThreeOwnershipChanges() {
@@ -139,6 +147,26 @@ final class ReminderAndCheckInTests: XCTestCase {
         try await services.scheduleRemindersForCurrentCards()
 
         XCTAssertEqual(reminderScheduler.cancelledCardIDs, [orphanedCardID])
+    }
+
+    func testSchedulingCurrentCardsCancelsPastDueReminder() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        let overdueCard = LoadCard(title: "Overdue", status: .planned, dueDate: Date(timeIntervalSinceNow: -3600))
+        reminderScheduler.pendingIdentifiers = [
+            ReminderRequestFactory.cardReminderIdentifier(for: overdueCard.id)
+        ]
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        cardStore.upsert(overdueCard)
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            reminderScheduler: reminderScheduler
+        )
+
+        try await services.scheduleRemindersForCurrentCards()
+
+        XCTAssertEqual(reminderScheduler.cancelledCardIDs, [overdueCard.id])
+        XCTAssertTrue(reminderScheduler.scheduledCardIDs.isEmpty)
     }
 
     func testPrivacyDeleteClearsDataDisablesSyncAndCancelsReminders() async throws {

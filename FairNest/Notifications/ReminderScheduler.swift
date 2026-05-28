@@ -33,8 +33,13 @@ enum ReminderRequestFactory {
         return UUID(uuidString: String(identifier.dropFirst(cardReminderIdentifierPrefix.count)))
     }
 
-    static func dueTaskRequest(for card: LoadCard, calendar: Calendar = .current) -> ReminderRequest? {
-        guard let dueDate = card.dueDate else { return nil }
+    static func shouldScheduleDueTask(for card: LoadCard, now: Date = Date()) -> Bool {
+        guard !card.isDeleted, card.status != .done, let dueDate = card.dueDate else { return false }
+        return dueDate > now
+    }
+
+    static func dueTaskRequest(for card: LoadCard, calendar: Calendar = .current, now: Date = Date()) -> ReminderRequest? {
+        guard shouldScheduleDueTask(for: card, now: now), let dueDate = card.dueDate else { return nil }
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
         return ReminderRequest(
             identifier: cardReminderIdentifier(for: card.id),

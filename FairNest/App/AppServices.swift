@@ -215,8 +215,9 @@ final class AppServices: ObservableObject {
         }
 
         var firstSchedulingError: Error?
+        let now = Date()
         for card in cards {
-            if card.isDeleted || card.status == .done || card.dueDate == nil {
+            if !ReminderRequestFactory.shouldScheduleDueTask(for: card, now: now) {
                 await reminderScheduler.cancelReminder(for: card.id)
             } else {
                 do {
