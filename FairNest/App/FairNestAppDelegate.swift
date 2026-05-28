@@ -1,12 +1,23 @@
 import CloudKit
 import UIKit
+import UserNotifications
 
 extension Notification.Name {
     static let fairNestAcceptedCloudKitShare = Notification.Name("FairNestAcceptedCloudKitShare")
     static let fairNestFailedCloudKitShareAcceptance = Notification.Name("FairNestFailedCloudKitShareAcceptance")
+    static let fairNestOpenWeeklyCheckIn = Notification.Name("FairNestOpenWeeklyCheckIn")
 }
 
-final class FairNestAppDelegate: NSObject, UIApplicationDelegate {
+enum FairNestRouteRequest {
+    static let openWeeklyCheckInOnLaunchKey = "FairNestOpenWeeklyCheckInOnLaunch"
+}
+
+final class FairNestAppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
     func application(_ application: UIApplication, userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {
         Task {
             do {
@@ -29,5 +40,24 @@ final class FairNestAppDelegate: NSObject, UIApplicationDelegate {
                 )
             }
         }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.notification.request.identifier == ReminderRequestFactory.weeklyCheckInIdentifier {
+            UserDefaults.standard.set(true, forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
+            NotificationCenter.default.post(name: .fairNestOpenWeeklyCheckIn, object: nil)
+        }
+        completionHandler()
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }

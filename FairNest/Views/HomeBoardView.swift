@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 enum BoardFilter: String, CaseIterable, Identifiable {
     case today = "Today"
@@ -12,15 +15,21 @@ enum BoardFilter: String, CaseIterable, Identifiable {
 }
 
 struct HomeBoardView: View {
+    @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
     @State private var filter: BoardFilter = .today
     @State private var editingCard: LoadCard?
     @State private var showingAdd = false
     @State private var recentlyDeleted: LoadCard?
+    @State private var boardError: BoardOperationError?
 
     var body: some View {
         NavigationStack {
             List {
+                if let boardStatus {
+                    BoardStatusRow(status: boardStatus)
+                }
+
                 Section {
                     Picker("View", selection: $filter) {
                         ForEach(BoardFilter.allCases) { option in
@@ -32,11 +41,17 @@ struct HomeBoardView: View {
                 }
 
                 if filteredCards.isEmpty {
-                    ContentUnavailableView(
-                        emptyTitle,
-                        systemImage: emptySymbol,
-                        description: Text(emptyDescription)
-                    )
+                    ContentUnavailableView {
+                        Label(emptyTitle, systemImage: emptySymbol)
+                    } description: {
+                        Text(emptyDescription)
+                    } actions: {
+                        Button {
+                            showingAdd = true
+                        } label: {
+                            Label("Add Card", systemImage: "plus")
+                        }
+                    }
                     .listRowBackground(Color.clear)
                 } else {
                     Section {
@@ -46,14 +61,15 @@ struct HomeBoardView: View {
                                 .onTapGesture { editingCard = card }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        recentlyDeleted = card
-                                        cardStore.delete(id: card.id)
+                                        remove(card)
                                     } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        Label("Remove", systemImage: "trash")
                                     }
 
                                     Button {
-                                        try? cardStore.transition(id: card.id, to: .done)
+                                        performBoardOperation("mark this card done") {
+                                            try cardStore.transition(id: card.id, to: .done)
+                                        }
                                     } label: {
                                         Label("Done", systemImage: "checkmark")
                                     }
@@ -61,7 +77,9 @@ struct HomeBoardView: View {
                                 }
                                 .swipeActions(edge: .leading) {
                                     Button {
-                                        cardStore.snooze(id: card.id, days: 1)
+                                        performBoardOperation("snooze this card") {
+                                            try cardStore.snoozeThrowing(id: card.id, days: 1)
+                                        }
                                     } label: {
                                         Label("Tomorrow", systemImage: "moon")
                                     }
@@ -72,6 +90,9 @@ struct HomeBoardView: View {
                 }
             }
             .navigationTitle("Home Board")
+            .refreshable {
+                await services.syncCardsIfAvailable()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -85,26 +106,33 @@ struct HomeBoardView: View {
             }
             .sheet(item: $editingCard) { card in
                 CardEditorView(card: card) { updated in
-                    cardStore.upsert(updated)
+                    try cardStore.upsertThrowing(updated)
                     editingCard = nil
                 }
             }
             .sheet(isPresented: $showingAdd) {
                 CardEditorView(card: LoadCard(title: "")) { card in
-                    cardStore.upsert(card)
+                    try cardStore.upsertThrowing(card)
                     showingAdd = false
                 }
+            }
+            .alert(item: $boardError) { error in
+                Alert(
+                    title: Text("Board update failed"),
+                    message: Text(error.message),
+                    dismissButton: .default(Text("OK"))
+                )
             }
             .safeAreaInset(edge: .bottom) {
                 if let recentlyDeleted {
                     HStack {
-                        Text("Deleted \(recentlyDeleted.title)")
-                            .lineLimit(1)
+                        Text("Removed \(recentlyDeleted.title)")
+                            .lineLimit(2)
                         Spacer()
                         Button("Undo") {
-                            cardStore.restore(id: recentlyDeleted.id)
-                            self.recentlyDeleted = nil
+                            restore(recentlyDeleted)
                         }
+                        .accessibilityLabel("Undo remove \(recentlyDeleted.title)")
                     }
                     .font(.footnote)
                     .padding()
@@ -112,6 +140,53 @@ struct HomeBoardView: View {
                 }
             }
         }
+    }
+
+    private var boardStatus: BoardStatus? {
+        if let message = cardStore.lastLoadErrorMessage {
+            return BoardStatus(message: message, symbol: "exclamationmark.triangle", tint: .red)
+        }
+        if let message = cardStore.lastPersistenceErrorMessage {
+            return BoardStatus(message: message, symbol: "externaldrive.badge.exclamationmark", tint: .red)
+        }
+        if services.iCloudSyncEnabled, let message = services.lastSyncMessage {
+            return BoardStatus(message: "iCloud sync needs attention: \(message)", symbol: "icloud.slash", tint: .orange)
+        }
+        if services.iCloudSyncEnabled, services.syncInProgress {
+            return BoardStatus(message: "Syncing household cards with iCloud.", symbol: "arrow.triangle.2.circlepath.icloud", tint: Color.secondary)
+        }
+        return nil
+    }
+
+    private func remove(_ card: LoadCard) {
+        performBoardOperation("remove this card") {
+            try cardStore.deleteThrowing(id: card.id)
+            recentlyDeleted = card
+            announce("Removed \(card.title). Undo is available.")
+        }
+    }
+
+    private func restore(_ card: LoadCard) {
+        performBoardOperation("restore this card") {
+            try cardStore.restoreThrowing(id: card.id)
+            recentlyDeleted = nil
+            announce("Restored \(card.title).")
+        }
+    }
+
+    private func performBoardOperation(_ actionDescription: String, _ operation: () throws -> Void) {
+        do {
+            try operation()
+        } catch {
+            boardError = BoardOperationError(message: "FairNest could not \(actionDescription). \(error.localizedDescription)")
+            announce("Board update failed.")
+        }
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 
     private var filteredCards: [LoadCard] {
@@ -180,14 +255,15 @@ struct HomeBoardView: View {
 }
 
 struct CardRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var card: LoadCard
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             Image(systemName: card.type.symbolName)
-                .font(.title3)
+                .font(.title2)
                 .foregroundStyle(card.status == .done ? Color.green : Color.accentColor)
-                .frame(width: 28)
+                .frame(width: 32)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -196,20 +272,32 @@ struct CardRow: View {
                     .strikethrough(card.status == .done)
                     .lineLimit(3)
 
-                VStack(alignment: .leading, spacing: 4) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        OwnerBadge(owner: card.owner)
+                        StatusBadge(status: card.status)
+                        EffortDots(effort: card.effort)
+                    }
+                } else {
                     HStack(spacing: 10) {
                         OwnerBadge(owner: card.owner)
                         StatusBadge(status: card.status)
+                        EffortDots(effort: card.effort)
                     }
-                    EffortDots(effort: card.effort)
                 }
 
                 if let dueDate = card.dueDate {
-                    Label(dueDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                    Label(dueDate.formatted(date: .abbreviated, time: .shortened), systemImage: "calendar")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
@@ -230,5 +318,29 @@ struct CardRow: View {
             parts.append("Due \(dueDate.formatted(date: .abbreviated, time: .shortened))")
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+private struct BoardOperationError: Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct BoardStatus {
+    var message: String
+    var symbol: String
+    var tint: Color
+}
+
+private struct BoardStatusRow: View {
+    var status: BoardStatus
+
+    var body: some View {
+        Section {
+            Label(status.message, systemImage: status.symbol)
+                .font(.footnote)
+                .foregroundStyle(status.tint)
+                .accessibilityIdentifier("boardStatusMessage")
+        }
     }
 }

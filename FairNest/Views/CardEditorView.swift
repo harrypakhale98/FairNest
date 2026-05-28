@@ -5,10 +5,11 @@ struct CardEditorView: View {
     @State private var card: LoadCard
     @State private var hasDueDate: Bool
     @State private var showingDiscardConfirmation = false
+    @State private var saveErrorMessage: String?
     private let originalCard: LoadCard
-    var onSave: (LoadCard) -> Void
+    var onSave: (LoadCard) throws -> Void
 
-    init(card: LoadCard, onSave: @escaping (LoadCard) -> Void) {
+    init(card: LoadCard, onSave: @escaping (LoadCard) throws -> Void) {
         _card = State(initialValue: card)
         _hasDueDate = State(initialValue: card.dueDate != nil)
         self.originalCard = card
@@ -41,6 +42,11 @@ struct CardEditorView: View {
                     }
                 } header: {
                     Text("Card")
+                } footer: {
+                    if card.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("A card needs a title before it can be saved.")
+                            .accessibilityIdentifier("cardTitleValidation")
+                    }
                 }
 
                 Section {
@@ -64,10 +70,9 @@ struct CardEditorView: View {
                     }
 
                     Picker("Recurrence", selection: recurrenceBinding) {
-                        Text("None").tag(Recurrence.none)
-                        Text("Daily").tag(Recurrence.daily)
-                        Text("Weekly").tag(Recurrence.weekly(weekday: Calendar.current.component(.weekday, from: Date())))
-                        Text("Monthly").tag(Recurrence.monthly(day: Calendar.current.component(.day, from: Date())))
+                        ForEach(recurrenceOptions, id: \.self) { recurrence in
+                            Text(recurrence.label).tag(recurrence)
+                        }
                     }
                 } header: {
                     Text("Timing")
@@ -79,6 +84,14 @@ struct CardEditorView: View {
                 } header: {
                     Text("Details")
                 }
+
+                if let saveErrorMessage {
+                    Section {
+                        Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("cardSaveError")
+                    }
+                }
             }
             .navigationTitle(card.title.isEmpty ? "New Card" : "Edit Card")
                 .toolbar {
@@ -87,12 +100,15 @@ struct CardEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        card.updatedAt = Date()
-                        onSave(card)
+                        save()
                     }
                     .disabled(card.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("saveCard")
+                    .accessibilityHint(card.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Enter a title before saving." : "Saves this card.")
                 }
+            }
+            .onChange(of: card) { _, _ in
+                saveErrorMessage = nil
             }
             .interactiveDismissDisabled(isDirty)
             .confirmationDialog(
@@ -103,6 +119,14 @@ struct CardEditorView: View {
                 Button("Discard Changes", role: .destructive) { dismiss() }
                 Button("Keep Editing", role: .cancel) {}
             }
+        }
+    }
+
+    private func save() {
+        do {
+            try onSave(card)
+        } catch {
+            saveErrorMessage = error.localizedDescription
         }
     }
 
@@ -133,5 +157,17 @@ struct CardEditorView: View {
                 card.dueDate = enabled ? (card.dueDate ?? Date()) : nil
             }
         )
+    }
+
+    private var recurrenceOptions: [Recurrence] {
+        var options: [Recurrence] = [.none, .daily]
+        let calendar = Calendar.current
+        let date = card.dueDate ?? Date()
+        options.append(.weekly(weekday: calendar.component(.weekday, from: date)))
+        options.append(.monthly(day: calendar.component(.day, from: date)))
+        if !options.contains(card.recurrence) {
+            options.append(card.recurrence)
+        }
+        return options
     }
 }

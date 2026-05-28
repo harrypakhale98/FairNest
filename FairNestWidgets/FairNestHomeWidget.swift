@@ -71,11 +71,26 @@ struct FairNestWidgetView: View {
     var entry: FairNestWidgetEntry
 
     var body: some View {
+        content
+            .overlay(alignment: .bottomLeading) {
+                if entry.snapshot.syncPending, !entry.snapshot.cards.isEmpty {
+                    Text("Saved locally")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .redacted(reason: entry.redacted ? .placeholder : [])
+            .widgetAccentable()
+    }
+
+    private var content: some View {
         Group {
-            if entry.snapshot.syncPending {
-                syncPendingView
-            } else if entry.snapshot.cards.isEmpty {
-                emptyView
+            if entry.snapshot.cards.isEmpty {
+                if entry.snapshot.syncPending {
+                    syncPendingView
+                } else {
+                    emptyView
+                }
             } else {
                 switch entry.configuration.focus {
                 case .next:
@@ -87,8 +102,6 @@ struct FairNestWidgetView: View {
                 }
             }
         }
-        .redacted(reason: entry.redacted ? .placeholder : [])
-        .widgetAccentable()
     }
 
     private var nextView: some View {
@@ -137,12 +150,12 @@ struct FairNestWidgetView: View {
             Text("Weekly overview")
                 .font(.headline)
             HStack {
-                metric("Open", "\(entry.snapshot.cards.filter { $0.status != .done }.count)")
+                metric("Open", "\(entry.snapshot.weeklyCards(now: entry.date).count)")
                 metric("Today", "\(entry.snapshot.todayCards.count)")
-                metric("Effort", "\(entry.snapshot.weeklyEffort)")
+                metric("Effort", "\(entry.snapshot.weeklyEffortScore(now: entry.date))")
             }
             Divider()
-            ForEach(entry.snapshot.cards.filter { $0.status != .done }.prefix(5)) { card in
+            ForEach(entry.snapshot.weeklyCards(now: entry.date).prefix(5)) { card in
                 HStack {
                     Text(card.displayTitle)
                         .lineLimit(1)

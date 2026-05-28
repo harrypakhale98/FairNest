@@ -141,7 +141,11 @@ enum Recurrence: Codable, Equatable, Hashable {
             let index = max(1, min(7, weekday)) - 1
             return "Weekly on \(symbols[index])"
         case .monthly(let day):
-            return "Monthly on day \(day)"
+            let clampedDay = max(1, min(31, day))
+            if clampedDay > 28 {
+                return "Monthly on day \(clampedDay) or last day"
+            }
+            return "Monthly on day \(clampedDay)"
         }
     }
 
@@ -150,22 +154,89 @@ enum Recurrence: Codable, Equatable, Hashable {
         return true
     }
 
-    func nextDate(after date: Date, calendar: Calendar = .current) -> Date? {
+    func nextDate(after date: Date, preservingTimeFrom timeSource: Date? = nil, calendar: Calendar = .current) -> Date? {
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: timeSource ?? date)
+        let hour = timeComponents.hour ?? 0
+        let minute = timeComponents.minute ?? 0
+        let second = timeComponents.second ?? 0
+        let nanosecond = timeComponents.nanosecond ?? 0
+
         switch self {
         case .none:
             return nil
         case .daily:
-            return calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date))
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: date) else { return nil }
+            var components = calendar.dateComponents([.year, .month, .day], from: nextDay)
+            components.hour = hour
+            components.minute = minute
+            components.second = second
+            components.nanosecond = nanosecond
+            guard let candidate = calendar.date(from: components) else { return nil }
+            if candidate > date { return candidate }
+            return calendar.date(byAdding: .day, value: 1, to: candidate)
         case .weekly(let weekday):
             var components = DateComponents()
             components.weekday = max(1, min(7, weekday))
-            return calendar.nextDate(after: date, matching: components, matchingPolicy: .nextTimePreservingSmallerComponents)
+            components.hour = hour
+            components.minute = minute
+            components.second = second
+            components.nanosecond = nanosecond
+            return calendar.nextDate(
+                after: date,
+                matching: components,
+                matchingPolicy: .nextTimePreservingSmallerComponents,
+                repeatedTimePolicy: .first,
+                direction: .forward
+            )
         case .monthly(let day):
-            let clampedDay = max(1, min(28, day))
-            var components = DateComponents()
-            components.day = clampedDay
-            return calendar.nextDate(after: date, matching: components, matchingPolicy: .nextTimePreservingSmallerComponents)
+            let requestedDay = max(1, min(31, day))
+            return nextMonthlyDate(
+                after: date,
+                requestedDay: requestedDay,
+                hour: hour,
+                minute: minute,
+                second: second,
+                nanosecond: nanosecond,
+                calendar: calendar
+            )
         }
+    }
+
+    private func nextMonthlyDate(
+        after date: Date,
+        requestedDay: Int,
+        hour: Int,
+        minute: Int,
+        second: Int,
+        nanosecond: Int,
+        calendar: Calendar
+    ) -> Date? {
+        let baseComponents = calendar.dateComponents([.year, .month], from: date)
+        guard let baseYear = baseComponents.year, let baseMonth = baseComponents.month else { return nil }
+
+        for offset in 0...24 {
+            var monthComponents = DateComponents()
+            monthComponents.year = baseYear
+            monthComponents.month = baseMonth + offset
+            monthComponents.day = 1
+            guard let firstOfMonth = calendar.date(from: monthComponents),
+                  let dayRange = calendar.range(of: .day, in: .month, for: firstOfMonth) else {
+                continue
+            }
+
+            var candidateComponents = calendar.dateComponents([.year, .month], from: firstOfMonth)
+            candidateComponents.day = min(requestedDay, dayRange.count)
+            candidateComponents.hour = hour
+            candidateComponents.minute = minute
+            candidateComponents.second = second
+            candidateComponents.nanosecond = nanosecond
+
+            if let candidate = calendar.date(from: candidateComponents), candidate > date {
+                return candidate
+            }
+        }
+
+        return nil
     }
 }
 
@@ -222,6 +293,14 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
 
     var isDeleted: Bool { deletedAt != nil }
 
+    func normalizedForLocalSave(by member: HouseholdMember = .me, at date: Date = Date()) -> LoadCard {
+        var copy = self
+        copy.title = copy.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.modifiedBy = member
+        copy.updatedAt = date
+        return copy
+    }
+
     var isActionableToday: Bool {
         guard !isDeleted, status != .done else { return false }
         guard let dueDate else { return status == .inbox || status == .doing }
@@ -235,7 +314,7 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
         status = next
         modifiedBy = member
         updatedAt = date
-        if next == .done, let nextDue = recurrence.nextDate(after: date) {
+        if next == .done, let nextDue = recurrence.nextDate(after: date, preservingTimeFrom: dueDate ?? date) {
             status = .planned
             dueDate = nextDue
         }

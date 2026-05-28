@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var services: AppServices
 
     var body: some View {
@@ -23,9 +24,8 @@ struct RootView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .fairNestAcceptedCloudKitShare)) { _ in
-            services.pairingService.markShareAccepted()
             Task {
-                await services.syncCardsIfAvailable()
+                await services.handleAcceptedCloudKitShare()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .fairNestFailedCloudKitShareAcceptance)) { notification in
@@ -39,26 +39,63 @@ struct RootView: View {
                 await services.syncCardsIfAvailable()
             }
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task {
+                if services.iCloudSyncEnabled {
+                    await services.pairingService.refresh()
+                }
+                await services.syncCardsIfAvailable()
+            }
+        }
     }
 }
 
 struct MainTabView: View {
+    @State private var selection: MainTab = .board
+
     var body: some View {
-        TabView {
+        TabView(selection: $selection) {
             HomeBoardView()
                 .tabItem { Label("Board", systemImage: "list.bullet.rectangle") }
+                .tag(MainTab.board)
 
             BrainDumpView()
                 .tabItem { Label("Brain Dump", systemImage: "text.badge.plus") }
+                .tag(MainTab.brainDump)
 
             WeeklyCheckInView()
                 .tabItem { Label("Check-In", systemImage: "clock.badge.checkmark") }
+                .tag(MainTab.checkIn)
 
             PairingView()
                 .tabItem { Label("Pair", systemImage: "person.2") }
+                .tag(MainTab.pair)
 
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(MainTab.settings)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fairNestOpenWeeklyCheckIn)) { _ in
+            openWeeklyCheckIn()
+        }
+        .onAppear {
+            if UserDefaults.standard.bool(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey) {
+                openWeeklyCheckIn()
+            }
         }
     }
+
+    private func openWeeklyCheckIn() {
+        UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
+        selection = .checkIn
+    }
+}
+
+private enum MainTab: Hashable {
+    case board
+    case brainDump
+    case checkIn
+    case pair
+    case settings
 }

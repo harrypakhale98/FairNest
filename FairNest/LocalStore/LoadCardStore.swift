@@ -7,14 +7,36 @@ protocol LoadCardStore: AnyObject {
 
     func load()
     func upsert(_ card: LoadCard)
+    func upsertThrowing(_ card: LoadCard) throws
     func add(_ suggestion: BrainDumpSuggestion) -> LoadCard
     func transition(id: UUID, to status: CardStatus) throws
     func reassign(id: UUID, to owner: CardOwner)
+    func reassignThrowing(id: UUID, to owner: CardOwner) throws
     func snooze(id: UUID, days: Int)
+    func snoozeThrowing(id: UUID, days: Int) throws
     func delete(id: UUID)
+    func deleteThrowing(id: UUID) throws
     func restore(id: UUID)
+    func restoreThrowing(id: UUID) throws
     func exportData() throws -> Data
     func deleteAllLocalData()
+}
+
+enum LocalCardStoreError: LocalizedError {
+    case persistenceFailed
+    case cardDeleted
+    case missingCard
+
+    var errorDescription: String? {
+        switch self {
+        case .persistenceFailed:
+            return "FairNest could not save these cards. Your brain dump is still here. Try again."
+        case .cardDeleted:
+            return "This card was removed before your edit could be saved."
+        case .missingCard:
+            return "FairNest could not find that card."
+        }
+    }
 }
 
 struct CardStoreEnvelope: Codable, Equatable {
@@ -26,6 +48,8 @@ struct CardStoreEnvelope: Codable, Equatable {
 @MainActor
 final class LocalCardStore: ObservableObject, LoadCardStore {
     @Published private(set) var cards: [LoadCard] = []
+    @Published private(set) var lastLoadErrorMessage: String?
+    @Published private(set) var lastPersistenceErrorMessage: String?
 
     private let fileURL: URL
     private let fileManager: FileManager
@@ -45,6 +69,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         }
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             try? fileManager.removeItem(at: self.fileURL)
+            removeCorruptBackups()
         }
         load()
         if ProcessInfo.processInfo.arguments.contains("-seedDemoData"), cards.isEmpty {
@@ -59,24 +84,58 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
             persist()
             return
         }
+        let data: Data
         do {
-            let data = try Data(contentsOf: fileURL)
+            data = try Data(contentsOf: fileURL)
+        } catch {
+            lastLoadErrorMessage = error.localizedDescription
+            return
+        }
+
+        do {
             let envelope = try JSONDecoder.fairNest.decode(CardStoreEnvelope.self, from: data)
             cards = envelope.cards.sorted { $0.updatedAt > $1.updatedAt }
+            lastLoadErrorMessage = nil
             WidgetSnapshotStore.write(cards: cards)
-        } catch {
+        } catch is DecodingError {
             backupCorruptStore()
             cards = []
+            lastLoadErrorMessage = "FairNest found an unreadable local card store and moved it aside."
+        } catch {
+            lastLoadErrorMessage = error.localizedDescription
         }
     }
 
     func upsert(_ card: LoadCard) {
-        if let index = cards.firstIndex(where: { $0.id == card.id }) {
-            cards[index] = card
-        } else {
-            cards.insert(card, at: 0)
+        do {
+            try upsertThrowing(card)
+        } catch {
+            assertionFailure(error.localizedDescription)
         }
-        sortAndPersist()
+    }
+
+    func upsertThrowing(_ card: LoadCard) throws {
+        try upsertThrowing(card, by: .me, at: Date())
+    }
+
+    func upsertThrowing(_ card: LoadCard, by member: HouseholdMember = .me, at date: Date = Date()) throws {
+        try mutateAndPersist {
+            var savedCard = card.normalizedForLocalSave(by: member, at: date)
+            if let index = cards.firstIndex(where: { $0.id == card.id }) {
+                let existingCard = cards[index]
+                if existingCard.isDeleted && savedCard.deletedAt == nil {
+                    throw LocalCardStoreError.cardDeleted
+                }
+                if existingCard.status != savedCard.status {
+                    let requestedStatus = savedCard.status
+                    savedCard.status = existingCard.status
+                    try savedCard.transition(to: requestedStatus, by: member, at: date)
+                }
+                cards[index] = savedCard
+            } else {
+                cards.insert(savedCard, at: 0)
+            }
+        }
     }
 
     @discardableResult
@@ -86,36 +145,96 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         return card
     }
 
+    @discardableResult
+    func addReviewed(_ suggestions: [BrainDumpSuggestion]) throws -> [LoadCard] {
+        let createdCards = suggestions.map { $0.makeCard() }
+        guard !createdCards.isEmpty else { return [] }
+
+        let previousCards = cards
+        for card in createdCards {
+            if let index = cards.firstIndex(where: { $0.id == card.id }) {
+                cards[index] = card
+            } else {
+                cards.insert(card, at: 0)
+            }
+        }
+
+        do {
+            try sortAndPersistThrowing()
+            return createdCards
+        } catch {
+            cards = previousCards
+            throw error
+        }
+    }
+
     func transition(id: UUID, to status: CardStatus) throws {
-        guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
-        var card = cards[index]
-        try card.transition(to: status)
-        cards[index] = card
-        sortAndPersist()
+        try mutateAndPersist {
+            guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
+            var card = cards[index]
+            try card.transition(to: status)
+            cards[index] = card
+        }
     }
 
     func reassign(id: UUID, to owner: CardOwner) {
-        guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
-        cards[index].reassign(to: owner)
-        sortAndPersist()
+        do {
+            try reassignThrowing(id: id, to: owner)
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    func reassignThrowing(id: UUID, to owner: CardOwner) throws {
+        try mutateAndPersist {
+            guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
+            cards[index].reassign(to: owner)
+        }
     }
 
     func snooze(id: UUID, days: Int) {
-        guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
-        cards[index].snooze(days: days)
-        sortAndPersist()
+        do {
+            try snoozeThrowing(id: id, days: days)
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    func snoozeThrowing(id: UUID, days: Int) throws {
+        try mutateAndPersist {
+            guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
+            cards[index].snooze(days: days)
+        }
     }
 
     func delete(id: UUID) {
-        guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
-        cards[index].softDelete()
-        sortAndPersist()
+        do {
+            try deleteThrowing(id: id)
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    func deleteThrowing(id: UUID) throws {
+        try mutateAndPersist {
+            guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
+            cards[index].softDelete()
+        }
     }
 
     func restore(id: UUID) {
-        guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
-        cards[index].restore()
-        sortAndPersist()
+        do {
+            try restoreThrowing(id: id)
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    func restoreThrowing(id: UUID) throws {
+        try mutateAndPersist {
+            guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
+            cards[index].restore()
+        }
     }
 
     func exportData() throws -> Data {
@@ -124,13 +243,46 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func deleteAllLocalData() {
+        let previousCards = cards
         cards = []
-        persist()
+        removeCorruptBackups()
+        do {
+            try persistThrowing()
+        } catch {
+            cards = previousCards
+            assertionFailure(error.localizedDescription)
+        }
     }
 
     func replaceAll(with newCards: [LoadCard]) {
+        do {
+            try replaceAllThrowing(with: newCards)
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    func replaceAllThrowing(with newCards: [LoadCard]) throws {
+        let previousCards = cards
         cards = newCards
-        sortAndPersist()
+        do {
+            try sortAndPersistThrowing()
+        } catch {
+            cards = previousCards
+            throw error
+        }
+    }
+
+    func deleteAllLocalDataThrowing() throws {
+        let previousCards = cards
+        cards = []
+        do {
+            try persistThrowing()
+            removeCorruptBackups()
+        } catch {
+            cards = previousCards
+            throw error
+        }
     }
 
     private func sortAndPersist() {
@@ -138,17 +290,43 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         persist()
     }
 
+    private func sortAndPersistThrowing() throws {
+        cards.sort { $0.updatedAt > $1.updatedAt }
+        try persistThrowing()
+    }
+
+    private func mutateAndPersist(_ mutation: () throws -> Void) throws {
+        let previousCards = cards
+        do {
+            try mutation()
+            try sortAndPersistThrowing()
+        } catch {
+            cards = previousCards
+            throw error
+        }
+    }
+
     private func persist() {
+        do {
+            try persistThrowing()
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    private func persistThrowing() throws {
         do {
             let directory = fileURL.deletingLastPathComponent()
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             let envelope = CardStoreEnvelope(version: 1, exportedAt: Date(), cards: cards)
             let data = try JSONEncoder.fairNest.encode(envelope)
             try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            lastPersistenceErrorMessage = nil
             WidgetSnapshotStore.write(cards: cards)
             WidgetSnapshotStore.reloadTimelines()
         } catch {
-            assertionFailure("FairNest local store failed to persist: \(error)")
+            lastPersistenceErrorMessage = error.localizedDescription
+            throw LocalCardStoreError.persistenceFailed
         }
     }
 
@@ -157,6 +335,15 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         let backupName = "\(fileURL.lastPathComponent).corrupt.\(Int(Date().timeIntervalSince1970))"
         let backupURL = fileURL.deletingLastPathComponent().appendingPathComponent(backupName)
         try? fileManager.moveItem(at: fileURL, to: backupURL)
+    }
+
+    private func removeCorruptBackups() {
+        let directory = fileURL.deletingLastPathComponent()
+        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        let backupPrefix = "\(fileURL.lastPathComponent).corrupt."
+        for file in files where file.lastPathComponent.hasPrefix(backupPrefix) {
+            try? fileManager.removeItem(at: file)
+        }
     }
 
     private static func sampleCards(now: Date = Date()) -> [LoadCard] {

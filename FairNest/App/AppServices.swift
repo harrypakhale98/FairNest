@@ -16,6 +16,7 @@ final class AppServices: ObservableObject {
     }
     @Published private(set) var syncInProgress = false
     @Published private(set) var lastSyncMessage: String?
+    @Published private(set) var lastReminderMessage: String?
 
     let cardStore: LocalCardStore
     let checkInStore: LocalCheckInStore
@@ -24,11 +25,12 @@ final class AppServices: ObservableObject {
     let syncService: CloudKitSyncService
     let pairingService: CloudKitPairingService
     private var pendingCardsForPush: [LoadCard]?
+    private var suppressNextCardPush = false
 
     init(
         cardStore: LocalCardStore = LocalCardStore(),
         checkInStore: LocalCheckInStore = LocalCheckInStore(),
-        parser: BrainDumpParser = FoundationModelsBrainDumpParser(),
+        parser: BrainDumpParser? = nil,
         reminderScheduler: ReminderScheduler = LocalReminderScheduler(),
         syncService: CloudKitSyncService = CloudKitSyncService(),
         pairingService: CloudKitPairingService = CloudKitPairingService()
@@ -46,14 +48,48 @@ final class AppServices: ObservableObject {
         self.iCloudSyncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
         self.cardStore = cardStore
         self.checkInStore = checkInStore
-        self.parser = parser
+        self.parser = parser ?? Self.defaultParser()
         self.reminderScheduler = reminderScheduler
         self.syncService = syncService
         self.pairingService = pairingService
     }
 
+    private static func defaultParser() -> BrainDumpParser {
+        if ProcessInfo.processInfo.arguments.contains("-useRuleBasedParser") {
+            return RuleBasedBrainDumpParser()
+        }
+        return FoundationModelsBrainDumpParser()
+    }
+
     func completeOnboarding() {
         onboardingComplete = true
+    }
+
+    func deleteAllLocalDataForPrivacy() async throws {
+        let previousSyncEnabled = iCloudSyncEnabled
+        iCloudSyncEnabled = false
+        do {
+            try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).deleteAllLocalData()
+            await reminderScheduler.cancelAllFairNestReminders()
+            lastSyncMessage = nil
+            lastReminderMessage = nil
+            writeWidgetSnapshot(cards: [], syncPending: false)
+        } catch {
+            iCloudSyncEnabled = previousSyncEnabled
+            writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
+            throw error
+        }
+    }
+
+    func deleteSharedHouseholdDataForPrivacy() async throws {
+        try await syncService.deleteSharedHouseholdData()
+        try await deleteAllLocalDataForPrivacy()
+    }
+
+    func handleAcceptedCloudKitShare() async {
+        iCloudSyncEnabled = true
+        pairingService.markShareAccepted()
+        await syncCardsIfAvailable()
     }
 
     func syncCardsIfAvailable() async {
@@ -70,13 +106,21 @@ final class AppServices: ObservableObject {
             return
         }
         do {
+            let localBeforeFetch = cardStore.cards
             let remote = try await syncService.fetchCards()
-            let merged = syncService.merge(local: cardStore.cards, remote: remote)
+            let merged = syncService.merge(local: localBeforeFetch, remote: remote)
             try await syncService.upload(cards: merged)
-            cardStore.replaceAll(with: merged)
-            writeWidgetSnapshot(cards: merged, syncPending: false)
+            let currentLocal = cardStore.cards
+            let finalCards = currentLocal == localBeforeFetch ? merged : syncService.merge(local: currentLocal, remote: merged)
+            suppressNextCardPush = true
+            try cardStore.replaceAllThrowing(with: finalCards)
+            if finalCards != merged {
+                try await syncService.upload(cards: finalCards)
+            }
+            writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
         } catch {
+            suppressNextCardPush = false
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: true)
             lastSyncMessage = error.localizedDescription
         }
@@ -84,8 +128,22 @@ final class AppServices: ObservableObject {
     }
 
     func handleCardsChanged(_ cards: [LoadCard]) async {
-        await reconcileDueReminders(for: cards)
+        do {
+            try await reconcileDueReminders(for: cards)
+            lastReminderMessage = nil
+        } catch {
+            lastReminderMessage = error.localizedDescription
+        }
+        if suppressNextCardPush {
+            suppressNextCardPush = false
+            return
+        }
         await pushCardsIfAvailable(cards)
+    }
+
+    func scheduleRemindersForCurrentCards() async throws {
+        try await reconcileDueReminders(for: cardStore.cards)
+        lastReminderMessage = nil
     }
 
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {
@@ -114,14 +172,14 @@ final class AppServices: ObservableObject {
         await finishSyncAndFlushPending()
     }
 
-    private func reconcileDueReminders(for cards: [LoadCard]) async {
+    private func reconcileDueReminders(for cards: [LoadCard]) async throws {
         let status = await reminderScheduler.authorizationStatus()
         guard status == .authorized || status == .provisional || status == .ephemeral else { return }
         for card in cards {
             if card.isDeleted || card.status == .done || card.dueDate == nil {
                 await reminderScheduler.cancelReminder(for: card.id)
             } else {
-                try? await reminderScheduler.scheduleDueTask(card)
+                try await reminderScheduler.scheduleDueTask(card)
             }
         }
     }

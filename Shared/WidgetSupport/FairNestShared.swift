@@ -105,10 +105,25 @@ struct WidgetHouseholdSnapshot: Codable, Equatable {
         }
     }
 
-    var weeklyEffort: Int {
-        cards
-            .filter { $0.status != .done }
+    func weeklyCards(now: Date = Date(), calendar: Calendar = .current) -> [WidgetCardSummary] {
+        guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: now) else { return [] }
+        return cards
+            .filter { card in
+                guard card.status != .done else { return false }
+                guard let dueDate = card.dueDate else {
+                    return card.status == .doing || card.status == .inbox
+                }
+                return dueDate <= weekEnd
+            }
+    }
+
+    func weeklyEffortScore(now: Date = Date(), calendar: Calendar = .current) -> Int {
+        weeklyCards(now: now, calendar: calendar)
             .reduce(0) { $0 + $1.effort.rawValue }
+    }
+
+    var weeklyEffort: Int {
+        weeklyEffortScore()
     }
 }
 
@@ -162,7 +177,10 @@ enum WidgetSnapshotStore {
 extension JSONEncoder {
     static var fairNest: JSONEncoder {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(date.timeIntervalSinceReferenceDate)
+        }
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return encoder
     }
@@ -171,7 +189,31 @@ extension JSONEncoder {
 extension JSONDecoder {
     static var fairNest: JSONDecoder {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            if let seconds = try? container.decode(Double.self) {
+                return Date(timeIntervalSinceReferenceDate: seconds)
+            }
+            let value = try container.decode(String.self)
+            guard let date = FairNestDateCoding.date(from: value) else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid FairNest date.")
+            }
+            return date
+        }
         return decoder
+    }
+}
+
+private enum FairNestDateCoding {
+    static func date(from value: String) -> Date? {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
     }
 }
