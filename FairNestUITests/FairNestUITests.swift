@@ -65,6 +65,7 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.textFields["brainDumpSuggestionTitle"].waitForExistence(timeout: 10))
         app.buttons["saveBrainDumpSuggestions"].tap()
 
+        XCTAssertTrue(app.staticTexts["Saved 1 card."].waitForExistence(timeout: 3))
         app.tabBars.buttons["Board"].tap()
         XCTAssertTrue(app.staticTexts["Buy Milk"].waitForExistence(timeout: 3))
     }

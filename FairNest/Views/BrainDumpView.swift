@@ -110,8 +110,10 @@ struct BrainDumpView: View {
             }
             .navigationTitle("Brain Dump")
             .scrollDismissesKeyboard(.interactively)
-            .onChange(of: text) { _, _ in
-                saveConfirmation = nil
+            .onChange(of: text) { _, newValue in
+                if !normalized(newValue).isEmpty {
+                    saveConfirmation = nil
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
