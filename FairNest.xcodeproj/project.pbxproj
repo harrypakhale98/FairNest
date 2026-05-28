@@ -1,0 +1,979 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05B0367DAB9EFF9DAE76FE71 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6FE60B79F80F0871316DA8B5 /* PrivacyInfo.xcprivacy */; };
+		0AE6DC1EFD84C737B005E3EC /* ReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE04FAA724CCA752562FB2C2 /* ReminderScheduler.swift */; };
+		0C6C55F19894C4C799227730 /* CheckInStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AA56526E012ABB4C7E1C8E /* CheckInStore.swift */; };
+		10912E381B27574F2891C8E3 /* WeeklyCheckInEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45AA01A0462CC29C9EFA1473 /* WeeklyCheckInEngine.swift */; };
+		13AD6F76EAA846B13DFF13AF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D5511367E4C681D20C3BD702 /* Assets.xcassets */; };
+		14A51662AEA0251EFD03C71E /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627816AE4B4C56A7B7EDDC8A /* PrivacyView.swift */; };
+		162DB93FACBD88B8C8125FB5 /* FairNestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 486822BBE435DD95ED7A69EB /* FairNestApp.swift */; };
+		18ADD998F2A8F7C944E1A0A7 /* FairNestStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C54C33B884DE001CABA86DA /* FairNestStyle.swift */; };
+		23E56B600E6D0B3F87C8F956 /* LoadCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5145BD4F1902CE7A470E53 /* LoadCard.swift */; };
+		24CAD54F9E235FA6950CF222 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F44C512CCCFE91BC5B08B4CD /* PairingView.swift */; };
+		2994AB8D42FB154BA6C3DF2F /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 324DA1E6E8E4942C148EBD38 /* SyncService.swift */; };
+		2D5C06D113E98075C89F35C5 /* LoadCardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1DEFB6317B3B38AB70044C /* LoadCardStore.swift */; };
+		2FB485BF676D1004F2F8F9D2 /* OpenFairNestIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D792010FEE313001DBDEB90 /* OpenFairNestIntent.swift */; };
+		3AA9F0D88E9FF9B866368BEB /* FairNestWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C0F86F8C978A1FA96A5C7B /* FairNestWidgetIntent.swift */; };
+		3D42CAB2649CD51A9314ED33 /* BrainDumpParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E78E05220061017BFDA1C9E9 /* BrainDumpParser.swift */; };
+		3F48C1CF9A5444713FB529B7 /* CardEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079AA986748F9646AF854DE3 /* CardEditorView.swift */; };
+		4F6670700407FD900F8CB886 /* BrainDumpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E490B4944B4EBF54458C2D7 /* BrainDumpView.swift */; };
+		510F3CB60D74FDDB75A0922B /* PairingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A871D8D36D7DE8D73D56F7A /* PairingService.swift */; };
+		527488C785966E910410966B /* FairNestLockScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B39996E73C86D09945F23FB /* FairNestLockScreenWidget.swift */; };
+		57BF31976BD3DAE763418431 /* PrivacyExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC434270A168CD13B480AEED /* PrivacyExportService.swift */; };
+		5B4A58A4842BBC4CB80528A2 /* FoundationModelsBrainDumpParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD29DB1E446759E25484BCE5 /* FoundationModelsBrainDumpParser.swift */; };
+		5DA48F131BF9905BE85A0173 /* SyncAndCloudKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C03C4E568675005F6227FE /* SyncAndCloudKitTests.swift */; };
+		6B89D0BE8F3471720126AE97 /* FairNestAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E7A5BA518EDA92FCBE1A97 /* FairNestAppDelegate.swift */; };
+		6F6704E984A8105B9028351E /* FairNestShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A568C82F30AFB3C474B71F /* FairNestShared.swift */; };
+		7C1DFB05E1B6E11F29867F21 /* HomeBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D4B6884883E85BCFC57EE5 /* HomeBoardView.swift */; };
+		7D644B9BE2D4E0489A0EB9F9 /* PrivacyPolicy.md in Resources */ = {isa = PBXBuildFile; fileRef = 4467DC878697D72BAFC9242F /* PrivacyPolicy.md */; };
+		7FCC898B2EE85C029FB5EA89 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F3574730DFC0481CAA58ACE /* RootView.swift */; };
+		80AFC62038AC3DE31D820DF0 /* RuleBasedBrainDumpParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3A1C83C3B5FFD5A7E0C09E /* RuleBasedBrainDumpParser.swift */; };
+		816E73C85AAC88E3368D9466 /* ReminderAndCheckInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6161B65794748C69BA4857C0 /* ReminderAndCheckInTests.swift */; };
+		87DD2AA46D2EE5F6A3CC0074 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0AB2E9F741FA4C028871814D /* PrivacyInfo.xcprivacy */; };
+		8B2FEE066AB53546580F4F10 /* FairNestUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2767C9A60325CA1DC1283D4 /* FairNestUITests.swift */; };
+		A26F4BB98A6D37EAAE4B3DCF /* BrainDumpModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA8063146D6547526D3F1D0 /* BrainDumpModels.swift */; };
+		A73C7EEB73F7805384B8A9CA /* AppServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 987034954A9996C151170463 /* AppServices.swift */; };
+		A887971C8515B1747D64EB61 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF515519E924BBE2E7946BD /* OnboardingView.swift */; };
+		B066BFB08FD61A64112B4F3D /* FairNestWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDD2E9758E98979F733B6513 /* FairNestWidgetsBundle.swift */; };
+		C2B6C584A980A4A128E48C11 /* CloudKitCardMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A6F0E0809A6A2D3E21FB9B /* CloudKitCardMapper.swift */; };
+		C62407C3606DC6080D077D60 /* CardModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE560D0625BF405072D3E33 /* CardModelTests.swift */; };
+		CAAF67450E587C7A68268B96 /* LoadCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5145BD4F1902CE7A470E53 /* LoadCard.swift */; };
+		CFD183A7EE0962F5CC67D63F /* BrainDumpModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA8063146D6547526D3F1D0 /* BrainDumpModels.swift */; };
+		D367ECD677D5383F4C97537A /* WidgetTimelineSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = D169AA921A0D129BDF116481 /* WidgetTimelineSchedule.swift */; };
+		D59E91ADBF14AFB25A531D2C /* FairNestWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E537A5C38DBABDCF5337E3F1 /* FairNestWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DB781AF3C6E6D062B1A19EC8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3C161D26375C438466AC8F /* SettingsView.swift */; };
+		DC04E424280EA239C0433CFC /* AppReviewNotes.md in Resources */ = {isa = PBXBuildFile; fileRef = CEBD39664A0C4D81E15D2041 /* AppReviewNotes.md */; };
+		E4612B4CB224666F4A6A7A80 /* BrainDumpParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853F0B4B30F9C1D914EA4207 /* BrainDumpParserTests.swift */; };
+		EAA91802C7D0307484D6EBAB /* StorePrivacyWidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C421CD505432AD1EB6D8CD91 /* StorePrivacyWidgetTests.swift */; };
+		F34D4FC5DFDAD66330ECF7A8 /* WeeklyCheckInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07849BD29343650F5E2E3A9A /* WeeklyCheckInView.swift */; };
+		F72DBDC0D357CB97696B6A7B /* FairNestShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A568C82F30AFB3C474B71F /* FairNestShared.swift */; };
+		FBE380DB9A84FEA53DCE2292 /* WidgetTimelineSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = D169AA921A0D129BDF116481 /* WidgetTimelineSchedule.swift */; };
+		FF79AD9BE2B0CD207439FC75 /* FairNestHomeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB017EECB76D9F0D16FE9B6F /* FairNestHomeWidget.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		51A6C98AA55FAF7F732CF5F3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD82BCCD8AF1942C852BA9AF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13ADA637D4FBE9C260DB529E;
+			remoteInfo = FairNest;
+		};
+		98B461AE3D17294730DC191B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD82BCCD8AF1942C852BA9AF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 954C793CE8C704A7DE667FA1;
+			remoteInfo = FairNestWidgets;
+		};
+		AA3E8E93F8B1AFBBED101E2C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD82BCCD8AF1942C852BA9AF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13ADA637D4FBE9C260DB529E;
+			remoteInfo = FairNest;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		884707B3D81DA6FA9520D6A2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D59E91ADBF14AFB25A531D2C /* FairNestWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		07849BD29343650F5E2E3A9A /* WeeklyCheckInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyCheckInView.swift; sourceTree = "<group>"; };
+		079AA986748F9646AF854DE3 /* CardEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardEditorView.swift; sourceTree = "<group>"; };
+		0A871D8D36D7DE8D73D56F7A /* PairingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingService.swift; sourceTree = "<group>"; };
+		0AB2E9F741FA4C028871814D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		14C03C4E568675005F6227FE /* SyncAndCloudKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncAndCloudKitTests.swift; sourceTree = "<group>"; };
+		2F3574730DFC0481CAA58ACE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		324DA1E6E8E4942C148EBD38 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		39A6F0E0809A6A2D3E21FB9B /* CloudKitCardMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitCardMapper.swift; sourceTree = "<group>"; };
+		3E490B4944B4EBF54458C2D7 /* BrainDumpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpView.swift; sourceTree = "<group>"; };
+		4467DC878697D72BAFC9242F /* PrivacyPolicy.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PrivacyPolicy.md; sourceTree = "<group>"; };
+		45AA01A0462CC29C9EFA1473 /* WeeklyCheckInEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyCheckInEngine.swift; sourceTree = "<group>"; };
+		486822BBE435DD95ED7A69EB /* FairNestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestApp.swift; sourceTree = "<group>"; };
+		4C54C33B884DE001CABA86DA /* FairNestStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestStyle.swift; sourceTree = "<group>"; };
+		4DD7B14752344CAF074D3B27 /* FairNestWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FairNestWidgets.entitlements; sourceTree = "<group>"; };
+		4F9E15EC2C919C1042BCABC7 /* FairNest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FairNest.entitlements; sourceTree = "<group>"; };
+		5B39996E73C86D09945F23FB /* FairNestLockScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestLockScreenWidget.swift; sourceTree = "<group>"; };
+		5BC799F7900A6E767BCB317C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5D792010FEE313001DBDEB90 /* OpenFairNestIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenFairNestIntent.swift; sourceTree = "<group>"; };
+		6161B65794748C69BA4857C0 /* ReminderAndCheckInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderAndCheckInTests.swift; sourceTree = "<group>"; };
+		627816AE4B4C56A7B7EDDC8A /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
+		6FE60B79F80F0871316DA8B5 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		7F1DEFB6317B3B38AB70044C /* LoadCardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadCardStore.swift; sourceTree = "<group>"; };
+		853F0B4B30F9C1D914EA4207 /* BrainDumpParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpParserTests.swift; sourceTree = "<group>"; };
+		86AA56526E012ABB4C7E1C8E /* CheckInStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInStore.swift; sourceTree = "<group>"; };
+		87B6D58A8FBE98F446962BD7 /* FairNestTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FairNestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8DA85861E0CFF7B9C392A740 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		91570EAD435EABF40FFE18F9 /* FairNestUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FairNestUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		92D4B6884883E85BCFC57EE5 /* HomeBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeBoardView.swift; sourceTree = "<group>"; };
+		987034954A9996C151170463 /* AppServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppServices.swift; sourceTree = "<group>"; };
+		B5E7A5BA518EDA92FCBE1A97 /* FairNestAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestAppDelegate.swift; sourceTree = "<group>"; };
+		BB3C161D26375C438466AC8F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BD29DB1E446759E25484BCE5 /* FoundationModelsBrainDumpParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationModelsBrainDumpParser.swift; sourceTree = "<group>"; };
+		BE04FAA724CCA752562FB2C2 /* ReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduler.swift; sourceTree = "<group>"; };
+		C421CD505432AD1EB6D8CD91 /* StorePrivacyWidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorePrivacyWidgetTests.swift; sourceTree = "<group>"; };
+		CC434270A168CD13B480AEED /* PrivacyExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyExportService.swift; sourceTree = "<group>"; };
+		CDF515519E924BBE2E7946BD /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		CEBD39664A0C4D81E15D2041 /* AppReviewNotes.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AppReviewNotes.md; sourceTree = "<group>"; };
+		CEE560D0625BF405072D3E33 /* CardModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardModelTests.swift; sourceTree = "<group>"; };
+		D169AA921A0D129BDF116481 /* WidgetTimelineSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTimelineSchedule.swift; sourceTree = "<group>"; };
+		D5511367E4C681D20C3BD702 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D8C0F86F8C978A1FA96A5C7B /* FairNestWidgetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestWidgetIntent.swift; sourceTree = "<group>"; };
+		DCA8063146D6547526D3F1D0 /* BrainDumpModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpModels.swift; sourceTree = "<group>"; };
+		E2767C9A60325CA1DC1283D4 /* FairNestUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestUITests.swift; sourceTree = "<group>"; };
+		E537A5C38DBABDCF5337E3F1 /* FairNestWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = FairNestWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E78E05220061017BFDA1C9E9 /* BrainDumpParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpParser.swift; sourceTree = "<group>"; };
+		EA5145BD4F1902CE7A470E53 /* LoadCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadCard.swift; sourceTree = "<group>"; };
+		EB017EECB76D9F0D16FE9B6F /* FairNestHomeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestHomeWidget.swift; sourceTree = "<group>"; };
+		EDD2E9758E98979F733B6513 /* FairNestWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestWidgetsBundle.swift; sourceTree = "<group>"; };
+		F06CE0A48F6F05E4C369B4CD /* FairNest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FairNest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F44C512CCCFE91BC5B08B4CD /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
+		F5A568C82F30AFB3C474B71F /* FairNestShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FairNestShared.swift; sourceTree = "<group>"; };
+		FC3A1C83C3B5FFD5A7E0C09E /* RuleBasedBrainDumpParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleBasedBrainDumpParser.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		00E996C78290710E28B4F745 /* AIParsing */ = {
+			isa = PBXGroup;
+			children = (
+				E78E05220061017BFDA1C9E9 /* BrainDumpParser.swift */,
+				BD29DB1E446759E25484BCE5 /* FoundationModelsBrainDumpParser.swift */,
+				FC3A1C83C3B5FFD5A7E0C09E /* RuleBasedBrainDumpParser.swift */,
+			);
+			path = AIParsing;
+			sourceTree = "<group>";
+		};
+		06319A754C47C704F6D73E49 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				345BE0791ABD693C658DB36E /* Models */,
+				EF7D53B22CECDDC59CC64E86 /* WidgetSupport */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		1439C3413F6CC4C5AE127571 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				CEBD39664A0C4D81E15D2041 /* AppReviewNotes.md */,
+				6FE60B79F80F0871316DA8B5 /* PrivacyInfo.xcprivacy */,
+				4467DC878697D72BAFC9242F /* PrivacyPolicy.md */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		19CD1477430F5747252AB46D = {
+			isa = PBXGroup;
+			children = (
+				34D90F33E9FA24ED171207EC /* FairNest */,
+				7618F01AE2D72CCAEAEBA9B5 /* FairNestTests */,
+				A9BBD9D6DFDFC3430167B24D /* FairNestUITests */,
+				D2B3D47E9EBA737DCC9E4857 /* FairNestWidgets */,
+				06319A754C47C704F6D73E49 /* Shared */,
+				C5ABF09A5845CC69CC230B29 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1B765668FD815CFD079B1E66 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				4C54C33B884DE001CABA86DA /* FairNestStyle.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		229B488A99E833761A133965 /* Supporting */ = {
+			isa = PBXGroup;
+			children = (
+				4DD7B14752344CAF074D3B27 /* FairNestWidgets.entitlements */,
+				8DA85861E0CFF7B9C392A740 /* Info.plist */,
+				0AB2E9F741FA4C028871814D /* PrivacyInfo.xcprivacy */,
+			);
+			path = Supporting;
+			sourceTree = "<group>";
+		};
+		345BE0791ABD693C658DB36E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				DCA8063146D6547526D3F1D0 /* BrainDumpModels.swift */,
+				EA5145BD4F1902CE7A470E53 /* LoadCard.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		34D90F33E9FA24ED171207EC /* FairNest */ = {
+			isa = PBXGroup;
+			children = (
+				D5511367E4C681D20C3BD702 /* Assets.xcassets */,
+				00E996C78290710E28B4F745 /* AIParsing */,
+				82AE2414172E326D322031B0 /* App */,
+				C9627BB86178BFAFC283BD6D /* AppIntents */,
+				F724884B8ABE7EBCC1E73880 /* CheckIns */,
+				8638BED872B5253A5D7F73C9 /* CloudKitSync */,
+				1B765668FD815CFD079B1E66 /* DesignSystem */,
+				89D2E61015F5D2FDB36C5BF4 /* LocalStore */,
+				A25B9426F94823CF16E4909B /* Notifications */,
+				EF022B336D88095D557117CA /* Pairing */,
+				5C49AAB26887BC1BA8740081 /* Privacy */,
+				1439C3413F6CC4C5AE127571 /* Resources */,
+				4B9ED2241C2A8A3AEAE0BC5F /* Settings */,
+				54119C82DB6ADDCE81B4768A /* Supporting */,
+				3AAF0195EFF63D97F7CBDFD6 /* Views */,
+			);
+			path = FairNest;
+			sourceTree = "<group>";
+		};
+		3AAF0195EFF63D97F7CBDFD6 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				3E490B4944B4EBF54458C2D7 /* BrainDumpView.swift */,
+				079AA986748F9646AF854DE3 /* CardEditorView.swift */,
+				92D4B6884883E85BCFC57EE5 /* HomeBoardView.swift */,
+				CDF515519E924BBE2E7946BD /* OnboardingView.swift */,
+				F44C512CCCFE91BC5B08B4CD /* PairingView.swift */,
+				07849BD29343650F5E2E3A9A /* WeeklyCheckInView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		4B9ED2241C2A8A3AEAE0BC5F /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				BB3C161D26375C438466AC8F /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		54119C82DB6ADDCE81B4768A /* Supporting */ = {
+			isa = PBXGroup;
+			children = (
+				4F9E15EC2C919C1042BCABC7 /* FairNest.entitlements */,
+				5BC799F7900A6E767BCB317C /* Info.plist */,
+			);
+			path = Supporting;
+			sourceTree = "<group>";
+		};
+		5C49AAB26887BC1BA8740081 /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				627816AE4B4C56A7B7EDDC8A /* PrivacyView.swift */,
+			);
+			path = Privacy;
+			sourceTree = "<group>";
+		};
+		7618F01AE2D72CCAEAEBA9B5 /* FairNestTests */ = {
+			isa = PBXGroup;
+			children = (
+				853F0B4B30F9C1D914EA4207 /* BrainDumpParserTests.swift */,
+				CEE560D0625BF405072D3E33 /* CardModelTests.swift */,
+				6161B65794748C69BA4857C0 /* ReminderAndCheckInTests.swift */,
+				C421CD505432AD1EB6D8CD91 /* StorePrivacyWidgetTests.swift */,
+				14C03C4E568675005F6227FE /* SyncAndCloudKitTests.swift */,
+			);
+			path = FairNestTests;
+			sourceTree = "<group>";
+		};
+		82AE2414172E326D322031B0 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				987034954A9996C151170463 /* AppServices.swift */,
+				486822BBE435DD95ED7A69EB /* FairNestApp.swift */,
+				B5E7A5BA518EDA92FCBE1A97 /* FairNestAppDelegate.swift */,
+				2F3574730DFC0481CAA58ACE /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		8638BED872B5253A5D7F73C9 /* CloudKitSync */ = {
+			isa = PBXGroup;
+			children = (
+				39A6F0E0809A6A2D3E21FB9B /* CloudKitCardMapper.swift */,
+				324DA1E6E8E4942C148EBD38 /* SyncService.swift */,
+			);
+			path = CloudKitSync;
+			sourceTree = "<group>";
+		};
+		89D2E61015F5D2FDB36C5BF4 /* LocalStore */ = {
+			isa = PBXGroup;
+			children = (
+				7F1DEFB6317B3B38AB70044C /* LoadCardStore.swift */,
+				CC434270A168CD13B480AEED /* PrivacyExportService.swift */,
+			);
+			path = LocalStore;
+			sourceTree = "<group>";
+		};
+		A25B9426F94823CF16E4909B /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				BE04FAA724CCA752562FB2C2 /* ReminderScheduler.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		A9BBD9D6DFDFC3430167B24D /* FairNestUITests */ = {
+			isa = PBXGroup;
+			children = (
+				E2767C9A60325CA1DC1283D4 /* FairNestUITests.swift */,
+			);
+			path = FairNestUITests;
+			sourceTree = "<group>";
+		};
+		C5ABF09A5845CC69CC230B29 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F06CE0A48F6F05E4C369B4CD /* FairNest.app */,
+				87B6D58A8FBE98F446962BD7 /* FairNestTests.xctest */,
+				91570EAD435EABF40FFE18F9 /* FairNestUITests.xctest */,
+				E537A5C38DBABDCF5337E3F1 /* FairNestWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C9627BB86178BFAFC283BD6D /* AppIntents */ = {
+			isa = PBXGroup;
+			children = (
+				5D792010FEE313001DBDEB90 /* OpenFairNestIntent.swift */,
+			);
+			path = AppIntents;
+			sourceTree = "<group>";
+		};
+		CA91F781DFC19CFE3186BB53 /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				D8C0F86F8C978A1FA96A5C7B /* FairNestWidgetIntent.swift */,
+			);
+			path = Intents;
+			sourceTree = "<group>";
+		};
+		D2B3D47E9EBA737DCC9E4857 /* FairNestWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				EB017EECB76D9F0D16FE9B6F /* FairNestHomeWidget.swift */,
+				5B39996E73C86D09945F23FB /* FairNestLockScreenWidget.swift */,
+				EDD2E9758E98979F733B6513 /* FairNestWidgetsBundle.swift */,
+				CA91F781DFC19CFE3186BB53 /* Intents */,
+				229B488A99E833761A133965 /* Supporting */,
+			);
+			path = FairNestWidgets;
+			sourceTree = "<group>";
+		};
+		EF022B336D88095D557117CA /* Pairing */ = {
+			isa = PBXGroup;
+			children = (
+				0A871D8D36D7DE8D73D56F7A /* PairingService.swift */,
+			);
+			path = Pairing;
+			sourceTree = "<group>";
+		};
+		EF7D53B22CECDDC59CC64E86 /* WidgetSupport */ = {
+			isa = PBXGroup;
+			children = (
+				F5A568C82F30AFB3C474B71F /* FairNestShared.swift */,
+				D169AA921A0D129BDF116481 /* WidgetTimelineSchedule.swift */,
+			);
+			path = WidgetSupport;
+			sourceTree = "<group>";
+		};
+		F724884B8ABE7EBCC1E73880 /* CheckIns */ = {
+			isa = PBXGroup;
+			children = (
+				86AA56526E012ABB4C7E1C8E /* CheckInStore.swift */,
+				45AA01A0462CC29C9EFA1473 /* WeeklyCheckInEngine.swift */,
+			);
+			path = CheckIns;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		13ADA637D4FBE9C260DB529E /* FairNest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0963C628AD82CDD31592EB6C /* Build configuration list for PBXNativeTarget "FairNest" */;
+			buildPhases = (
+				12363F091A71D12CD968A7F1 /* Sources */,
+				6A0E3A35DD3E43CEC342D962 /* Resources */,
+				884707B3D81DA6FA9520D6A2 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2D0B42B9FE963B803D5116F1 /* PBXTargetDependency */,
+			);
+			name = FairNest;
+			packageProductDependencies = (
+			);
+			productName = FairNest;
+			productReference = F06CE0A48F6F05E4C369B4CD /* FairNest.app */;
+			productType = "com.apple.product-type.application";
+		};
+		954C793CE8C704A7DE667FA1 /* FairNestWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22BE7C71AE9F47206E55436A /* Build configuration list for PBXNativeTarget "FairNestWidgets" */;
+			buildPhases = (
+				7B723F6136F9DA87A4B77B78 /* Sources */,
+				79D2B1EFDD9DFF98446AB183 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FairNestWidgets;
+			packageProductDependencies = (
+			);
+			productName = FairNestWidgets;
+			productReference = E537A5C38DBABDCF5337E3F1 /* FairNestWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		D6716E98BF978951329EE210 /* FairNestUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F4F4F1F15C38E1BCB9395CA /* Build configuration list for PBXNativeTarget "FairNestUITests" */;
+			buildPhases = (
+				2A415275913C4B58386C1F47 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AB33C28EACA9A2BA862693CE /* PBXTargetDependency */,
+			);
+			name = FairNestUITests;
+			packageProductDependencies = (
+			);
+			productName = FairNestUITests;
+			productReference = 91570EAD435EABF40FFE18F9 /* FairNestUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E70FD7AC9EB83457A7501259 /* FairNestTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7B4E4D3E26387CAD5878DCBC /* Build configuration list for PBXNativeTarget "FairNestTests" */;
+			buildPhases = (
+				E8B9047E8174DBAA5B43BBA2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A01E8188798DC3A93CDF0CA7 /* PBXTargetDependency */,
+			);
+			name = FairNestTests;
+			packageProductDependencies = (
+			);
+			productName = FairNestTests;
+			productReference = 87B6D58A8FBE98F446962BD7 /* FairNestTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DD82BCCD8AF1942C852BA9AF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					13ADA637D4FBE9C260DB529E = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					954C793CE8C704A7DE667FA1 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					D6716E98BF978951329EE210 = {
+						TestTargetID = 13ADA637D4FBE9C260DB529E;
+					};
+				};
+			};
+			buildConfigurationList = 58917934C087A0DF4AC572BF /* Build configuration list for PBXProject "FairNest" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 19CD1477430F5747252AB46D;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C5ABF09A5845CC69CC230B29 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				13ADA637D4FBE9C260DB529E /* FairNest */,
+				E70FD7AC9EB83457A7501259 /* FairNestTests */,
+				D6716E98BF978951329EE210 /* FairNestUITests */,
+				954C793CE8C704A7DE667FA1 /* FairNestWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6A0E3A35DD3E43CEC342D962 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC04E424280EA239C0433CFC /* AppReviewNotes.md in Resources */,
+				13AD6F76EAA846B13DFF13AF /* Assets.xcassets in Resources */,
+				05B0367DAB9EFF9DAE76FE71 /* PrivacyInfo.xcprivacy in Resources */,
+				7D644B9BE2D4E0489A0EB9F9 /* PrivacyPolicy.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		79D2B1EFDD9DFF98446AB183 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87DD2AA46D2EE5F6A3CC0074 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		12363F091A71D12CD968A7F1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A73C7EEB73F7805384B8A9CA /* AppServices.swift in Sources */,
+				CFD183A7EE0962F5CC67D63F /* BrainDumpModels.swift in Sources */,
+				3D42CAB2649CD51A9314ED33 /* BrainDumpParser.swift in Sources */,
+				4F6670700407FD900F8CB886 /* BrainDumpView.swift in Sources */,
+				3F48C1CF9A5444713FB529B7 /* CardEditorView.swift in Sources */,
+				0C6C55F19894C4C799227730 /* CheckInStore.swift in Sources */,
+				C2B6C584A980A4A128E48C11 /* CloudKitCardMapper.swift in Sources */,
+				162DB93FACBD88B8C8125FB5 /* FairNestApp.swift in Sources */,
+				6B89D0BE8F3471720126AE97 /* FairNestAppDelegate.swift in Sources */,
+				6F6704E984A8105B9028351E /* FairNestShared.swift in Sources */,
+				18ADD998F2A8F7C944E1A0A7 /* FairNestStyle.swift in Sources */,
+				5B4A58A4842BBC4CB80528A2 /* FoundationModelsBrainDumpParser.swift in Sources */,
+				7C1DFB05E1B6E11F29867F21 /* HomeBoardView.swift in Sources */,
+				23E56B600E6D0B3F87C8F956 /* LoadCard.swift in Sources */,
+				2D5C06D113E98075C89F35C5 /* LoadCardStore.swift in Sources */,
+				A887971C8515B1747D64EB61 /* OnboardingView.swift in Sources */,
+				2FB485BF676D1004F2F8F9D2 /* OpenFairNestIntent.swift in Sources */,
+				510F3CB60D74FDDB75A0922B /* PairingService.swift in Sources */,
+				24CAD54F9E235FA6950CF222 /* PairingView.swift in Sources */,
+				57BF31976BD3DAE763418431 /* PrivacyExportService.swift in Sources */,
+				14A51662AEA0251EFD03C71E /* PrivacyView.swift in Sources */,
+				0AE6DC1EFD84C737B005E3EC /* ReminderScheduler.swift in Sources */,
+				7FCC898B2EE85C029FB5EA89 /* RootView.swift in Sources */,
+				80AFC62038AC3DE31D820DF0 /* RuleBasedBrainDumpParser.swift in Sources */,
+				DB781AF3C6E6D062B1A19EC8 /* SettingsView.swift in Sources */,
+				2994AB8D42FB154BA6C3DF2F /* SyncService.swift in Sources */,
+				10912E381B27574F2891C8E3 /* WeeklyCheckInEngine.swift in Sources */,
+				F34D4FC5DFDAD66330ECF7A8 /* WeeklyCheckInView.swift in Sources */,
+				D367ECD677D5383F4C97537A /* WidgetTimelineSchedule.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2A415275913C4B58386C1F47 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8B2FEE066AB53546580F4F10 /* FairNestUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7B723F6136F9DA87A4B77B78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A26F4BB98A6D37EAAE4B3DCF /* BrainDumpModels.swift in Sources */,
+				FF79AD9BE2B0CD207439FC75 /* FairNestHomeWidget.swift in Sources */,
+				527488C785966E910410966B /* FairNestLockScreenWidget.swift in Sources */,
+				F72DBDC0D357CB97696B6A7B /* FairNestShared.swift in Sources */,
+				3AA9F0D88E9FF9B866368BEB /* FairNestWidgetIntent.swift in Sources */,
+				B066BFB08FD61A64112B4F3D /* FairNestWidgetsBundle.swift in Sources */,
+				CAAF67450E587C7A68268B96 /* LoadCard.swift in Sources */,
+				FBE380DB9A84FEA53DCE2292 /* WidgetTimelineSchedule.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E8B9047E8174DBAA5B43BBA2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4612B4CB224666F4A6A7A80 /* BrainDumpParserTests.swift in Sources */,
+				C62407C3606DC6080D077D60 /* CardModelTests.swift in Sources */,
+				816E73C85AAC88E3368D9466 /* ReminderAndCheckInTests.swift in Sources */,
+				EAA91802C7D0307484D6EBAB /* StorePrivacyWidgetTests.swift in Sources */,
+				5DA48F131BF9905BE85A0173 /* SyncAndCloudKitTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2D0B42B9FE963B803D5116F1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 954C793CE8C704A7DE667FA1 /* FairNestWidgets */;
+			targetProxy = 98B461AE3D17294730DC191B /* PBXContainerItemProxy */;
+		};
+		A01E8188798DC3A93CDF0CA7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 13ADA637D4FBE9C260DB529E /* FairNest */;
+			targetProxy = AA3E8E93F8B1AFBBED101E2C /* PBXContainerItemProxy */;
+		};
+		AB33C28EACA9A2BA862693CE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 13ADA637D4FBE9C260DB529E /* FairNest */;
+			targetProxy = 51A6C98AA55FAF7F732CF5F3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		386CD53BA572B593304C854E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = FairNestWidgets/Supporting/FairNestWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = FairNestWidgets/Supporting/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.widgets;
+				PRODUCT_NAME = FairNestWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3FA10F82219D2502C15C32F1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FairNest.app/FairNest";
+			};
+			name = Debug;
+		};
+		578DB615A0CD94234F66BF93 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = targeted;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		61B849A51BFE6B49207ACE97 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FairNest.app/FairNest";
+			};
+			name = Release;
+		};
+		7977F03C1B3140B609E7C7B0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FairNest;
+			};
+			name = Debug;
+		};
+		7DE3F89F98F9CB3CF4EBD20F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = FairNest/Supporting/FairNest.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = FairNest/Supporting/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest;
+				PRODUCT_NAME = FairNest;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		969F38D548A892643E07F551 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = FairNest/Supporting/FairNest.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = FairNest/Supporting/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest;
+				PRODUCT_NAME = FairNest;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9B4DA99AD92A5A1ACB522A35 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FairNest;
+			};
+			name = Release;
+		};
+		C39F287654F9F37FE3BA9BC5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = FairNestWidgets/Supporting/FairNestWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = FairNestWidgets/Supporting/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.fairnest.widgets;
+				PRODUCT_NAME = FairNestWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C55B76B6A215CD5C3BC4D5D6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = targeted;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0963C628AD82CDD31592EB6C /* Build configuration list for PBXNativeTarget "FairNest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				969F38D548A892643E07F551 /* Debug */,
+				7DE3F89F98F9CB3CF4EBD20F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		22BE7C71AE9F47206E55436A /* Build configuration list for PBXNativeTarget "FairNestWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				386CD53BA572B593304C854E /* Debug */,
+				C39F287654F9F37FE3BA9BC5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		58917934C087A0DF4AC572BF /* Build configuration list for PBXProject "FairNest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C55B76B6A215CD5C3BC4D5D6 /* Debug */,
+				578DB615A0CD94234F66BF93 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5F4F4F1F15C38E1BCB9395CA /* Build configuration list for PBXNativeTarget "FairNestUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7977F03C1B3140B609E7C7B0 /* Debug */,
+				9B4DA99AD92A5A1ACB522A35 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7B4E4D3E26387CAD5878DCBC /* Build configuration list for PBXNativeTarget "FairNestTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FA10F82219D2502C15C32F1 /* Debug */,
+				61B849A51BFE6B49207ACE97 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DD82BCCD8AF1942C852BA9AF /* Project object */;
+}

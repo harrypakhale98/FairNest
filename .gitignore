@@ -1,0 +1,36 @@
+.DS_Store
+
+# Xcode user and local workspace state
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+
+# Build products and local package state
+DerivedData/
+build/
+.build/
+.swiftpm/
+Packages/
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Credentials, signing material, and local-only config
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
+GoogleService-Info.plist
+Config/*.local.xcconfig
+
+# Logs
+*.log
+firebase-debug.log
