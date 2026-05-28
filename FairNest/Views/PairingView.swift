@@ -77,6 +77,10 @@ struct PairingView: View {
                 Section {
                     LabeledContent("Sync", value: syncService.status.label)
                     LabeledContent("Mode", value: pairingService.state == .paired ? "Shared" : "Solo-ready")
+                    if pairingService.state == .paired {
+                        Text("This iPhone is already part of a shared household. Manage participants from the iCloud sharing sheet when this device owns the share.")
+                            .foregroundStyle(.secondary)
+                    }
                 } header: {
                     Text("Status")
                 } footer: {
@@ -88,6 +92,8 @@ struct PairingView: View {
                 if let share = pairingService.currentShare {
                     CloudSharingSheet(share: share) { error in
                         shareError = error.localizedDescription
+                    } onStoppedSharing: {
+                        pairingService.markSharingStopped()
                     }
                 }
             }
@@ -95,13 +101,7 @@ struct PairingView: View {
     }
 
     private var canCreateInvite: Bool {
-        guard services.iCloudSyncEnabled else { return false }
-        switch pairingService.state {
-        case .checking, .iCloudUnavailable, .notSignedIn, .offline, .permissionDenied, .sharingRemoved, .syncPending:
-            return false
-        case .solo, .partnerNotJoined, .paired, .error:
-            return true
-        }
+        pairingService.state.allowsCreatingInvite(iCloudSyncEnabled: services.iCloudSyncEnabled)
     }
 
     private func symbol(for state: PairingState) -> String {
@@ -116,10 +116,11 @@ struct PairingView: View {
 
 private struct CloudSharingSheet: UIViewControllerRepresentable {
     let share: CKShare
-    var onError: (Error) -> Void
+    var onError: @MainActor (Error) -> Void
+    var onStoppedSharing: @MainActor () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onError: onError)
+        Coordinator(onError: onError, onStoppedSharing: onStoppedSharing)
     }
 
     func makeUIViewController(context: Context) -> UICloudSharingController {
@@ -132,10 +133,12 @@ private struct CloudSharingSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UICloudSharingController, context: Context) {}
 
     final class Coordinator: NSObject, UICloudSharingControllerDelegate {
-        let onError: (Error) -> Void
+        let onError: @MainActor (Error) -> Void
+        let onStoppedSharing: @MainActor () -> Void
 
-        init(onError: @escaping (Error) -> Void) {
+        init(onError: @escaping @MainActor (Error) -> Void, onStoppedSharing: @escaping @MainActor () -> Void) {
             self.onError = onError
+            self.onStoppedSharing = onStoppedSharing
         }
 
         func itemTitle(for csc: UICloudSharingController) -> String? {
@@ -143,11 +146,17 @@ private struct CloudSharingSheet: UIViewControllerRepresentable {
         }
 
         func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
-            onError(error)
+            Task { @MainActor in
+                onError(error)
+            }
         }
 
         func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {}
 
-        func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) {}
+        func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) {
+            Task { @MainActor in
+                onStoppedSharing()
+            }
+        }
     }
 }

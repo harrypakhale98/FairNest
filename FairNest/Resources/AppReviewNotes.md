@@ -17,7 +17,7 @@ AI:
 
 Notifications:
 - Local notifications only.
-- Permission is requested from the Reminder Settings screen or when the user enables a reminder.
+- Permission is requested from Settings before FairNest schedules due-card or weekly check-in reminders.
 
 Privacy:
 - Privacy policy is available in the app.

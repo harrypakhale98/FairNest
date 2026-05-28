@@ -56,6 +56,16 @@ enum PairingState: Equatable {
             return message
         }
     }
+
+    func allowsCreatingInvite(iCloudSyncEnabled: Bool) -> Bool {
+        guard iCloudSyncEnabled else { return false }
+        switch self {
+        case .solo, .partnerNotJoined, .sharingRemoved:
+            return true
+        case .checking, .iCloudUnavailable, .notSignedIn, .syncPending, .offline, .permissionDenied, .paired, .error:
+            return false
+        }
+    }
 }
 
 @MainActor
@@ -66,6 +76,7 @@ protocol PairingService: AnyObject {
     func createPrivateShare() async
     func markShareAccepted()
     func markShareAcceptanceFailed(_ error: Error?)
+    func markSharingStopped()
 }
 
 @MainActor
@@ -102,7 +113,7 @@ final class CloudKitPairingService: ObservableObject, PairingService {
                 let zoneID = CloudKitCardMapper.zoneID()
                 if let share = try await existingZoneShare(in: privateDatabase, zoneID: zoneID) {
                     currentShare = share
-                    state = .partnerNotJoined
+                    state = shareHasAcceptedParticipant(share) ? .paired : .partnerNotJoined
                 } else if try await hasAcceptedHouseholdShare(in: sharedDatabase) {
                     currentShare = nil
                     state = .paired
@@ -162,6 +173,11 @@ final class CloudKitPairingService: ObservableObject, PairingService {
         state = .error(error?.localizedDescription ?? "FairNest could not accept this iCloud share. Ask for a fresh invite and try again.")
     }
 
+    func markSharingStopped() {
+        currentShare = nil
+        state = .sharingRemoved
+    }
+
     private func existingZoneShare(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws -> CKShare? {
         let shareID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zoneID)
         do {
@@ -177,6 +193,12 @@ final class CloudKitPairingService: ObservableObject, PairingService {
         share[CKShare.SystemFieldKey.shareType] = "com.fairnest.household" as CKRecordValue
         share.publicPermission = .none
         return share
+    }
+
+    private func shareHasAcceptedParticipant(_ share: CKShare) -> Bool {
+        share.participants.contains { participant in
+            participant.role != .owner && participant.acceptanceStatus == .accepted
+        }
     }
 
     private func hasAcceptedHouseholdShare(in database: CKDatabase) async throws -> Bool {

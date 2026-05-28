@@ -8,4 +8,4 @@ Brain dump parsing happens on device. When Apple Foundation Models are available
 
 FairNest uses local notifications only, after permission is granted, for due responsibilities, recurring responsibilities, and weekly check-ins. The app does not use remote push notifications.
 
-Users can export their local FairNest data from the Privacy screen, delete local app data, and delete shared household data where CloudKit permissions allow it.
+Users can export their local FairNest data from the Privacy screen, delete local app data and scheduled FairNest reminders from this device, and delete shared household data where CloudKit permissions allow it.

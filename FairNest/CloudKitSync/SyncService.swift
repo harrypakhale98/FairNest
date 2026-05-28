@@ -43,7 +43,7 @@ protocol SyncService: AnyObject {
 final class CloudKitSyncService: ObservableObject, SyncService {
     @Published private(set) var status: SyncStatus = .checking
 
-    static var containerIdentifier: String {
+    nonisolated static var containerIdentifier: String {
         Bundle.main.object(forInfoDictionaryKey: "FairNestCloudKitContainerIdentifier") as? String ?? "iCloud.com.hardikpakhale.fairnest"
     }
 
@@ -155,17 +155,44 @@ final class CloudKitSyncService: ObservableObject, SyncService {
 
     func deleteSharedHouseholdData() async throws {
         try ensureCloudKitEnabledForRuntime()
-        let database = containerProvider().privateCloudDatabase
-        let zoneID = CloudKitCardMapper.zoneID()
+        let container = containerProvider()
+        let privateDatabase = container.privateCloudDatabase
+        let sharedDatabase = container.sharedCloudDatabase
+        var deletedData = false
+        var permissionFailure: Error?
+
         do {
-            _ = try await database.modifyRecordZones(saving: [], deleting: [zoneID])
-            status = .available
+            try await deletePrivateHouseholdZone(in: privateDatabase)
+            deletedData = true
         } catch let error as CKError where error.code == .zoneNotFound {
-            status = .available
+            // Nothing private exists for this account.
+        } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
+            permissionFailure = error
         } catch {
             status = .error(error.localizedDescription)
             throw error
         }
+
+        do {
+            let sharedZoneIDs = try await householdZoneIDs(in: sharedDatabase)
+            for zoneID in sharedZoneIDs {
+                try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
+                deletedData = true
+            }
+        } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
+            permissionFailure = error
+        } catch {
+            status = .error(error.localizedDescription)
+            throw error
+        }
+
+        if let permissionFailure, !deletedData {
+            status = .permissionDenied
+            throw permissionFailure
+        }
+
+        preferredSharedZoneID = nil
+        status = .available
     }
 
     func acceptShare(metadata: CKShare.Metadata) async throws {
@@ -188,6 +215,59 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             _ = try await database.recordZone(for: zoneID)
         } catch let error as CKError where error.code == .zoneNotFound {
             _ = try await database.save(CKRecordZone(zoneID: zoneID))
+        }
+    }
+
+    private func deletePrivateHouseholdZone(in database: CKDatabase) async throws {
+        let zoneID = CloudKitCardMapper.zoneID()
+        _ = try await database.modifyRecordZones(saving: [], deleting: [zoneID])
+    }
+
+    private func householdZoneIDs(in database: CKDatabase) async throws -> [CKRecordZone.ID] {
+        let zones = try await database.allRecordZones()
+        return zones
+            .map(\.zoneID)
+            .filter { $0.zoneName == CloudKitCardMapper.zoneName }
+    }
+
+    private func deleteCardRecords(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws {
+        let query = CKQuery(recordType: CloudKitCardMapper.recordType, predicate: NSPredicate(value: true))
+        var recordIDs: [CKRecord.ID] = []
+        let firstPage = try await database.records(matching: query, inZoneWith: zoneID)
+        try appendRecordIDs(from: firstPage.matchResults, to: &recordIDs)
+        var cursor = firstPage.queryCursor
+        while let nextCursor = cursor {
+            let page = try await database.records(continuingMatchFrom: nextCursor)
+            try appendRecordIDs(from: page.matchResults, to: &recordIDs)
+            cursor = page.queryCursor
+        }
+        try await deleteRecordIDs(recordIDs, in: database)
+    }
+
+    private func appendRecordIDs(
+        from results: [(CKRecord.ID, Result<CKRecord, any Error>)],
+        to recordIDs: inout [CKRecord.ID]
+    ) throws {
+        for (recordID, result) in results {
+            _ = try result.get()
+            recordIDs.append(recordID)
+        }
+    }
+
+    private func deleteRecordIDs(_ recordIDs: [CKRecord.ID], in database: CKDatabase) async throws {
+        guard !recordIDs.isEmpty else { return }
+        let batchSize = 200
+        var startIndex = recordIDs.startIndex
+        while startIndex < recordIDs.endIndex {
+            let endIndex = recordIDs.index(startIndex, offsetBy: batchSize, limitedBy: recordIDs.endIndex) ?? recordIDs.endIndex
+            let batch = Array(recordIDs[startIndex..<endIndex])
+            _ = try await database.modifyRecords(
+                saving: [],
+                deleting: batch,
+                savePolicy: .changedKeys,
+                atomically: false
+            )
+            startIndex = endIndex
         }
     }
 
