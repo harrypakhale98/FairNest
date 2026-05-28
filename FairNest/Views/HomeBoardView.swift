@@ -15,6 +15,7 @@ enum BoardFilter: String, CaseIterable, Identifiable {
 }
 
 struct HomeBoardView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
     @State private var filter: BoardFilter = .today
@@ -41,24 +42,36 @@ struct HomeBoardView: View {
                 }
 
                 if filteredCards.isEmpty {
-                    ContentUnavailableView {
-                        Label(emptyTitle, systemImage: emptySymbol)
-                    } description: {
-                        Text(emptyDescription)
-                    } actions: {
-                        Button {
+                    Section {
+                        BoardEmptyRow(
+                            title: emptyTitle,
+                            symbol: emptySymbol,
+                            description: emptyDescription
+                        ) {
                             showingAdd = true
-                        } label: {
-                            Label("Add Card", systemImage: "plus")
                         }
                     }
-                    .listRowBackground(Color.clear)
                 } else {
                     Section {
                         ForEach(filteredCards) { card in
-                            CardRow(card: card)
+                            CardRow(
+                                card: card,
+                                showsActionMenu: dynamicTypeSize.isAccessibilitySize,
+                                onDone: { markDone(card) },
+                                onSnooze: { snooze(card) },
+                                onRemove: { remove(card) }
+                            )
                                 .contentShape(Rectangle())
                                 .onTapGesture { editingCard = card }
+                                .accessibilityAction(named: "Mark Done") {
+                                    markDone(card)
+                                }
+                                .accessibilityAction(named: "Snooze until Tomorrow") {
+                                    snooze(card)
+                                }
+                                .accessibilityAction(named: "Remove") {
+                                    remove(card)
+                                }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
                                         remove(card)
@@ -67,9 +80,7 @@ struct HomeBoardView: View {
                                     }
 
                                     Button {
-                                        performBoardOperation("mark this card done") {
-                                            try cardStore.transition(id: card.id, to: .done)
-                                        }
+                                        markDone(card)
                                     } label: {
                                         Label("Done", systemImage: "checkmark")
                                     }
@@ -77,9 +88,7 @@ struct HomeBoardView: View {
                                 }
                                 .swipeActions(edge: .leading) {
                                     Button {
-                                        performBoardOperation("snooze this card") {
-                                            try cardStore.snoozeThrowing(id: card.id, days: 1)
-                                        }
+                                        snooze(card)
                                     } label: {
                                         Label("Tomorrow", systemImage: "moon")
                                     }
@@ -90,6 +99,7 @@ struct HomeBoardView: View {
                 }
             }
             .navigationTitle("Home Board")
+            .navigationBarTitleDisplayMode(dynamicTypeSize.isAccessibilitySize ? .inline : .automatic)
             .refreshable {
                 await services.syncCardsIfAvailable()
             }
@@ -144,18 +154,54 @@ struct HomeBoardView: View {
 
     private var boardStatus: BoardStatus? {
         if let message = cardStore.lastLoadErrorMessage {
-            return BoardStatus(message: message, symbol: "exclamationmark.triangle", tint: .red)
+            return BoardStatus(
+                title: "Local cards need attention",
+                message: "FairNest moved an unreadable card file aside so the board can keep working. Details: \(message)",
+                symbol: "exclamationmark.triangle",
+                tint: .red,
+                actionTitle: nil
+            )
         }
         if let message = cardStore.lastPersistenceErrorMessage {
-            return BoardStatus(message: message, symbol: "externaldrive.badge.exclamationmark", tint: .red)
+            return BoardStatus(
+                title: "Changes are not saved yet",
+                message: "FairNest could not write the latest board change. Try again before closing the app. Details: \(message)",
+                symbol: "externaldrive.badge.exclamationmark",
+                tint: .red,
+                actionTitle: nil
+            )
         }
         if services.iCloudSyncEnabled, let message = services.lastSyncMessage {
-            return BoardStatus(message: "iCloud sync needs attention: \(message)", symbol: "icloud.slash", tint: .orange)
+            return BoardStatus(
+                title: "iCloud sync needs attention",
+                message: "FairNest is keeping changes on this iPhone until iCloud responds. Details: \(message)",
+                symbol: "icloud.slash",
+                tint: .orange,
+                actionTitle: "Retry Sync"
+            )
         }
         if services.iCloudSyncEnabled, services.syncInProgress {
-            return BoardStatus(message: "Syncing household cards with iCloud.", symbol: "arrow.triangle.2.circlepath.icloud", tint: Color.secondary)
+            return BoardStatus(
+                title: "Syncing",
+                message: "FairNest is syncing household cards with iCloud.",
+                symbol: "arrow.triangle.2.circlepath.icloud",
+                tint: Color.secondary,
+                actionTitle: nil
+            )
         }
         return nil
+    }
+
+    private func markDone(_ card: LoadCard) {
+        performBoardOperation("mark this card done") {
+            try cardStore.transition(id: card.id, to: .done)
+        }
+    }
+
+    private func snooze(_ card: LoadCard) {
+        performBoardOperation("snooze this card") {
+            try cardStore.snoozeThrowing(id: card.id, days: 1)
+        }
     }
 
     private func remove(_ card: LoadCard) {
@@ -257,6 +303,10 @@ struct HomeBoardView: View {
 struct CardRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var card: LoadCard
+    var showsActionMenu = false
+    var onDone: (() -> Void)?
+    var onSnooze: (() -> Void)?
+    var onRemove: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -294,10 +344,34 @@ struct CardRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
+            if showsActionMenu {
+                Menu {
+                    Button {
+                        onDone?()
+                    } label: {
+                        Label("Done", systemImage: "checkmark")
+                    }
+                    Button {
+                        onSnooze?()
+                    } label: {
+                        Label("Tomorrow", systemImage: "moon")
+                    }
+                    Button(role: .destructive) {
+                        onRemove?()
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                }
+                .accessibilityLabel("Card actions")
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
@@ -327,20 +401,68 @@ private struct BoardOperationError: Identifiable {
 }
 
 private struct BoardStatus {
+    var title: String
     var message: String
     var symbol: String
     var tint: Color
+    var actionTitle: String?
 }
 
 private struct BoardStatusRow: View {
     var status: BoardStatus
+    @EnvironmentObject private var services: AppServices
 
     var body: some View {
         Section {
-            Label(status.message, systemImage: status.symbol)
-                .font(.footnote)
-                .foregroundStyle(status.tint)
-                .accessibilityIdentifier("boardStatusMessage")
+            VStack(alignment: .leading, spacing: 8) {
+                Label(status.title, systemImage: status.symbol)
+                    .font(.headline)
+                    .foregroundStyle(status.tint)
+                Text(status.message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                if let actionTitle = status.actionTitle {
+                    Button {
+                        Task { await services.syncCardsIfAvailable() }
+                    } label: {
+                        Label(actionTitle, systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            .accessibilityIdentifier("boardStatusMessage")
         }
+    }
+}
+
+private struct BoardEmptyRow: View {
+    var title: String
+    var symbol: String
+    var description: String
+    var onAdd: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label {
+                Text(title)
+                    .font(.headline)
+            } icon: {
+                Image(systemName: symbol)
+                    .foregroundStyle(.tint)
+            }
+
+            Text(description)
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Button {
+                onAdd()
+            } label: {
+                Label("Add Card", systemImage: "plus")
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
     }
 }

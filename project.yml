@@ -20,9 +20,12 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - Shared
-      - FairNest
+      - path: FairNest
+        excludes:
+          - Resources/AppReviewNotes.md
     resources:
-      - FairNest/Resources
+      - FairNest/Resources/PrivacyInfo.xcprivacy
+      - FairNest/Resources/PrivacyPolicy.md
     entitlements:
       path: FairNest/Supporting/FairNest.entitlements
       properties:

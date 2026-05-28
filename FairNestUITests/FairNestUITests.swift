@@ -23,8 +23,8 @@ final class FairNestUITests: XCTestCase {
         app.buttons["onboardingContinue"].tap()
         app.buttons["onboardingContinue"].tap()
 
-        let editor = app.textViews["onboardingBrainDump"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        let editor = app.textInput(named: "onboardingBrainDump", timeout: 3)
+        XCTAssertTrue(editor.exists)
         editor.tap()
         editor.typeText("buy milk")
         app.buttons["dismissOnboardingBrainDumpKeyboard"].tap()
@@ -55,8 +55,8 @@ final class FairNestUITests: XCTestCase {
 
         app.tabBars.buttons["Brain Dump"].tap()
 
-        let editor = app.textViews["brainDumpText"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        let editor = app.textInput(named: "brainDumpText", timeout: 3)
+        XCTAssertTrue(editor.exists)
         editor.tap()
         editor.typeText("buy milk")
         app.buttons["dismissBrainDumpKeyboard"].tap()
@@ -139,5 +139,18 @@ final class FairNestUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.navigationBars["Home Board"].waitForExistence(timeout: 8))
         return app
+    }
+}
+
+private extension XCUIApplication {
+    func textInput(named identifier: String, timeout: TimeInterval) -> XCUIElement {
+        let textField = textFields[identifier]
+        if textField.waitForExistence(timeout: timeout) {
+            return textField
+        }
+
+        let textView = textViews[identifier]
+        _ = textView.waitForExistence(timeout: 1)
+        return textView
     }
 }

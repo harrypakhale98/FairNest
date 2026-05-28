@@ -25,16 +25,24 @@ struct BrainDumpView: View {
         NavigationStack {
             List {
                 Section {
-                    TextEditor(text: $text)
+                    TextField("Household thoughts", text: $text, axis: .vertical)
                         .focused($focusedField, equals: .thoughts)
-                        .frame(minHeight: 160)
+                        .lineLimit(6...12)
+                        .textInputAutocapitalization(.sentences)
                         .accessibilityLabel("Household thoughts")
                         .accessibilityHint("Enter household tasks, reminders, decisions, or appreciation to turn into reviewable cards.")
                         .accessibilityIdentifier("brainDumpText")
+
+                    Button {
+                        dismissKeyboard()
+                    } label: {
+                        Label("Done", systemImage: "keyboard.chevron.compact.down")
+                    }
+                    .accessibilityIdentifier("dismissBrainDumpKeyboard")
                 } header: {
                     Text("Household thoughts")
                 } footer: {
-                    Text("Messy is fine. Raw text stays private until you save reviewed cards.")
+                    Text("Messy is fine. Only reviewed cards are saved; raw text is discarded.")
                 }
 
                 Section {
@@ -66,10 +74,10 @@ struct BrainDumpView: View {
                     }
 
                     if suggestions.isEmpty, safetyNotice == nil {
-                        ContentUnavailableView(
-                            "No suggestions yet",
+                        ReviewEmptyStateRow(
+                            title: "No suggestions yet",
                             systemImage: "text.badge.plus",
-                            description: Text("Add a few thoughts above and review the suggested cards before saving.")
+                            message: "Add a few thoughts above and review the suggested cards before saving."
                         )
                     } else {
                         ForEach($suggestions) { $suggestion in
@@ -112,15 +120,6 @@ struct BrainDumpView: View {
                     }
                     .disabled(!hasSavableSelection)
                     .accessibilityIdentifier("saveBrainDumpSuggestions")
-                }
-
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") {
-                        dismissKeyboard()
-                    }
-                    .fontWeight(.semibold)
-                    .accessibilityIdentifier("dismissBrainDumpKeyboard")
                 }
             }
         }
@@ -209,6 +208,29 @@ struct BrainDumpView: View {
     }
 }
 
+struct ReviewEmptyStateRow: View {
+    var title: String
+    var systemImage: String
+    var message: String
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct BrainDumpSuggestionReviewRow: View {
     @Binding var suggestion: BrainDumpSuggestion
     @Binding var isSelected: Bool
@@ -229,17 +251,7 @@ struct BrainDumpSuggestionReviewRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: $isSelected) {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(suggestion.title.isEmpty ? "Untitled card" : suggestion.title)
-                            .font(.headline)
-                        Text(suggestion.type.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: suggestion.type.symbolName)
-                }
+                Label("Include this card", systemImage: suggestion.type.symbolName)
             }
 
             TextField("Title", text: $suggestion.title, axis: .vertical)

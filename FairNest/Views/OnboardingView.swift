@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
     @State private var step = 0
@@ -16,68 +17,121 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                TabView(selection: $step) {
-                    ScrollView {
-                        onboardingStep(
-                            title: "Share the home load",
-                            symbol: "house.and.flag",
-                            text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards."
-                        )
+                if dynamicTypeSize.isAccessibilitySize {
+                    if step == 2 {
+                        firstBrainDumpStep
+                    } else {
+                        ScrollView {
+                            currentStep
+                                .padding(.bottom, 24)
+                        }
                     }
-                    .tag(0)
+                } else {
+                    TabView(selection: $step) {
+                        ScrollView {
+                            stepIntro(
+                                title: "Share the home load",
+                                symbol: "house.and.flag",
+                                text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards."
+                            )
+                        }
+                        .tag(0)
 
-                    ScrollView {
-                        onboardingStep(
-                            title: "Private by design",
-                            symbol: "lock.shield",
-                            text: "FairNest works offline, syncs with iCloud when available, and uses on-device intelligence with a deterministic fallback."
-                        )
+                        ScrollView {
+                            stepIntro(
+                                title: "Private by design",
+                                symbol: "lock.shield",
+                                text: "FairNest works offline, syncs with iCloud when available, and uses on-device intelligence with a deterministic fallback."
+                            )
+                        }
+                        .tag(1)
+
+                        firstBrainDumpStep
+                            .tag(2)
                     }
-                    .tag(1)
-
-                    firstBrainDumpStep
-                        .tag(2)
+                    .tabViewStyle(.page(indexDisplayMode: .automatic))
                 }
-                .tabViewStyle(.page(indexDisplayMode: .automatic))
 
                 Divider()
 
-                HStack {
-                    Button("Back") {
-                        step = max(0, step - 1)
-                    }
-                    .disabled(step == 0)
-
-                    Spacer()
-
-                    Button(primaryActionTitle) {
-                        if step < 2 {
-                            step += 1
-                        } else if shouldParseBeforeFinish {
-                            Task { await parse() }
-                        } else {
-                            saveAndFinish()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(step == 2 && isParsing)
-                    .accessibilityIdentifier("onboardingContinue")
-                }
-                .padding()
+                actionBar
             }
             .navigationTitle("FairNest")
+            .navigationBarTitleDisplayMode(dynamicTypeSize.isAccessibilitySize ? .inline : .automatic)
         }
     }
 
-    private func onboardingStep(title: String, symbol: String, text: String) -> some View {
+    @ViewBuilder
+    private var currentStep: some View {
+        switch step {
+        case 0:
+            stepIntro(
+                title: "Share the home load",
+                symbol: "house.and.flag",
+                text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards."
+            )
+        case 1:
+            stepIntro(
+                title: "Private by design",
+                symbol: "lock.shield",
+                text: "FairNest works offline, syncs with iCloud when available, and uses on-device intelligence with a deterministic fallback."
+            )
+        default:
+            firstBrainDumpStep
+        }
+    }
+
+    @ViewBuilder
+    private var actionBar: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 10) {
+                Button(primaryActionTitle) {
+                    primaryAction()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .disabled(step == 2 && isParsing)
+                .accessibilityIdentifier("onboardingContinue")
+
+                Button("Back") {
+                    step = max(0, step - 1)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .disabled(step == 0)
+            }
+            .padding()
+        } else {
+            HStack {
+                Button("Back") {
+                    step = max(0, step - 1)
+                }
+                .disabled(step == 0)
+
+                Spacer()
+
+                Button(primaryActionTitle) {
+                    primaryAction()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(step == 2 && isParsing)
+                .accessibilityIdentifier("onboardingContinue")
+            }
+            .padding()
+        }
+    }
+
+    private func stepIntro(title: String, symbol: String, text: String) -> some View {
         VStack(spacing: 20) {
             Image(systemName: symbol)
-                .font(.system(size: 48, weight: .regular))
+                .font(.system(size: dynamicTypeSize.isAccessibilitySize ? 38 : 48, weight: .regular))
                 .foregroundStyle(.tint)
                 .accessibilityHidden(true)
 
             Text(title)
-                .font(.largeTitle.bold())
+                .font(dynamicTypeSize.isAccessibilitySize ? .title.bold() : .largeTitle.bold())
                 .multilineTextAlignment(.center)
 
             Text(text)
@@ -92,12 +146,20 @@ struct OnboardingView: View {
     private var firstBrainDumpStep: some View {
         Form {
             Section {
-                TextEditor(text: $brainDump)
+                TextField("First brain dump", text: $brainDump, axis: .vertical)
                     .focused($focusedField, equals: .firstBrainDump)
-                    .frame(minHeight: 120)
+                    .lineLimit(5...10)
+                    .textInputAutocapitalization(.sentences)
                     .accessibilityLabel("First brain dump")
                     .accessibilityHint("Enter a few household thoughts to create reviewable starter cards.")
                     .accessibilityIdentifier("onboardingBrainDump")
+
+                Button {
+                    dismissKeyboard()
+                } label: {
+                    Label("Done", systemImage: "keyboard.chevron.compact.down")
+                }
+                .accessibilityIdentifier("dismissOnboardingBrainDumpKeyboard")
             } header: {
                 Text("First brain dump")
             } footer: {
@@ -133,10 +195,10 @@ struct OnboardingView: View {
                 }
 
                 if suggestions.isEmpty, notice == nil {
-                    ContentUnavailableView(
-                        "No suggestions yet",
+                    ReviewEmptyStateRow(
+                        title: "No suggestions yet",
                         systemImage: "text.badge.plus",
-                        description: Text("Add a few thoughts above and review the suggested cards before saving.")
+                        message: "Add a few thoughts above and review the suggested cards before saving."
                     )
                 } else {
                     ForEach($suggestions) { $suggestion in
@@ -159,16 +221,6 @@ struct OnboardingView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    dismissKeyboard()
-                }
-                .fontWeight(.semibold)
-                .accessibilityIdentifier("dismissOnboardingBrainDumpKeyboard")
-            }
-        }
     }
 
     private var primaryActionTitle: String {
@@ -176,6 +228,16 @@ struct OnboardingView: View {
             return "Continue"
         }
         return shouldParseBeforeFinish ? "Review Cards" : "Start FairNest"
+    }
+
+    private func primaryAction() {
+        if step < 2 {
+            step += 1
+        } else if shouldParseBeforeFinish {
+            Task { await parse() }
+        } else {
+            saveAndFinish()
+        }
     }
 
     private var shouldParseBeforeFinish: Bool {

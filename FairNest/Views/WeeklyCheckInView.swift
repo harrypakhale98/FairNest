@@ -116,12 +116,18 @@ struct WeeklyCheckInView: View {
     private var confirmSection: some View {
         if saved {
             Section {
-                ContentUnavailableView(
-                    "Check-in saved",
-                    systemImage: "checkmark.circle.fill",
-                    description: Text("Your reflection is saved locally and reviewed ownership changes are on the board.")
-                )
-                .foregroundStyle(.green)
+                Label {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Check-in saved")
+                            .font(.headline)
+                        Text("Your reflection is saved locally and reviewed ownership changes are on the board.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
 
                 Button {
                     reset()
@@ -132,10 +138,10 @@ struct WeeklyCheckInView: View {
         } else {
             Section {
                 if changes.isEmpty {
-                    ContentUnavailableView(
-                        isEmptyCheckIn ? "Empty check-in" : "No ownership changes",
+                    ReviewEmptyStateRow(
+                        title: isEmptyCheckIn ? "Empty check-in" : "No ownership changes",
                         systemImage: "checkmark.circle",
-                        description: Text(isEmptyCheckIn ? "You can save an empty reflection, or go back and add notes first." : "The check-in can still be saved with no board changes.")
+                        message: isEmptyCheckIn ? "You can save an empty reflection, or go back and add notes first." : "The check-in can still be saved with no board changes."
                     )
                 } else {
                     ForEach($changes) { changeBinding in

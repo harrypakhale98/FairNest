@@ -7,6 +7,7 @@ struct PairingView: View {
     @EnvironmentObject private var syncService: CloudKitSyncService
     @EnvironmentObject private var services: AppServices
     @State private var showingCloudSharing = false
+    @State private var showingICloudSyncConfirmation = false
     @State private var isCreatingInvite = false
     @State private var shareError: String?
 
@@ -19,7 +20,7 @@ struct PairingView: View {
                     Text(pairingService.state.message)
                         .foregroundStyle(.secondary)
                     if !services.iCloudSyncEnabled {
-                        Text("Turn on iCloud Sync in Settings before creating or managing a partner invite.")
+                        Text("Turn on iCloud Sync before creating or managing a partner invite.")
                             .foregroundStyle(.secondary)
                     }
                 } header: {
@@ -34,6 +35,14 @@ struct PairingView: View {
                         }
                     } label: {
                         Label("Refresh iCloud Status", systemImage: "arrow.clockwise")
+                    }
+
+                    if !services.iCloudSyncEnabled {
+                        Button {
+                            showingICloudSyncConfirmation = true
+                        } label: {
+                            Label("Turn On iCloud Sync", systemImage: "icloud")
+                        }
                     }
 
                     Button {
@@ -88,6 +97,17 @@ struct PairingView: View {
                 }
             }
             .navigationTitle("Pair")
+            .alert(
+                "Turn on iCloud Sync?",
+                isPresented: $showingICloudSyncConfirmation
+            ) {
+                Button("Turn On iCloud Sync") {
+                    Task { await enableICloudSyncForPairing() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Existing local cards will sync to iCloud. If this device joins a shared household, cards can be visible to invited participants. Weekly check-ins stay local.")
+            }
             .sheet(isPresented: $showingCloudSharing) {
                 if let share = pairingService.currentShare {
                     CloudSharingSheet(share: share) { error in
@@ -102,6 +122,12 @@ struct PairingView: View {
 
     private var canCreateInvite: Bool {
         pairingService.state.allowsCreatingInvite(iCloudSyncEnabled: services.iCloudSyncEnabled)
+    }
+
+    private func enableICloudSyncForPairing() async {
+        services.iCloudSyncEnabled = true
+        await syncService.refreshStatus()
+        await pairingService.refresh()
     }
 
     private func symbol(for state: PairingState) -> String {
