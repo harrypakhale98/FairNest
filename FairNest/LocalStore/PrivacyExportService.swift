@@ -34,10 +34,18 @@ struct PrivacyExportService {
         return url
     }
 
-    func deleteAllLocalData() {
-        cardStore.deleteAllLocalData()
-        checkInStore.deleteAll()
-        Self.removeTemporaryExports()
+    func deleteAllLocalData() throws {
+        let previousCards = cardStore.cards
+        let previousCheckIns = checkInStore.records
+        do {
+            try cardStore.deleteAllLocalDataThrowing()
+            try checkInStore.deleteAll()
+            Self.removeTemporaryExports()
+        } catch {
+            try? cardStore.replaceAllThrowing(with: previousCards)
+            try? checkInStore.replaceAllThrowing(with: previousCheckIns)
+            throw error
+        }
     }
 
     static func removeTemporaryExports() {

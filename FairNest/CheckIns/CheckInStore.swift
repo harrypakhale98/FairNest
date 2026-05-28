@@ -3,8 +3,20 @@ import Foundation
 @MainActor
 protocol CheckInStore: AnyObject {
     var records: [CheckInRecord] { get }
-    func save(_ record: CheckInRecord)
-    func deleteAll()
+    func save(_ record: CheckInRecord) throws
+    func replaceAllThrowing(with records: [CheckInRecord]) throws
+    func deleteAll() throws
+}
+
+enum LocalCheckInStoreError: LocalizedError {
+    case persistenceFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .persistenceFailed:
+            return "FairNest could not save check-in data. Try again before closing the app."
+        }
+    }
 }
 
 struct CheckInRecord: Identifiable, Codable, Equatable {
@@ -52,6 +64,8 @@ struct OwnershipChange: Identifiable, Codable, Equatable, Hashable {
 @MainActor
 final class LocalCheckInStore: ObservableObject, CheckInStore {
     @Published private(set) var records: [CheckInRecord] = []
+    @Published private(set) var lastLoadErrorMessage: String?
+    @Published private(set) var lastPersistenceErrorMessage: String?
 
     private let fileURL: URL
     private let fileManager: FileManager
@@ -67,38 +81,76 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         }
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             try? fileManager.removeItem(at: self.fileURL)
+            removeCorruptBackups()
         }
         load()
     }
 
-    func save(_ record: CheckInRecord) {
+    func save(_ record: CheckInRecord) throws {
+        let previousRecords = records
         records.insert(record, at: 0)
-        persist()
+        do {
+            try persistThrowing()
+        } catch {
+            records = previousRecords
+            throw error
+        }
     }
 
-    func deleteAll() {
+    func deleteAll() throws {
+        let previousRecords = records
         records = []
-        persist()
+        do {
+            try persistThrowing()
+            removeCorruptBackups()
+        } catch {
+            records = previousRecords
+            throw error
+        }
+    }
+
+    func replaceAllThrowing(with newRecords: [CheckInRecord]) throws {
+        let previousRecords = records
+        records = newRecords
+        do {
+            try persistThrowing()
+        } catch {
+            records = previousRecords
+            throw error
+        }
     }
 
     private func load() {
         guard fileManager.fileExists(atPath: fileURL.path) else { return }
+        let data: Data
         do {
-            let data = try Data(contentsOf: fileURL)
-            records = try JSONDecoder.fairNest.decode([CheckInRecord].self, from: data)
+            data = try Data(contentsOf: fileURL)
         } catch {
+            lastLoadErrorMessage = error.localizedDescription
+            return
+        }
+
+        do {
+            records = try JSONDecoder.fairNest.decode([CheckInRecord].self, from: data)
+            lastLoadErrorMessage = nil
+        } catch is DecodingError {
             backupCorruptStore()
             records = []
+            lastLoadErrorMessage = "FairNest found an unreadable local check-in store and moved it aside."
+        } catch {
+            lastLoadErrorMessage = error.localizedDescription
         }
     }
 
-    private func persist() {
+    private func persistThrowing() throws {
         do {
             try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let data = try JSONEncoder.fairNest.encode(records)
             try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            lastPersistenceErrorMessage = nil
         } catch {
-            assertionFailure("FairNest check-in store failed to persist: \(error)")
+            lastPersistenceErrorMessage = error.localizedDescription
+            throw LocalCheckInStoreError.persistenceFailed
         }
     }
 
@@ -107,5 +159,14 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         let backupName = "\(fileURL.lastPathComponent).corrupt.\(Int(Date().timeIntervalSince1970))"
         let backupURL = fileURL.deletingLastPathComponent().appendingPathComponent(backupName)
         try? fileManager.moveItem(at: fileURL, to: backupURL)
+    }
+
+    private func removeCorruptBackups() {
+        let directory = fileURL.deletingLastPathComponent()
+        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        let backupPrefix = "\(fileURL.lastPathComponent).corrupt."
+        for file in files where file.lastPathComponent.hasPrefix(backupPrefix) {
+            try? fileManager.removeItem(at: file)
+        }
     }
 }

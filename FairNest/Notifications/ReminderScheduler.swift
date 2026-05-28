@@ -5,9 +5,11 @@ import UserNotifications
 protocol ReminderScheduler {
     func authorizationStatus() async -> UNAuthorizationStatus
     func requestAuthorization() async throws -> Bool
+    func pendingFairNestReminderIdentifiers() async -> [String]
     func scheduleDueTask(_ card: LoadCard) async throws
     func scheduleWeeklyCheckIn(weekday: Int, hour: Int, minute: Int) async throws
     func cancelReminder(for cardID: UUID) async
+    func cancelAllFairNestReminders() async
 }
 
 struct ReminderRequest: Equatable {
@@ -19,13 +21,20 @@ struct ReminderRequest: Equatable {
 }
 
 enum ReminderRequestFactory {
+    static let weeklyCheckInIdentifier = "weekly-check-in"
+    static let cardReminderIdentifierPrefix = "card-"
+
+    static func cardReminderIdentifier(for cardID: UUID) -> String {
+        "\(cardReminderIdentifierPrefix)\(cardID.uuidString)"
+    }
+
     static func dueTaskRequest(for card: LoadCard, calendar: Calendar = .current) -> ReminderRequest? {
         guard let dueDate = card.dueDate else { return nil }
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
         return ReminderRequest(
-            identifier: "card-\(card.id.uuidString)",
+            identifier: cardReminderIdentifier(for: card.id),
             title: card.type == .recurringResponsibility ? "Shared responsibility" : "FairNest reminder",
-            body: card.title,
+            body: "Open FairNest to review this item.",
             dateComponents: components,
             repeats: false
         )
@@ -37,12 +46,20 @@ enum ReminderRequestFactory {
         components.hour = max(0, min(23, hour))
         components.minute = max(0, min(59, minute))
         return ReminderRequest(
-            identifier: "weekly-check-in",
+            identifier: weeklyCheckInIdentifier,
             title: "Weekly check-in",
             body: "Take 10 quiet minutes to rebalance the home load.",
             dateComponents: components,
             repeats: true
         )
+    }
+
+    static func isFairNestReminderIdentifier(_ identifier: String) -> Bool {
+        identifier == weeklyCheckInIdentifier || isCardReminderIdentifier(identifier)
+    }
+
+    static func isCardReminderIdentifier(_ identifier: String) -> Bool {
+        identifier.hasPrefix(cardReminderIdentifierPrefix)
     }
 }
 
@@ -61,6 +78,13 @@ struct LocalReminderScheduler: ReminderScheduler {
         try await center.requestAuthorization(options: [.alert, .badge, .sound])
     }
 
+    func pendingFairNestReminderIdentifiers() async -> [String] {
+        await center.pendingNotificationRequests()
+            .map(\.identifier)
+            .filter(ReminderRequestFactory.isFairNestReminderIdentifier)
+            .sorted()
+    }
+
     func scheduleDueTask(_ card: LoadCard) async throws {
         guard let reminder = ReminderRequestFactory.dueTaskRequest(for: card) else { return }
         try await schedule(reminder)
@@ -71,7 +95,22 @@ struct LocalReminderScheduler: ReminderScheduler {
     }
 
     func cancelReminder(for cardID: UUID) async {
-        center.removePendingNotificationRequests(withIdentifiers: ["card-\(cardID.uuidString)"])
+        let identifiers = [ReminderRequestFactory.cardReminderIdentifier(for: cardID)]
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
+    }
+
+    func cancelAllFairNestReminders() async {
+        let pendingIdentifiers = await center.pendingNotificationRequests()
+            .map(\.identifier)
+            .filter(ReminderRequestFactory.isFairNestReminderIdentifier)
+        let deliveredIdentifiers = await center.deliveredNotifications()
+            .map(\.request.identifier)
+            .filter(ReminderRequestFactory.isFairNestReminderIdentifier)
+        let identifiers = Array(Set(pendingIdentifiers + deliveredIdentifiers + [ReminderRequestFactory.weeklyCheckInIdentifier]))
+        guard !identifiers.isEmpty else { return }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 
     private func schedule(_ reminder: ReminderRequest) async throws {
@@ -83,4 +122,5 @@ struct LocalReminderScheduler: ReminderScheduler {
         let request = UNNotificationRequest(identifier: reminder.identifier, content: content, trigger: trigger)
         try await center.add(request)
     }
+
 }

@@ -17,18 +17,41 @@ enum WeeklyCheckInEngine {
             changes.append(contentsOf: parser.parse(ownershipText))
         }
 
-        if changes.isEmpty {
-            let candidates = cards
-                .filter { !$0.isDeleted && $0.status != .done && ($0.owner == .unassigned || $0.owner == .shared) }
-                .sorted { $0.effort > $1.effort }
-                .prefix(3)
+        return Array(changes.prefix(3))
+    }
 
-            changes.append(contentsOf: candidates.map {
-                OwnershipChange(title: $0.title, owner: .me, reason: "Needs a clear owner for this week.")
-            })
+    static func cardsAfterApplying(_ changes: [OwnershipChange], to cards: [LoadCard], at date: Date = Date()) -> [LoadCard] {
+        var updatedCards = cards
+
+        for change in changes {
+            let trimmedTitle = change.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedTitle.isEmpty else { continue }
+            let normalizedChangeTitle = normalizedTitle(trimmedTitle)
+
+            if let index = updatedCards.firstIndex(where: { card in
+                !card.isDeleted && normalizedTitle(card.title) == normalizedChangeTitle
+            }) {
+                updatedCards[index].reassign(to: change.owner, at: date)
+            } else {
+                let suggestion = BrainDumpSuggestion(
+                    title: trimmedTitle,
+                    type: .task,
+                    owner: change.owner,
+                    effort: .medium,
+                    doneCriteria: "Ownership is clear for this week."
+                )
+                updatedCards.insert(suggestion.makeCard(at: date), at: 0)
+            }
         }
 
-        return Array(changes.prefix(3))
+        return updatedCards.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private static func normalizedTitle(_ title: String) -> String {
+        title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
     }
 }
 

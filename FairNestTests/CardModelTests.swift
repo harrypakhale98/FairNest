@@ -27,4 +27,35 @@ final class CardModelTests: XCTestCase {
         XCTAssertNotNil(card.dueDate)
         XCTAssertGreaterThan(card.dueDate!, now)
     }
+
+    func testCompletingWeeklyRecurringCardPreservesScheduledTime() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let dueDate = calendar.date(from: DateComponents(year: 2026, month: 5, day: 25, hour: 18, minute: 30))!
+        let completedAt = calendar.date(from: DateComponents(year: 2026, month: 5, day: 27, hour: 9, minute: 0))!
+        var card = LoadCard(title: "Trash", status: .planned, dueDate: dueDate, recurrence: .weekly(weekday: 2))
+
+        try card.transition(to: .done, at: completedAt)
+
+        let components = calendar.dateComponents([.weekday, .hour, .minute], from: card.dueDate!)
+        XCTAssertEqual(components.weekday, 2)
+        XCTAssertEqual(components.hour, 18)
+        XCTAssertEqual(components.minute, 30)
+        XCTAssertGreaterThan(card.dueDate!, completedAt)
+    }
+
+    func testMonthlyRecurrenceUsesLastDayWhenMonthIsShort() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let januaryThirtyFirst = calendar.date(from: DateComponents(year: 2026, month: 1, day: 31, hour: 18, minute: 30))!
+
+        let next = Recurrence.monthly(day: 31).nextDate(after: januaryThirtyFirst, calendar: calendar)
+
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: next!)
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 2)
+        XCTAssertEqual(components.day, 28)
+        XCTAssertEqual(components.hour, 18)
+        XCTAssertEqual(components.minute, 30)
+    }
 }

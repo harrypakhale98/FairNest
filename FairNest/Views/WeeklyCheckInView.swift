@@ -7,6 +7,7 @@ struct WeeklyCheckInView: View {
     @State private var draft = WeeklyCheckInDraft()
     @State private var changes: [OwnershipChange] = []
     @State private var saved = false
+    @State private var saveErrorMessage: String?
 
     private let steps = [
         "What felt heavy",
@@ -21,8 +22,11 @@ struct WeeklyCheckInView: View {
             Form {
                 Section {
                     ProgressView(value: Double(step + 1), total: Double(steps.count))
+                        .accessibilityLabel("Check-in progress")
+                        .accessibilityValue("Step \(step + 1) of \(steps.count)")
                     Text(steps[step])
                         .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
                 }
 
                 currentStep
@@ -30,17 +34,19 @@ struct WeeklyCheckInView: View {
             .navigationTitle("Weekly Check-In")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Back") {
-                        step = max(0, step - 1)
+                    if !saved {
+                        Button("Back") {
+                            step = max(0, step - 1)
+                            saveErrorMessage = nil
+                        }
+                        .disabled(step == 0)
                     }
-                    .disabled(step == 0)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(saved && step == steps.count - 1 ? "Saved" : step == steps.count - 1 ? "Finish" : "Next") {
+                    Button(primaryActionTitle) {
                         advance()
                     }
-                    .disabled(saved && step == steps.count - 1)
                     .accessibilityIdentifier("checkInNext")
                 }
             }
@@ -54,39 +60,45 @@ struct WeeklyCheckInView: View {
             promptSection(
                 text: $draft.feltHeavy,
                 prompt: "Name the household work that felt heavy this week.",
-                placeholder: "Example: meal planning, laundry backlog, remembering appointments"
+                placeholder: "Example: meal planning, laundry backlog, remembering appointments",
+                identifier: "checkInFeltHeavy"
             )
         case 1:
             promptSection(
                 text: $draft.gotDone,
                 prompt: "Capture what got done.",
-                placeholder: "Example: bills paid, fridge cleaned, birthday gift ordered"
+                placeholder: "Example: bills paid, fridge cleaned, birthday gift ordered",
+                identifier: "checkInGotDone"
             )
         case 2:
             promptSection(
                 text: $draft.needsOwnership,
                 prompt: "Name one to three things that need clearer ownership.",
-                placeholder: "Example: partner owns trash night; I own school forms"
+                placeholder: "Example: partner owns trash night; I own school forms",
+                identifier: "checkInNeedsOwnership"
             )
         case 3:
             promptSection(
                 text: $draft.appreciation,
                 prompt: "Save one appreciation.",
-                placeholder: "Example: Thanks for handling dinner on Tuesday"
+                placeholder: "Example: Thanks for handling dinner on Tuesday",
+                identifier: "checkInAppreciation"
             )
         default:
             confirmSection
         }
     }
 
-    private func promptSection(text: Binding<String>, prompt: String, placeholder: String) -> some View {
+    private func promptSection(text: Binding<String>, prompt: String, placeholder: String, identifier: String) -> some View {
         Section {
             Text(prompt)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             TextEditor(text: text)
                 .frame(minHeight: 140)
                 .accessibilityLabel(prompt)
                 .accessibilityHint(placeholder)
+                .accessibilityIdentifier(identifier)
                 .overlay(alignment: .topLeading) {
                     if text.wrappedValue.isEmpty {
                         Text(placeholder)
@@ -94,51 +106,77 @@ struct WeeklyCheckInView: View {
                             .padding(.top, 8)
                             .padding(.leading, 5)
                             .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 }
         }
     }
 
+    @ViewBuilder
     private var confirmSection: some View {
-        Section {
-            if changes.isEmpty {
+        if saved {
+            Section {
                 ContentUnavailableView(
-                    "No ownership changes",
-                    systemImage: "checkmark.circle",
-                    description: Text("The check-in can still be saved with no changes.")
+                    "Check-in saved",
+                    systemImage: "checkmark.circle.fill",
+                    description: Text("Your reflection is saved locally and reviewed ownership changes are on the board.")
                 )
-            } else {
-                ForEach(changes) { change in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(change.title)
-                            .font(.headline)
-                        Text("\(change.owner.label) owns this")
-                            .foregroundStyle(.secondary)
-                        Text(change.reason)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+                .foregroundStyle(.green)
+
+                Button {
+                    reset()
+                } label: {
+                    Label("Start New Check-In", systemImage: "plus.circle")
                 }
             }
+        } else {
+            Section {
+                if changes.isEmpty {
+                    ContentUnavailableView(
+                        isEmptyCheckIn ? "Empty check-in" : "No ownership changes",
+                        systemImage: "checkmark.circle",
+                        description: Text(isEmptyCheckIn ? "You can save an empty reflection, or go back and add notes first." : "The check-in can still be saved with no board changes.")
+                    )
+                } else {
+                    ForEach($changes) { changeBinding in
+                        OwnershipChangeReviewRow(change: changeBinding) {
+                            let id = changeBinding.wrappedValue.id
+                            changes.removeAll { $0.id == id }
+                        }
+                    }
+                }
 
-            if !draft.appreciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Label(draft.appreciation, systemImage: "heart")
-            }
+                Button {
+                    changes.append(OwnershipChange(title: "", owner: .shared, reason: "Reviewed in the weekly check-in."))
+                } label: {
+                    Label("Add Ownership Change", systemImage: "plus")
+                }
 
-            if saved {
-                Label("Check-in saved", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                if !draft.appreciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Label(draft.appreciation, systemImage: "heart")
+                }
+
+                if let saveErrorMessage {
+                    Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                }
+            } header: {
+                Text("Review changes")
+            } footer: {
+                Text("Only the changes listed here will update the board. Remove anything that does not look right.")
             }
-        } header: {
-            Text("1-3 concrete changes")
-        } footer: {
-            Text("FairNest keeps this practical: ownership changes only, no diagnosis or advice.")
         }
     }
 
     private func advance() {
+        if saved {
+            reset()
+            return
+        }
+
         if step == 3 {
             changes = WeeklyCheckInEngine.generateChanges(from: draft, cards: cardStore.activeCards)
+            saveErrorMessage = nil
             step += 1
             return
         }
@@ -153,41 +191,109 @@ struct WeeklyCheckInView: View {
 
     private func save() {
         guard !saved else { return }
+        let finalChanges = reviewedChanges
         let record = CheckInRecord(
-            feltHeavy: draft.feltHeavy,
-            gotDone: draft.gotDone,
-            needsOwnership: draft.needsOwnership,
-            appreciation: draft.appreciation,
-            changes: changes
+            feltHeavy: draft.feltHeavy.trimmingCharacters(in: .whitespacesAndNewlines),
+            gotDone: draft.gotDone.trimmingCharacters(in: .whitespacesAndNewlines),
+            needsOwnership: draft.needsOwnership.trimmingCharacters(in: .whitespacesAndNewlines),
+            appreciation: draft.appreciation.trimmingCharacters(in: .whitespacesAndNewlines),
+            changes: finalChanges
         )
-        checkInStore.save(record)
-        apply(changes)
-        saved = true
-    }
 
-    private func apply(_ changes: [OwnershipChange]) {
-        for change in changes {
-            let changeTitle = change.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !changeTitle.isEmpty else { continue }
-            if let match = cardStore.activeCards.first(where: { card in titlesMatch(card.title, changeTitle) }) {
-                cardStore.reassign(id: match.id, to: change.owner)
-            } else {
-                let suggestion = BrainDumpSuggestion(
-                    title: changeTitle,
-                    type: .task,
-                    owner: change.owner,
-                    effort: .medium,
-                    doneCriteria: "Ownership is clear for this week."
-                )
-                _ = cardStore.add(suggestion)
+        let previousCards = cardStore.cards
+        let updatedCards = WeeklyCheckInEngine.cardsAfterApplying(finalChanges, to: previousCards)
+
+        do {
+            if updatedCards != previousCards {
+                try cardStore.replaceAllThrowing(with: updatedCards)
             }
+
+            do {
+                try checkInStore.save(record)
+            } catch {
+                if updatedCards != previousCards {
+                    try? cardStore.replaceAllThrowing(with: previousCards)
+                }
+                throw error
+            }
+
+            changes = finalChanges
+            saved = true
+            saveErrorMessage = nil
+        } catch {
+            saveErrorMessage = error.localizedDescription
         }
     }
 
-    private func titlesMatch(_ cardTitle: String, _ changeTitle: String) -> Bool {
-        let normalizedCardTitle = cardTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedCardTitle.isEmpty else { return false }
-        return normalizedCardTitle.localizedCaseInsensitiveContains(changeTitle) ||
-            changeTitle.localizedCaseInsensitiveContains(normalizedCardTitle)
+    private var primaryActionTitle: String {
+        if saved && step == steps.count - 1 {
+            return "New"
+        }
+        return step == steps.count - 1 ? "Save" : "Next"
+    }
+
+    private var reviewedChanges: [OwnershipChange] {
+        changes.compactMap { change in
+            let title = change.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return nil }
+            let reason = change.reason.trimmingCharacters(in: .whitespacesAndNewlines)
+            return OwnershipChange(
+                id: change.id,
+                title: title,
+                owner: change.owner,
+                reason: reason.isEmpty ? "Reviewed in the weekly check-in." : reason
+            )
+        }
+    }
+
+    private var isEmptyCheckIn: Bool {
+        [
+            draft.feltHeavy,
+            draft.gotDone,
+            draft.needsOwnership,
+            draft.appreciation
+        ].allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    private func reset() {
+        step = 0
+        draft = WeeklyCheckInDraft()
+        changes = []
+        saved = false
+        saveErrorMessage = nil
+    }
+}
+
+private struct OwnershipChangeReviewRow: View {
+    @Binding var change: OwnershipChange
+    var onDelete: () -> Void
+
+    private let owners: [CardOwner] = [.me, .partner, .shared]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Responsibility", text: $change.title, axis: .vertical)
+                .font(.headline)
+                .accessibilityIdentifier("checkInOwnershipTitle")
+
+            Picker("Owner", selection: $change.owner) {
+                ForEach(owners) { owner in
+                    Text(owner.label).tag(owner)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text(change.reason)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Remove Change", systemImage: "trash")
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.vertical, 4)
     }
 }

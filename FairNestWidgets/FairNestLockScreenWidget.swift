@@ -51,8 +51,8 @@ struct FairNestLockScreenWidgetView: View {
             let count = entry.snapshot.todayCards.count
             return count == 0 ? "Nothing due today" : "\(count) due today"
         case .week:
-            let open = entry.snapshot.cards.filter { $0.status != .done }.count
-            return "\(open) open, effort \(entry.snapshot.weeklyEffort)"
+            let open = entry.snapshot.weeklyCards(now: entry.date).count
+            return "\(open) open, effort \(entry.snapshot.weeklyEffortScore(now: entry.date))"
         }
     }
 }
