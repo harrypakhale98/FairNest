@@ -40,6 +40,14 @@ protocol SyncService: AnyObject {
     func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>)
 }
 
+struct CloudKitHouseholdErasedError: LocalizedError, Equatable {
+    var erasedAt: Date
+
+    var errorDescription: String? {
+        "This shared household was erased from iCloud. FairNest kept this iPhone from re-uploading old household cards."
+    }
+}
+
 @MainActor
 final class CloudKitSyncService: ObservableObject, SyncService {
     @Published private(set) var status: SyncStatus = .checking
@@ -101,7 +109,12 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let privateDatabase = container.privateCloudDatabase
         let sharedDatabase = container.sharedCloudDatabase
         preferredSharedZoneID = preferredSharedZoneID ?? CloudKitHouseholdSelection.selectedSharedZoneID()
+        let privateZoneID = CloudKitCardMapper.zoneID()
         try await ensureHouseholdZone(in: privateDatabase)
+        try await throwIfHouseholdWasErased(in: privateDatabase, zoneID: privateZoneID, clearsSharedSelection: false)
+        if let preferredSharedZoneID {
+            try await throwIfHouseholdWasErased(in: sharedDatabase, zoneID: preferredSharedZoneID, clearsSharedSelection: true)
+        }
 
         var privateRecords: [CKRecord] = []
         var sharedRecordsByZone: [(zoneID: CKRecordZone.ID, records: [CKRecord])] = []
@@ -114,7 +127,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             }
         }
 
-        for card in cards {
+        for card in cards where !CloudKitCardMapper.isHouseholdErasureMarker(card.id) {
             switch recordLocations[card.id]?.scope {
             case .sharedDatabase:
                 let zoneID = recordLocations[card.id]?.zoneID ?? CloudKitCardMapper.zoneID()
@@ -167,10 +180,14 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let container = containerProvider()
         let privateDatabase = container.privateCloudDatabase
         let sharedDatabase = container.sharedCloudDatabase
+        let erasedAt = Date()
         var deletionProgress = CloudKitHouseholdDeletionProgress()
 
         do {
-            try await deletePrivateHouseholdZone(in: privateDatabase)
+            let privateZoneID = CloudKitCardMapper.zoneID()
+            try await ensureHouseholdZone(in: privateDatabase)
+            try await deleteCardRecords(in: privateDatabase, zoneID: privateZoneID)
+            try await saveHouseholdErasureMarker(in: privateDatabase, zoneID: privateZoneID, erasedAt: erasedAt)
             deletionProgress.markDeletedData()
         } catch let error as CKError where error.code == .zoneNotFound {
             // Nothing private exists for this account.
@@ -184,6 +201,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         do {
             if let zoneID = try await activeSharedHouseholdZoneID(in: sharedDatabase) {
                 try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
+                try await saveHouseholdErasureMarker(in: sharedDatabase, zoneID: zoneID, erasedAt: erasedAt)
                 deletionProgress.markDeletedData()
             }
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
@@ -200,7 +218,8 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             throw error
         }
 
-        preferredSharedZoneID = nil
+        CloudKitHouseholdErasureState.acknowledge(erasedAt)
+        forgetSharedHouseholdSelection()
         status = .available
     }
 
@@ -227,11 +246,6 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         } catch let error as CKError where error.code == .zoneNotFound {
             _ = try await database.save(CKRecordZone(zoneID: zoneID))
         }
-    }
-
-    private func deletePrivateHouseholdZone(in database: CKDatabase) async throws {
-        let zoneID = CloudKitCardMapper.zoneID()
-        _ = try await database.modifyRecordZones(saving: [], deleting: [zoneID])
     }
 
     private func householdZoneIDs(in database: CKDatabase) async throws -> [CKRecordZone.ID] {
@@ -267,6 +281,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     ) throws {
         for (recordID, result) in results {
             _ = try result.get()
+            guard !CloudKitCardMapper.isHouseholdErasureMarker(recordID) else { continue }
             recordIDs.append(recordID)
         }
     }
@@ -293,8 +308,10 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     }
 
     private func fetchPrivateCards(in database: CKDatabase) async throws -> [LoadCard] {
+        let zoneID = CloudKitCardMapper.zoneID()
         try await ensureHouseholdZone(in: database)
-        return try await fetchCards(in: database, zoneID: CloudKitCardMapper.zoneID(), scope: .privateDatabase)
+        try await throwIfHouseholdWasErased(in: database, zoneID: zoneID, clearsSharedSelection: false)
+        return try await fetchCards(in: database, zoneID: zoneID, scope: .privateDatabase)
     }
 
     private func fetchSharedCards(in database: CKDatabase) async throws -> [LoadCard] {
@@ -302,9 +319,15 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             guard let zoneID = try await activeSharedHouseholdZoneID(in: database) else {
                 return []
             }
+            try await throwIfHouseholdWasErased(in: database, zoneID: zoneID, clearsSharedSelection: true)
             return try await fetchCards(in: database, zoneID: zoneID, scope: .sharedDatabase)
+        } catch let error as CloudKitHouseholdErasedError {
+            throw error
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
-            preferredSharedZoneID = nil
+            forgetSharedHouseholdSelection()
+            return []
+        } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
+            forgetSharedHouseholdSelection()
             return []
         }
     }
@@ -322,11 +345,47 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         }
         var cards: [LoadCard] = []
         for record in records {
+            guard !CloudKitCardMapper.isHouseholdErasureMarker(record.recordID) else { continue }
             let card = try CloudKitCardMapper.card(from: record)
             recordLocations[card.id] = CloudKitRecordLocation(scope: scope, zoneID: record.recordID.zoneID)
             cards.append(card)
         }
         return cards
+    }
+
+    private func throwIfHouseholdWasErased(
+        in database: CKDatabase,
+        zoneID: CKRecordZone.ID,
+        clearsSharedSelection: Bool
+    ) async throws {
+        guard let erasedAt = try await householdErasureDate(in: database, zoneID: zoneID),
+              CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt) else {
+            return
+        }
+        if clearsSharedSelection {
+            forgetSharedHouseholdSelection()
+        }
+        status = .pending
+        throw CloudKitHouseholdErasedError(erasedAt: erasedAt)
+    }
+
+    private func householdErasureDate(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws -> Date? {
+        let recordID = CloudKitCardMapper.householdErasureMarkerRecordID(zoneID: zoneID)
+        do {
+            let record = try await database.record(for: recordID)
+            return CloudKitCardMapper.householdErasureDate(from: record)
+        } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
+            return nil
+        }
+    }
+
+    private func saveHouseholdErasureMarker(
+        in database: CKDatabase,
+        zoneID: CKRecordZone.ID,
+        erasedAt: Date
+    ) async throws {
+        let record = try CloudKitCardMapper.householdErasureMarkerRecord(erasedAt: erasedAt, zoneID: zoneID)
+        _ = try await database.save(record)
     }
 
     private func save(_ records: [CKRecord], in database: CKDatabase, scope: CloudKitDatabaseScope) async throws {
@@ -348,6 +407,14 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         }
     }
 
+    private func forgetSharedHouseholdSelection() {
+        preferredSharedZoneID = nil
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
+        recordLocations = recordLocations.filter { _, location in
+            location.scope != .sharedDatabase
+        }
+    }
+
     func isPinnedToPrivateDatabaseForTesting(_ cardID: UUID) -> Bool {
         recordLocations[cardID]?.scope == .privateDatabase
     }
@@ -362,6 +429,25 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             ProcessInfo.processInfo.arguments.contains("-disableCloudKit") {
             throw CloudKitRuntimeError.disabledForTesting
         }
+    }
+}
+
+enum CloudKitHouseholdErasureState {
+    static let acknowledgedErasedAtKey = "acknowledgedCloudKitHouseholdErasedAt"
+
+    static func requiresAcknowledgement(_ erasedAt: Date, defaults: UserDefaults = .standard) -> Bool {
+        guard let acknowledgedAt = defaults.object(forKey: acknowledgedErasedAtKey) as? Date else {
+            return true
+        }
+        return erasedAt > acknowledgedAt
+    }
+
+    static func acknowledge(_ erasedAt: Date, defaults: UserDefaults = .standard) {
+        if let acknowledgedAt = defaults.object(forKey: acknowledgedErasedAtKey) as? Date,
+           erasedAt <= acknowledgedAt {
+            return
+        }
+        defaults.set(erasedAt, forKey: acknowledgedErasedAtKey)
     }
 }
 

@@ -156,6 +156,8 @@ final class AppServices: ObservableObject {
             }
             writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
+        } catch let error as CloudKitHouseholdErasedError {
+            await handleRemoteHouseholdErasure(error)
         } catch {
             suppressNextCardPush = false
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: true)
@@ -217,6 +219,8 @@ final class AppServices: ObservableObject {
             try await syncEngine.upload(cards: finalCards)
             writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
+        } catch let error as CloudKitHouseholdErasedError {
+            await handleRemoteHouseholdErasure(error)
         } catch {
             suppressNextCardPush = false
             writeWidgetSnapshot(cards: cards, syncPending: true)
@@ -268,6 +272,23 @@ final class AppServices: ObservableObject {
             WidgetSnapshotStore.write(cards: cards, syncPending: syncPending)
         }
         WidgetSnapshotStore.reloadTimelines()
+    }
+
+    private func handleRemoteHouseholdErasure(_ error: CloudKitHouseholdErasedError) async {
+        iCloudSyncEnabled = false
+        pendingCardsForPush = nil
+        suppressNextCardPush = true
+        CloudKitHouseholdErasureState.acknowledge(error.erasedAt)
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
+        do {
+            try cardStore.replaceAllThrowing(with: [])
+            await reminderScheduler.cancelAllFairNestReminders()
+            writeWidgetSnapshot(cards: [], syncPending: false)
+            lastSyncMessage = FairNestIssueCopy.sharedHouseholdErased
+        } catch {
+            writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
+            lastSyncMessage = FairNestIssueCopy.localCardSaveFailure
+        }
     }
 
     private func protectCurrentLocalCardsFromSharedUpload() {

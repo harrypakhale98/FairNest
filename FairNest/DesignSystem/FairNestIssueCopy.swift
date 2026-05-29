@@ -17,6 +17,7 @@ enum FairNestIssueCopy {
     static let clearExportFailure = "FairNest couldn't clear the temporary export file. Try again from this screen."
     static let localDeleteFailure = "FairNest couldn't delete all local data. Nothing was uploaded, and iCloud Sync remains off."
     static let sharedDeleteFailure = "FairNest couldn't finish deleting shared household data. Check iCloud and try again."
+    static let sharedHouseholdErased = "Shared household data was erased from iCloud. FairNest turned sync off on this iPhone so old cards are not uploaded again."
 
     static func boardOperationFailure(actionDescription: String) -> String {
         "FairNest couldn't \(actionDescription). Try again."

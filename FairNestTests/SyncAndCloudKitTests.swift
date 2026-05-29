@@ -1,5 +1,6 @@
 import CloudKit
 import XCTest
+import UserNotifications
 @testable import FairNest
 
 final class SyncAndCloudKitTests: XCTestCase {
@@ -43,6 +44,23 @@ final class SyncAndCloudKitTests: XCTestCase {
 
         XCTAssertEqual(record.recordID.zoneID.zoneName, CloudKitCardMapper.zoneName)
         XCTAssertEqual(record.recordID.recordName, card.id.uuidString)
+    }
+
+    func testHouseholdErasureMarkerUsesExistingCardSchemaWithoutUserContent() throws {
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let record = try CloudKitCardMapper.householdErasureMarkerRecord(
+            erasedAt: erasedAt,
+            zoneID: CloudKitCardMapper.zoneID()
+        )
+
+        XCTAssertTrue(CloudKitCardMapper.isHouseholdErasureMarker(record.recordID))
+        XCTAssertEqual(CloudKitCardMapper.householdErasureDate(from: record), erasedAt)
+
+        let marker = try CloudKitCardMapper.card(from: record)
+        XCTAssertTrue(CloudKitCardMapper.isHouseholdErasureMarker(marker.id))
+        XCTAssertEqual(marker.title, "")
+        XCTAssertTrue(marker.isDeleted)
+        XCTAssertEqual(marker.updatedAt, erasedAt)
     }
 
     func testSharedHouseholdZoneSelectionRequiresRememberedOwnerWhenMultipleSharesExist() {
@@ -180,6 +198,49 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(cardStore.cards.first?.title, "Newer remote")
     }
 
+    @MainActor
+    func testRemoteHouseholdErasureClearsLocalCardsAndStopsReupload() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousErasureAck = UserDefaults.standard.object(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousErasureAck {
+                UserDefaults.standard.set(previousErasureAck, forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        _ = cardStore.add(BrainDumpSuggestion(title: "Stale shared card", type: .task))
+        let reminderScheduler = ErasureReminderScheduler()
+        let syncEngine = CapturingSyncEngine(
+            status: .available,
+            remoteCards: [],
+            fetchError: CloudKitHouseholdErasedError(erasedAt: erasedAt)
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            reminderScheduler: reminderScheduler,
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        await services.syncCardsIfAvailable()
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertTrue(cardStore.cards.isEmpty)
+        XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
+        XCTAssertTrue(reminderScheduler.cancelledAllFairNestReminders)
+        XCTAssertFalse(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt))
+    }
+
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
     }
@@ -195,13 +256,15 @@ private struct TestCloudKitPartialFailure: LocalizedError {
 private final class CapturingSyncEngine: SyncService {
     var status: SyncStatus
     var remoteCards: [LoadCard]
+    var fetchError: Error?
     var uploadedBatches: [[LoadCard]] = []
     var fetchCount = 0
     var pinnedCardIDs = Set<UUID>()
 
-    init(status: SyncStatus, remoteCards: [LoadCard]) {
+    init(status: SyncStatus, remoteCards: [LoadCard], fetchError: Error? = nil) {
         self.status = status
         self.remoteCards = remoteCards
+        self.fetchError = fetchError
     }
 
     func refreshStatus() async {}
@@ -216,6 +279,9 @@ private final class CapturingSyncEngine: SyncService {
 
     func fetchCards() async throws -> [LoadCard] {
         fetchCount += 1
+        if let fetchError {
+            throw fetchError
+        }
         return remoteCards
     }
 
@@ -231,5 +297,32 @@ private final class CapturingSyncEngine: SyncService {
 
     func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>) {
         pinnedCardIDs.formUnion(cardIDs)
+    }
+}
+
+@MainActor
+private final class ErasureReminderScheduler: ReminderScheduler {
+    var cancelledAllFairNestReminders = false
+
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        .authorized
+    }
+
+    func requestAuthorization() async throws -> Bool {
+        true
+    }
+
+    func pendingFairNestReminderIdentifiers() async -> [String] {
+        []
+    }
+
+    func scheduleDueTask(_ card: LoadCard) async throws {}
+
+    func scheduleWeeklyCheckIn(weekday: Int, hour: Int, minute: Int) async throws {}
+
+    func cancelReminder(for cardID: UUID) async {}
+
+    func cancelAllFairNestReminders() async {
+        cancelledAllFairNestReminders = true
     }
 }

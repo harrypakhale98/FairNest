@@ -4,6 +4,7 @@ import Foundation
 enum CloudKitCardMapper {
     static let recordType = "LoadCard"
     static let zoneName = "FairNestHousehold"
+    static let householdErasureMarkerID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
     static func zoneID(ownerName: String = CKCurrentUserDefaultName) -> CKRecordZone.ID {
         CKRecordZone.ID(zoneName: zoneName, ownerName: ownerName)
@@ -11,6 +12,44 @@ enum CloudKitCardMapper {
 
     static func recordID(for card: LoadCard, ownerName: String = CKCurrentUserDefaultName) -> CKRecord.ID {
         CKRecord.ID(recordName: card.id.uuidString, zoneID: zoneID(ownerName: ownerName))
+    }
+
+    static func isHouseholdErasureMarker(_ id: UUID) -> Bool {
+        id == householdErasureMarkerID
+    }
+
+    static func isHouseholdErasureMarker(_ recordID: CKRecord.ID) -> Bool {
+        recordID.recordName == householdErasureMarkerID.uuidString
+    }
+
+    static func householdErasureMarkerRecordID(zoneID: CKRecordZone.ID) -> CKRecord.ID {
+        CKRecord.ID(recordName: householdErasureMarkerID.uuidString, zoneID: zoneID)
+    }
+
+    static func householdErasureMarkerRecord(erasedAt: Date, zoneID: CKRecordZone.ID) throws -> CKRecord {
+        let marker = LoadCard(
+            id: householdErasureMarkerID,
+            title: "",
+            type: .task,
+            owner: .shared,
+            status: .done,
+            effort: .tiny,
+            dueDate: nil,
+            recurrence: .none,
+            notes: "",
+            doneCriteria: "",
+            createdBy: .system,
+            createdAt: erasedAt,
+            modifiedBy: .system,
+            updatedAt: erasedAt,
+            deletedAt: erasedAt
+        )
+        return try record(from: marker, zoneID: zoneID)
+    }
+
+    static func householdErasureDate(from record: CKRecord) -> Date? {
+        guard isHouseholdErasureMarker(record.recordID) else { return nil }
+        return record["deletedAt"] as? Date ?? record["updatedAt"] as? Date
     }
 
     static func record(from card: LoadCard, ownerName: String = CKCurrentUserDefaultName) throws -> CKRecord {
