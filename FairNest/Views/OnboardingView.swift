@@ -95,7 +95,7 @@ struct OnboardingView: View {
                 .accessibilityIdentifier("onboardingContinue")
 
                 Button("Back") {
-                    step = max(0, step - 1)
+                    goBack()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
@@ -106,7 +106,7 @@ struct OnboardingView: View {
         } else {
             HStack {
                 Button("Back") {
-                    step = max(0, step - 1)
+                    goBack()
                 }
                 .disabled(step == 0)
 
@@ -121,6 +121,11 @@ struct OnboardingView: View {
             }
             .padding()
         }
+    }
+
+    private func goBack() {
+        dismissKeyboard()
+        step = max(0, step - 1)
     }
 
     private func stepIntro(title: String, symbol: String, text: String) -> some View {

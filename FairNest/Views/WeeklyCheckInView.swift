@@ -54,8 +54,7 @@ struct WeeklyCheckInView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     if !saved {
                         Button("Back") {
-                            step = max(0, step - 1)
-                            saveErrorMessage = nil
+                            goBack()
                         }
                         .disabled(step == 0)
                     }
@@ -222,6 +221,12 @@ struct WeeklyCheckInView: View {
                 Text("Only the changes listed here will update the board. Remove anything that does not look right.")
             }
         }
+    }
+
+    private func goBack() {
+        dismissKeyboard()
+        step = max(0, step - 1)
+        saveErrorMessage = nil
     }
 
     private func advance() {
