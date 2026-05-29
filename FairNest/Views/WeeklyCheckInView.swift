@@ -1,5 +1,12 @@
 import SwiftUI
 
+private enum WeeklyCheckInFocus: Hashable {
+    case feltHeavy
+    case gotDone
+    case needsOwnership
+    case appreciation
+}
+
 struct WeeklyCheckInView: View {
     @EnvironmentObject private var cardStore: LocalCardStore
     @EnvironmentObject private var checkInStore: LocalCheckInStore
@@ -8,6 +15,8 @@ struct WeeklyCheckInView: View {
     @State private var changes: [OwnershipChange] = []
     @State private var saved = false
     @State private var saveErrorMessage: String?
+    @State private var showsEmptyCheckInConfirmation = false
+    @FocusState private var focusedPrompt: WeeklyCheckInFocus?
 
     private let steps = [
         "What felt heavy",
@@ -32,6 +41,7 @@ struct WeeklyCheckInView: View {
                 currentStep
             }
             .navigationTitle("Weekly Check-In")
+            .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if !saved {
@@ -49,6 +59,22 @@ struct WeeklyCheckInView: View {
                     }
                     .accessibilityIdentifier("checkInNext")
                 }
+
+                ToolbarItem(placement: .keyboard) {
+                    Button("Done") {
+                        focusedPrompt = nil
+                    }
+                    .accessibilityIdentifier("dismissCheckInKeyboard")
+                }
+            }
+            .alert("Save Empty Check-In?", isPresented: $showsEmptyCheckInConfirmation) {
+                Button("Save Empty Check-In") {
+                    save()
+                }
+
+                Button("Keep Editing", role: .cancel) {}
+            } message: {
+                Text("This will save a blank local reflection with no board changes.")
             }
         }
     }
@@ -61,40 +87,51 @@ struct WeeklyCheckInView: View {
                 text: $draft.feltHeavy,
                 prompt: "Name the household work that felt heavy this week.",
                 placeholder: "Example: meal planning, laundry backlog, remembering appointments",
-                identifier: "checkInFeltHeavy"
+                identifier: "checkInFeltHeavy",
+                focus: .feltHeavy
             )
         case 1:
             promptSection(
                 text: $draft.gotDone,
                 prompt: "Capture what got done.",
                 placeholder: "Example: bills paid, fridge cleaned, birthday gift ordered",
-                identifier: "checkInGotDone"
+                identifier: "checkInGotDone",
+                focus: .gotDone
             )
         case 2:
             promptSection(
                 text: $draft.needsOwnership,
                 prompt: "Name one to three things that need clearer ownership.",
                 placeholder: "Example: partner owns trash night; I own school forms",
-                identifier: "checkInNeedsOwnership"
+                identifier: "checkInNeedsOwnership",
+                focus: .needsOwnership
             )
         case 3:
             promptSection(
                 text: $draft.appreciation,
                 prompt: "Save one appreciation.",
                 placeholder: "Example: Thanks for handling dinner on Tuesday",
-                identifier: "checkInAppreciation"
+                identifier: "checkInAppreciation",
+                focus: .appreciation
             )
         default:
             confirmSection
         }
     }
 
-    private func promptSection(text: Binding<String>, prompt: String, placeholder: String, identifier: String) -> some View {
+    private func promptSection(
+        text: Binding<String>,
+        prompt: String,
+        placeholder: String,
+        identifier: String,
+        focus: WeeklyCheckInFocus
+    ) -> some View {
         Section {
             Text(prompt)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)
             TextEditor(text: text)
+                .focused($focusedPrompt, equals: focus)
                 .frame(minHeight: 140)
                 .accessibilityLabel(prompt)
                 .accessibilityHint(placeholder)
@@ -188,6 +225,10 @@ struct WeeklyCheckInView: View {
         }
 
         if step == steps.count - 1 {
+            if requiresEmptyCheckInConfirmation {
+                showsEmptyCheckInConfirmation = true
+                return
+            }
             save()
             return
         }
@@ -261,12 +302,18 @@ struct WeeklyCheckInView: View {
         ].allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
+    private var requiresEmptyCheckInConfirmation: Bool {
+        isEmptyCheckIn && reviewedChanges.isEmpty
+    }
+
     private func reset() {
         step = 0
         draft = WeeklyCheckInDraft()
         changes = []
         saved = false
         saveErrorMessage = nil
+        showsEmptyCheckInConfirmation = false
+        focusedPrompt = nil
     }
 }
 

@@ -134,6 +134,29 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Trash"].waitForExistence(timeout: 3))
     }
 
+    func testWeeklyCheckInConfirmsBeforeSavingEmptyReflection() {
+        let app = launchCompletedApp()
+
+        app.tabBars.buttons["Check-In"].tap()
+
+        let nextButton = app.buttons["checkInNext"]
+        XCTAssertTrue(nextButton.waitForExistence(timeout: 3))
+        nextButton.tap()
+        nextButton.tap()
+        nextButton.tap()
+        nextButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Empty check-in"].waitForExistence(timeout: 3))
+        nextButton.tap()
+        XCTAssertTrue(app.staticTexts["Save Empty Check-In?"].waitForExistence(timeout: 3))
+        app.buttons["Keep Editing"].tap()
+        XCTAssertFalse(app.staticTexts["Check-in saved"].exists)
+
+        nextButton.tap()
+        app.buttons["Save Empty Check-In"].tap()
+        XCTAssertTrue(app.staticTexts["Check-in saved"].waitForExistence(timeout: 3))
+    }
+
     private func launchCompletedApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
