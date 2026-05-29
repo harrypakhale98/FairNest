@@ -244,6 +244,16 @@ enum Recurrence: Codable, Equatable, Hashable {
     }
 }
 
+enum CardSyncOrigin: String, Codable, Equatable, Hashable {
+    case local
+    case privateCloud
+    case sharedCloud
+
+    var isSharedCloud: Bool {
+        self == .sharedCloud
+    }
+}
+
 struct LoadCard: Identifiable, Codable, Equatable, Hashable {
     var id: UUID
     var title: String
@@ -260,6 +270,7 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
     var modifiedBy: HouseholdMember
     var updatedAt: Date
     var deletedAt: Date?
+    var syncOrigin: CardSyncOrigin
 
     init(
         id: UUID = UUID(),
@@ -276,7 +287,8 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
         createdAt: Date = Date(),
         modifiedBy: HouseholdMember = .me,
         updatedAt: Date = Date(),
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        syncOrigin: CardSyncOrigin = .local
     ) {
         self.id = id
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -293,6 +305,68 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
         self.modifiedBy = modifiedBy
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
+        self.syncOrigin = syncOrigin
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case type
+        case owner
+        case status
+        case effort
+        case dueDate
+        case recurrence
+        case notes
+        case doneCriteria
+        case createdBy
+        case createdAt
+        case modifiedBy
+        case updatedAt
+        case deletedAt
+        case syncOrigin
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(UUID.self, forKey: .id),
+            title: try container.decode(String.self, forKey: .title),
+            type: try container.decode(CardType.self, forKey: .type),
+            owner: try container.decode(CardOwner.self, forKey: .owner),
+            status: try container.decode(CardStatus.self, forKey: .status),
+            effort: try container.decode(Effort.self, forKey: .effort),
+            dueDate: try container.decodeIfPresent(Date.self, forKey: .dueDate),
+            recurrence: try container.decode(Recurrence.self, forKey: .recurrence),
+            notes: try container.decode(String.self, forKey: .notes),
+            doneCriteria: try container.decode(String.self, forKey: .doneCriteria),
+            createdBy: try container.decode(HouseholdMember.self, forKey: .createdBy),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            modifiedBy: try container.decode(HouseholdMember.self, forKey: .modifiedBy),
+            updatedAt: try container.decode(Date.self, forKey: .updatedAt),
+            deletedAt: try container.decodeIfPresent(Date.self, forKey: .deletedAt),
+            syncOrigin: try container.decodeIfPresent(CardSyncOrigin.self, forKey: .syncOrigin) ?? .local
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(type, forKey: .type)
+        try container.encode(owner, forKey: .owner)
+        try container.encode(status, forKey: .status)
+        try container.encode(effort, forKey: .effort)
+        try container.encodeIfPresent(dueDate, forKey: .dueDate)
+        try container.encode(recurrence, forKey: .recurrence)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(doneCriteria, forKey: .doneCriteria)
+        try container.encode(createdBy, forKey: .createdBy)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(modifiedBy, forKey: .modifiedBy)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+        try container.encode(syncOrigin, forKey: .syncOrigin)
     }
 
     var isDeleted: Bool { deletedAt != nil }
@@ -315,7 +389,8 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
             createdAt: markerDate,
             modifiedBy: .system,
             updatedAt: markerDate,
-            deletedAt: markerDate
+            deletedAt: markerDate,
+            syncOrigin: syncOrigin
         )
     }
 

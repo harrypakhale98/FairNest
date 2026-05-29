@@ -39,6 +39,13 @@ protocol SyncService: AnyObject {
     func deleteSharedHouseholdData() async throws -> CloudKitHouseholdDeletionResult
     func acceptShare(metadata: CKShare.Metadata) async throws
     func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>)
+    func applyingKnownCloudOrigins(to cards: [LoadCard]) -> [LoadCard]
+}
+
+extension SyncService {
+    func applyingKnownCloudOrigins(to cards: [LoadCard]) -> [LoadCard] {
+        cards
+    }
 }
 
 struct CloudKitHouseholdErasedError: LocalizedError, Equatable {
@@ -184,7 +191,9 @@ final class CloudKitSyncService: ObservableObject, SyncService {
                 let zoneID = recordLocations[card.id]?.zoneID ?? CloudKitCardMapper.zoneID()
                 privateWrites.append(CloudKitRecordWrite(card: card, zoneID: zoneID))
             case nil:
-                if let sharedZoneID = preferredSharedZoneID {
+                if card.syncOrigin == .privateCloud {
+                    privateWrites.append(CloudKitRecordWrite(card: card, zoneID: CloudKitCardMapper.zoneID()))
+                } else if let sharedZoneID = preferredSharedZoneID {
                     appendSharedWrite(CloudKitRecordWrite(card: card, zoneID: sharedZoneID), zoneID: sharedZoneID)
                 } else {
                     privateWrites.append(CloudKitRecordWrite(card: card, zoneID: CloudKitCardMapper.zoneID()))
@@ -221,6 +230,15 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let zoneID = CloudKitCardMapper.zoneID()
         for cardID in cardIDs where recordLocations[cardID] == nil {
             recordLocations[cardID] = CloudKitRecordLocation(scope: .privateDatabase, zoneID: zoneID)
+        }
+    }
+
+    func applyingKnownCloudOrigins(to cards: [LoadCard]) -> [LoadCard] {
+        cards.map { card in
+            guard let location = recordLocations[card.id] else { return card }
+            var copy = card
+            copy.syncOrigin = location.syncOrigin
+            return copy
         }
     }
 
@@ -448,7 +466,8 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         var cards: [LoadCard] = []
         for record in records {
             guard !CloudKitCardMapper.isHouseholdErasureMarker(record.recordID) else { continue }
-            let card = try CloudKitCardMapper.card(from: record)
+            var card = try CloudKitCardMapper.card(from: record)
+            card.syncOrigin = scope.syncOrigin
             recordLocations[card.id] = CloudKitRecordLocation(scope: scope, zoneID: record.recordID.zoneID)
             cards.append(card)
         }
@@ -665,11 +684,22 @@ private struct CloudKitHouseholdZoneDeletionExecutor: CloudKitHouseholdDeletionE
 private enum CloudKitDatabaseScope {
     case privateDatabase
     case sharedDatabase
+
+    var syncOrigin: CardSyncOrigin {
+        switch self {
+        case .privateDatabase: return .privateCloud
+        case .sharedDatabase: return .sharedCloud
+        }
+    }
 }
 
 private struct CloudKitRecordLocation {
     var scope: CloudKitDatabaseScope
     var zoneID: CKRecordZone.ID
+
+    var syncOrigin: CardSyncOrigin {
+        scope.syncOrigin
+    }
 }
 
 private struct CloudKitRecordWrite {
@@ -790,21 +820,47 @@ enum ConflictResolver {
     }
 
     static func resolve(local: LoadCard, remote: LoadCard) -> LoadCard {
+        let resolved: LoadCard
         if local.isDeleted != remote.isDeleted {
             let localDate = conflictDate(for: local)
             let remoteDate = conflictDate(for: remote)
-            if localDate > remoteDate { return local }
-            if remoteDate > localDate { return remote }
-            return local.isDeleted ? local : remote
+            if localDate > remoteDate {
+                resolved = local
+            } else if remoteDate > localDate {
+                resolved = remote
+            } else {
+                resolved = local.isDeleted ? local : remote
+            }
+            return resolved.withPreservedSyncOrigin(local: local, remote: remote)
         }
-        if remote.updatedAt > local.updatedAt { return remote }
-        if local.updatedAt > remote.updatedAt { return local }
-        return local
+        if remote.updatedAt > local.updatedAt {
+            resolved = remote
+        } else if local.updatedAt > remote.updatedAt {
+            resolved = local
+        } else {
+            resolved = local
+        }
+        return resolved.withPreservedSyncOrigin(local: local, remote: remote)
     }
 
     private static func conflictDate(for card: LoadCard) -> Date {
         guard card.isDeleted else { return card.updatedAt }
         guard let deletedAt = card.deletedAt else { return card.updatedAt }
         return max(deletedAt, card.updatedAt)
+    }
+}
+
+private extension LoadCard {
+    func withPreservedSyncOrigin(local: LoadCard, remote: LoadCard) -> LoadCard {
+        var copy = self
+        if copy.syncOrigin != .local {
+            return copy
+        }
+        if remote.syncOrigin != .local {
+            copy.syncOrigin = remote.syncOrigin
+        } else {
+            copy.syncOrigin = local.syncOrigin
+        }
+        return copy
     }
 }

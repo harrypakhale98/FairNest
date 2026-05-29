@@ -1,4 +1,5 @@
 import Foundation
+import CloudKit
 import SwiftUI
 import UserNotifications
 
@@ -177,12 +178,13 @@ final class AppServices: ObservableObject {
             let merged = syncEngine.merge(local: localBeforeFetch, remote: remote)
             try await syncEngine.upload(cards: merged)
             let currentLocal = cardStore.cards
-            let finalCards = currentLocal == localBeforeFetch ? merged : syncEngine.merge(local: currentLocal, remote: merged)
+            var finalCards = currentLocal == localBeforeFetch ? merged : syncEngine.merge(local: currentLocal, remote: merged)
             suppressNextCardPush = true
-            try cardStore.replaceAllThrowing(with: finalCards)
             if finalCards != merged {
                 try await syncEngine.upload(cards: finalCards)
             }
+            finalCards = syncEngine.applyingKnownCloudOrigins(to: finalCards)
+            try cardStore.replaceAllThrowing(with: finalCards)
             writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
         } catch let error as CloudKitHouseholdErasedError {
@@ -250,12 +252,17 @@ final class AppServices: ObservableObject {
             let remote = try await syncEngine.fetchCards()
             let merged = syncEngine.merge(local: localBeforeFetch, remote: remote)
             let currentLocal = cardStore.cards
-            let finalCards = currentLocal == localBeforeFetch ? merged : syncEngine.merge(local: currentLocal, remote: merged)
+            var finalCards = currentLocal == localBeforeFetch ? merged : syncEngine.merge(local: currentLocal, remote: merged)
             if finalCards != currentLocal {
                 suppressNextCardPush = true
                 try cardStore.replaceAllThrowing(with: finalCards)
             }
             try await syncEngine.upload(cards: finalCards)
+            finalCards = syncEngine.applyingKnownCloudOrigins(to: finalCards)
+            if finalCards != cardStore.cards {
+                suppressNextCardPush = true
+                try cardStore.replaceAllThrowing(with: finalCards)
+            }
             writeWidgetSnapshot(cards: finalCards, syncPending: false)
             lastSyncMessage = nil
         } catch let error as CloudKitHouseholdErasedError {
@@ -332,9 +339,20 @@ final class AppServices: ObservableObject {
         suppressNextCardPush = true
         CloudKitHouseholdSelection.clearSelectedSharedZone()
         do {
-            try cardStore.replaceAllThrowing(with: [])
-            await reminderScheduler.cancelAllFairNestReminders()
-            writeWidgetSnapshot(cards: [], syncPending: false)
+            let remainingCards = cardsAfterRemoteHouseholdErasure(error)
+            try cardStore.replaceAllThrowing(with: remainingCards)
+            if remainingCards.isEmpty {
+                await reminderScheduler.cancelAllFairNestReminders()
+                lastReminderMessage = nil
+            } else {
+                do {
+                    try await reconcileDueReminders(for: remainingCards)
+                    lastReminderMessage = nil
+                } catch {
+                    lastReminderMessage = error.localizedDescription
+                }
+            }
+            writeWidgetSnapshot(cards: remainingCards, syncPending: false)
             CloudKitHouseholdErasureState.acknowledge(
                 error.erasedAt,
                 accountIdentifier: error.accountIdentifier,
@@ -344,6 +362,19 @@ final class AppServices: ObservableObject {
         } catch {
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
             lastSyncMessage = FairNestIssueCopy.localCardSaveFailure
+        }
+    }
+
+    private func cardsAfterRemoteHouseholdErasure(_ error: CloudKitHouseholdErasedError) -> [LoadCard] {
+        if error.zoneID?.ownerName == CKCurrentUserDefaultName {
+            return []
+        }
+        let privateCardIDs = acceptedSharePrivateCardIDs
+        return cardStore.cards.filter { card in
+            if privateCardIDs.contains(card.id) {
+                return true
+            }
+            return !card.syncOrigin.isSharedCloud
         }
     }
 
@@ -364,15 +395,15 @@ final class AppServices: ObservableObject {
     }
 
     private func removeUnavailableSharedCards(sharedCardIDs: Set<UUID>) -> Bool {
-        guard !sharedCardIDs.isEmpty else {
-            return true
-        }
         let privateCardIDs = acceptedSharePrivateCardIDs
         let remainingCards = cardStore.cards.filter { card in
             if privateCardIDs.contains(card.id) {
                 return true
             }
-            return !sharedCardIDs.contains(card.id)
+            if sharedCardIDs.contains(card.id) {
+                return false
+            }
+            return !card.syncOrigin.isSharedCloud
         }
         guard remainingCards != cardStore.cards else { return true }
         do {

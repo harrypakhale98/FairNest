@@ -13,6 +13,22 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(ConflictResolver.resolve(local: newer, remote: older).title, "Newer")
     }
 
+    func testConflictResolutionPreservesKnownCloudOrigin() {
+        let id = UUID()
+        let localEdit = LoadCard(id: id, title: "Local edit", updatedAt: Date(timeIntervalSince1970: 20))
+        let olderShared = LoadCard(
+            id: id,
+            title: "Older shared",
+            updatedAt: Date(timeIntervalSince1970: 10),
+            syncOrigin: .sharedCloud
+        )
+
+        let resolved = ConflictResolver.resolve(local: localEdit, remote: olderShared)
+
+        XCTAssertEqual(resolved.title, "Local edit")
+        XCTAssertEqual(resolved.syncOrigin, .sharedCloud)
+    }
+
     func testConflictResolutionPrefersNewerDeletedTombstoneOverStaleActiveCard() {
         let id = UUID()
         var newerDeleted = LoadCard(
@@ -383,6 +399,17 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(syncEngine.uploadedBatches.count, 1)
     }
 
+    @MainActor
+    func testCloudKitSyncServiceAppliesKnownPrivateOriginsToCards() {
+        let service = CloudKitSyncService()
+        let card = LoadCard(title: "Pinned private")
+
+        service.pinCardsToPrivateDatabase([card.id])
+        let marked = service.applyingKnownCloudOrigins(to: [card])
+
+        XCTAssertEqual(marked.first?.syncOrigin, .privateCloud)
+    }
+
     func testCloudKitSaveResultValidatorThrowsOnPartialFailure() throws {
         let successID = CKRecord.ID(recordName: UUID().uuidString, zoneID: CloudKitCardMapper.zoneID())
         let failedID = CKRecord.ID(recordName: UUID().uuidString, zoneID: CloudKitCardMapper.zoneID())
@@ -493,30 +520,46 @@ final class SyncAndCloudKitTests: XCTestCase {
     }
 
     @MainActor
-    func testRemoteHouseholdErasureClearsLocalCardsAndStopsReupload() async throws {
+    func testSharedRemoteHouseholdErasureKeepsPrivateCardsAndStopsReupload() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
-        let previousErasureAck = UserDefaults.standard.object(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
+        let previousAcknowledgements = UserDefaults.standard.dictionaryRepresentation().filter { key, _ in
+            key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey ||
+                key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).")
+        }
         defer {
             if let previousSyncValue {
                 UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
             } else {
                 UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
             }
-            if let previousErasureAck {
-                UserDefaults.standard.set(previousErasureAck, forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            if let previousPins {
+                UserDefaults.standard.set(previousPins, forKey: "acceptedSharePrivateCardIDs")
             } else {
-                UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+                UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
+            }
+            for key in UserDefaults.standard.dictionaryRepresentation().keys where key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey || key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).") {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+            for (key, value) in previousAcknowledgements {
+                UserDefaults.standard.set(value, forKey: key)
             }
         }
-        UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        for key in UserDefaults.standard.dictionaryRepresentation().keys where key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey || key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).") {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
         let erasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let erasedZoneID = CloudKitCardMapper.zoneID(ownerName: "owner-a")
         let cardStore = LocalCardStore(fileURL: tempURL())
-        _ = cardStore.add(BrainDumpSuggestion(title: "Stale shared card", type: .task))
+        let privateCard = LoadCard(title: "Private card", syncOrigin: .privateCloud)
+        let sharedCard = LoadCard(title: "Stale shared card", syncOrigin: .sharedCloud)
+        try cardStore.replaceAllThrowing(with: [privateCard, sharedCard])
+        UserDefaults.standard.set([privateCard.id.uuidString], forKey: "acceptedSharePrivateCardIDs")
         let reminderScheduler = ErasureReminderScheduler()
         let syncEngine = CapturingSyncEngine(
             status: .available,
             remoteCards: [],
-            fetchError: CloudKitHouseholdErasedError(erasedAt: erasedAt)
+            fetchError: CloudKitHouseholdErasedError(erasedAt: erasedAt, zoneID: erasedZoneID)
         )
         let services = AppServices(
             cardStore: cardStore,
@@ -529,39 +572,47 @@ final class SyncAndCloudKitTests: XCTestCase {
         await services.syncCardsIfAvailable()
 
         XCTAssertFalse(services.iCloudSyncEnabled)
-        XCTAssertTrue(cardStore.cards.isEmpty)
+        XCTAssertEqual(cardStore.cards.map(\.id), [privateCard.id])
         XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
-        XCTAssertTrue(reminderScheduler.cancelledAllFairNestReminders)
-        XCTAssertFalse(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt))
+        XCTAssertFalse(reminderScheduler.cancelledAllFairNestReminders)
+        XCTAssertFalse(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt, zoneID: erasedZoneID))
     }
 
     @MainActor
     func testRemoteHouseholdErasureKeepsAcknowledgementPendingWhenLocalWipeFails() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
-        let previousErasureAck = UserDefaults.standard.object(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        let previousAcknowledgements = UserDefaults.standard.dictionaryRepresentation().filter { key, _ in
+            key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey ||
+                key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).")
+        }
         defer {
             if let previousSyncValue {
                 UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
             } else {
                 UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
             }
-            if let previousErasureAck {
-                UserDefaults.standard.set(previousErasureAck, forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
-            } else {
-                UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            for key in UserDefaults.standard.dictionaryRepresentation().keys where key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey || key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).") {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+            for (key, value) in previousAcknowledgements {
+                UserDefaults.standard.set(value, forKey: key)
             }
         }
-        UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        for key in UserDefaults.standard.dictionaryRepresentation().keys where key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey || key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).") {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
         let erasedAt = Date(timeIntervalSince1970: 1_800_000_001)
+        let erasedZoneID = CloudKitCardMapper.zoneID(ownerName: "owner-a")
         let cardURL = tempURL()
         let cardStore = LocalCardStore(fileURL: cardURL)
-        let card = cardStore.add(BrainDumpSuggestion(title: "Still local until deletion is durable", type: .task))
+        let card = LoadCard(title: "Still local until deletion is durable", syncOrigin: .sharedCloud)
+        try cardStore.replaceAllThrowing(with: [card])
         try FileManager.default.removeItem(at: cardURL)
         try FileManager.default.createDirectory(at: cardURL, withIntermediateDirectories: true)
         let syncEngine = CapturingSyncEngine(
             status: .available,
             remoteCards: [],
-            fetchError: CloudKitHouseholdErasedError(erasedAt: erasedAt)
+            fetchError: CloudKitHouseholdErasedError(erasedAt: erasedAt, zoneID: erasedZoneID)
         )
         let services = AppServices(
             cardStore: cardStore,
@@ -575,11 +626,11 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertFalse(services.iCloudSyncEnabled)
         XCTAssertEqual(cardStore.cards.map(\.id), [card.id])
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.localCardSaveFailure)
-        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt))
+        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt, zoneID: erasedZoneID))
     }
 
     @MainActor
-    func testSharedHouseholdAccessLossPreservesLocalCardsWhenSharedIDsAreUnknown() async throws {
+    func testSharedHouseholdAccessLossRemovesPersistedSharedCardsWhenIDsAreUnknown() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
         let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
@@ -603,7 +654,8 @@ final class SyncAndCloudKitTests: XCTestCase {
         CloudKitHouseholdSelection.rememberSharedZoneID(CloudKitCardMapper.zoneID(ownerName: "owner-a"))
         UserDefaults.standard.set([UUID().uuidString], forKey: "acceptedSharePrivateCardIDs")
         let cardStore = LocalCardStore(fileURL: tempURL())
-        _ = cardStore.add(BrainDumpSuggestion(title: "Stale shared card", type: .task))
+        let sharedCard = LoadCard(title: "Stale shared card", syncOrigin: .sharedCloud)
+        try cardStore.replaceAllThrowing(with: [sharedCard])
         let widgetDefaults = try XCTUnwrap(FairNestShared.sharedDefaults)
         defer { widgetDefaults.removeObject(forKey: FairNestShared.widgetSnapshotKey) }
         XCTAssertTrue(WidgetSnapshotStore.write(cards: cardStore.cards, defaults: widgetDefaults))
@@ -625,10 +677,10 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertFalse(services.iCloudSyncEnabled)
         XCTAssertEqual(syncEngine.fetchCount, 1)
         XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
-        XCTAssertEqual(cardStore.cards.map(\.title), ["Stale shared card"])
+        XCTAssertTrue(cardStore.cards.isEmpty)
         XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
         XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs"), [])
-        XCTAssertFalse(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
+        XCTAssertTrue(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
     }
 
@@ -649,8 +701,9 @@ final class SyncAndCloudKitTests: XCTestCase {
             }
         }
         let cardStore = LocalCardStore(fileURL: tempURL())
-        let privateCard = cardStore.add(BrainDumpSuggestion(title: "Private card", type: .task))
-        let sharedCard = cardStore.add(BrainDumpSuggestion(title: "Shared card", type: .task))
+        let privateCard = LoadCard(title: "Private card", syncOrigin: .privateCloud)
+        let sharedCard = LoadCard(title: "Shared card", syncOrigin: .sharedCloud)
+        try cardStore.replaceAllThrowing(with: [privateCard, sharedCard])
         UserDefaults.standard.set([privateCard.id.uuidString], forKey: "acceptedSharePrivateCardIDs")
         let syncEngine = CapturingSyncEngine(
             status: .available,
@@ -667,6 +720,7 @@ final class SyncAndCloudKitTests: XCTestCase {
         await services.pushCardsIfAvailable(cardStore.cards)
 
         XCTAssertEqual(cardStore.cards.map(\.id), [privateCard.id])
+        XCTAssertEqual(cardStore.cards.first?.syncOrigin, .privateCloud)
         XCTAssertFalse(services.iCloudSyncEnabled)
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
     }

@@ -81,6 +81,18 @@ final class CardModelTests: XCTestCase {
         XCTAssertEqual(components.hour, 18)
         XCTAssertEqual(components.minute, 30)
     }
+
+    func testLegacyCardDecodingDefaultsSyncOriginToLocal() throws {
+        let card = LoadCard(title: "Legacy card", syncOrigin: .sharedCloud)
+        let encoded = try JSONEncoder.fairNest.encode(card)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "syncOrigin")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder.fairNest.decode(LoadCard.self, from: legacyData)
+
+        XCTAssertEqual(decoded.syncOrigin, .local)
+    }
 }
 
 final class BoardEmptyStateTests: XCTestCase {
