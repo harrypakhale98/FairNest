@@ -340,7 +340,8 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
         status = next
         modifiedBy = member
         updatedAt = date
-        if next == .done, let nextDue = recurrence.nextDate(after: date, preservingTimeFrom: dueDate ?? date) {
+        let recurrenceAnchor = dueDate.map { max($0, date) } ?? date
+        if next == .done, let nextDue = recurrence.nextDate(after: recurrenceAnchor, preservingTimeFrom: dueDate ?? date) {
             status = .planned
             dueDate = nextDue
         }

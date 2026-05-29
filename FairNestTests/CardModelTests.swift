@@ -33,6 +33,24 @@ final class CardModelTests: XCTestCase {
         XCTAssertGreaterThan(card.dueDate!, now)
     }
 
+    func testCompletingFutureDailyRecurringCardAdvancesAfterScheduledDueDate() throws {
+        let calendar = Calendar.current
+        let completedAt = calendar.date(from: DateComponents(year: 2026, month: 5, day: 27, hour: 9, minute: 0))!
+        let dueDate = calendar.date(from: DateComponents(year: 2026, month: 5, day: 28, hour: 18, minute: 30))!
+        var card = LoadCard(title: "Reset vitamins", status: .planned, dueDate: dueDate, recurrence: .daily)
+
+        try card.transition(to: .done, at: completedAt)
+
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: card.dueDate!)
+        XCTAssertEqual(card.status, .planned)
+        XCTAssertEqual(components.year, 2026)
+        XCTAssertEqual(components.month, 5)
+        XCTAssertEqual(components.day, 29)
+        XCTAssertEqual(components.hour, 18)
+        XCTAssertEqual(components.minute, 30)
+        XCTAssertGreaterThan(card.dueDate!, dueDate)
+    }
+
     func testCompletingWeeklyRecurringCardPreservesScheduledTime() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
