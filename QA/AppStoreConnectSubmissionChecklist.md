@@ -4,15 +4,17 @@ Generated: May 28, 2026
 
 ## Build Evidence
 
-- Scheme tests passed on iOS Simulator 26.5 (iPhone 17): 57 unit tests and 7 UI tests, 0 failures.
+- Full scheme tests passed on iOS Simulator 26.5 (iPhone 17): 61 unit tests and 9 UI tests, 0 failures.
+- Test result bundle: `/tmp/FairNestFullTestDerivedData3/Logs/Test/Test-FairNest-2026.05.28_19-15-13--0500.xcresult`.
 - The latest `.xcresult` was scanned for `Invalid frame dimension` and `Runtime Warning`; no matches were found.
-- Static analysis passed with the full FairNest scheme.
-- `plutil -lint` passed for app and widget Info.plists, privacy manifests, and entitlements.
-- App Store archive succeeded at `/tmp/FairNest-Readiness.xcarchive`.
-- App Store export succeeded at `/tmp/FairNest-AppStoreExport/FairNest.ipa`.
-- The app bundle and exported IPA include `PrivacyInfo.xcprivacy` and `PrivacyPolicy.md`.
+- Static analysis passed with the full FairNest scheme for generic iOS.
+- `plutil -lint` passed for app and widget Info.plists, privacy manifests, entitlements, and App Store export option plists.
+- Release archive succeeded at `/tmp/FairNest-Readiness.xcarchive`.
+- App Store export succeeded at `/tmp/FairNest-AppStoreExport/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
+- The archive and exported IPA include the app privacy manifest, widget privacy manifest, bundled `PrivacyPolicy.md`, and `FairNestWidgets.appex`.
 - `FairNest/Resources/AppReviewNotes.md` is intentionally excluded from the app target resources and was not present in the built app bundle or exported IPA.
-- Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, CloudKit `Production`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
+- Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
+- The exported app signature contains CloudKit `Production`; the embedded Store provisioning profile exposes both `Production` and `Development` iCloud environments, which is normal profile metadata and does not override the signed app entitlement.
 
 ## App Store Connect Inputs
 
@@ -55,6 +57,10 @@ Suggested starting point: general audience / lowest age rating available for a p
 ## Accessibility Metadata Draft
 
 Claim only what has been manually checked. The SwiftUI UI uses native controls and labels in the core flows, Dynamic Type stress paths were fixed for onboarding, board, brain dump, weekly check-in, and pairing, and the UI suite passed after those changes. A full manual accessibility audit with VoiceOver has not been completed in this pass.
+
+## Remaining Technical Risk
+
+- Sync is foreground/manual/on-local-change driven. CloudKit subscriptions, change-token processing, and remote-notification-triggered background sync are not implemented in this pass, so do not describe sync as instant push-driven sync in App Store metadata.
 
 ## Current External Blockers
 
