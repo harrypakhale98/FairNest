@@ -111,6 +111,8 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         do {
             try persistThrowing()
             try removeCorruptBackups()
+            lastLoadErrorMessage = nil
+            storeUnavailableDueToLoadFailure = false
         } catch {
             records = previousRecords
             throw error

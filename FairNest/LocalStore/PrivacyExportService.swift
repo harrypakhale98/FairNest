@@ -14,10 +14,10 @@ struct PrivacyExportService {
     var checkInStore: LocalCheckInStore
 
     func exportData() throws -> Data {
-        guard !cardStore.isUnavailableDueToLoadFailure else {
+        guard cardStore.lastLoadErrorMessage == nil, !cardStore.isUnavailableDueToLoadFailure else {
             throw PrivacyExportServiceError.cardStoreUnavailable
         }
-        guard !checkInStore.isUnavailableDueToLoadFailure else {
+        guard checkInStore.lastLoadErrorMessage == nil, !checkInStore.isUnavailableDueToLoadFailure else {
             throw PrivacyExportServiceError.checkInStoreUnavailable
         }
         let envelope = FairNestExportEnvelope(

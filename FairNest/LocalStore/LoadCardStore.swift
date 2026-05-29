@@ -102,6 +102,9 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         do {
             data = try Data(contentsOf: fileURL)
         } catch {
+            cards = []
+            WidgetSnapshotStore.clear()
+            WidgetSnapshotStore.reloadTimelines()
             lastLoadErrorMessage = error.localizedDescription
             storeUnavailableDueToLoadFailure = true
             return
@@ -290,6 +293,8 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         do {
             try persistThrowing()
             try removeCorruptBackups()
+            lastLoadErrorMessage = nil
+            storeUnavailableDueToLoadFailure = false
         } catch {
             cards = previousCards
             assertionFailure(error.localizedDescription)
@@ -321,6 +326,8 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         do {
             try persistThrowing()
             try removeCorruptBackups()
+            lastLoadErrorMessage = nil
+            storeUnavailableDueToLoadFailure = false
         } catch {
             cards = previousCards
             throw error
