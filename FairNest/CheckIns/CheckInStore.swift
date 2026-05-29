@@ -10,11 +10,14 @@ protocol CheckInStore: AnyObject {
 
 enum LocalCheckInStoreError: LocalizedError {
     case persistenceFailed
+    case storeUnavailable
 
     var errorDescription: String? {
         switch self {
         case .persistenceFailed:
             return "FairNest could not save check-in data. Try again before closing the app."
+        case .storeUnavailable:
+            return "FairNest could not read the local check-in store. Close and reopen FairNest after unlocking this iPhone, then try again."
         }
     }
 }
@@ -69,6 +72,7 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
 
     private let fileURL: URL
     private let fileManager: FileManager
+    private var storeUnavailableDueToLoadFailure = false
 
     init(fileURL: URL? = nil, fileManager: FileManager = .default) {
         self.fileManager = fileManager
@@ -127,22 +131,29 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
             data = try Data(contentsOf: fileURL)
         } catch {
             lastLoadErrorMessage = error.localizedDescription
+            storeUnavailableDueToLoadFailure = true
             return
         }
 
         do {
             records = try JSONDecoder.fairNest.decode([CheckInRecord].self, from: data)
             lastLoadErrorMessage = nil
+            storeUnavailableDueToLoadFailure = false
         } catch is DecodingError {
             backupCorruptStore()
             records = []
             lastLoadErrorMessage = "FairNest found an unreadable local check-in store and moved it aside."
+            storeUnavailableDueToLoadFailure = false
         } catch {
             lastLoadErrorMessage = error.localizedDescription
+            storeUnavailableDueToLoadFailure = true
         }
     }
 
     private func persistThrowing() throws {
+        guard !storeUnavailableDueToLoadFailure else {
+            throw LocalCheckInStoreError.storeUnavailable
+        }
         do {
             try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let data = try JSONEncoder.fairNest.encode(records)

@@ -341,9 +341,9 @@ final class StorePrivacyWidgetTests: XCTestCase {
     func testCheckInStoreRollsBackWhenPersistenceFails() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let unusableStoreURL = directory.appendingPathComponent("checkins.json", isDirectory: true)
-        try FileManager.default.createDirectory(at: unusableStoreURL, withIntermediateDirectories: true)
+        let unusableStoreURL = directory.appendingPathComponent("checkins.json")
         let checkInStore = LocalCheckInStore(fileURL: unusableStoreURL)
+        try FileManager.default.createDirectory(at: unusableStoreURL, withIntermediateDirectories: true)
 
         XCTAssertThrowsError(try checkInStore.save(CheckInRecord(
             feltHeavy: "Private",
@@ -383,9 +383,11 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
     func testReviewedBrainDumpSaveDoesNotClearIntoMemoryWhenPersistenceFails() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let unusableStoreURL = directory.appendingPathComponent("cards.json", isDirectory: true)
-        try FileManager.default.createDirectory(at: unusableStoreURL, withIntermediateDirectories: true)
+        let unusableStoreURL = directory.appendingPathComponent("cards.json")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let cardStore = LocalCardStore(fileURL: unusableStoreURL)
+        try FileManager.default.removeItem(at: unusableStoreURL)
+        try FileManager.default.createDirectory(at: unusableStoreURL, withIntermediateDirectories: true)
 
         XCTAssertThrowsError(try cardStore.addReviewed([
             BrainDumpSuggestion(title: "Do not lose me", type: .task)
@@ -396,14 +398,54 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
     func testBoardUpsertRollsBackWhenPersistenceFails() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        let unusableStoreURL = directory.appendingPathComponent("cards.json", isDirectory: true)
-        try FileManager.default.createDirectory(at: unusableStoreURL, withIntermediateDirectories: true)
+        let unusableStoreURL = directory.appendingPathComponent("cards.json")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let cardStore = LocalCardStore(fileURL: unusableStoreURL)
+        try FileManager.default.removeItem(at: unusableStoreURL)
+        try FileManager.default.createDirectory(at: unusableStoreURL, withIntermediateDirectories: true)
 
         XCTAssertThrowsError(try cardStore.upsertThrowing(LoadCard(title: "Do not keep in memory")))
 
         XCTAssertTrue(cardStore.cards.isEmpty)
         XCTAssertFalse(cardStore.lastPersistenceErrorMessage?.isEmpty ?? true)
+    }
+
+    func testCardStoreBlocksWritesAfterReadFailure() throws {
+        let unreadableStoreURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: unreadableStoreURL, withIntermediateDirectories: true)
+        let cardStore = LocalCardStore(fileURL: unreadableStoreURL)
+
+        XCTAssertFalse(cardStore.lastLoadErrorMessage?.isEmpty ?? true)
+        XCTAssertThrowsError(try cardStore.upsertThrowing(LoadCard(title: "Do not overwrite"))) { error in
+            XCTAssertTrue(error.localizedDescription.contains("could not read the local card store"))
+        }
+
+        var isDirectory: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unreadableStoreURL.path, isDirectory: &isDirectory))
+        XCTAssertTrue(isDirectory.boolValue)
+        XCTAssertTrue(cardStore.cards.isEmpty)
+    }
+
+    func testCheckInStoreBlocksWritesAfterReadFailure() throws {
+        let unreadableStoreURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: unreadableStoreURL, withIntermediateDirectories: true)
+        let checkInStore = LocalCheckInStore(fileURL: unreadableStoreURL)
+
+        XCTAssertFalse(checkInStore.lastLoadErrorMessage?.isEmpty ?? true)
+        XCTAssertThrowsError(try checkInStore.save(CheckInRecord(
+            feltHeavy: "Do not overwrite",
+            gotDone: "",
+            needsOwnership: "",
+            appreciation: "",
+            changes: []
+        ))) { error in
+            XCTAssertTrue(error.localizedDescription.contains("could not read the local check-in store"))
+        }
+
+        var isDirectory: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unreadableStoreURL.path, isDirectory: &isDirectory))
+        XCTAssertTrue(isDirectory.boolValue)
+        XCTAssertTrue(checkInStore.records.isEmpty)
     }
 
     func testBoardDeleteRollsBackWhenPersistenceFails() throws {

@@ -26,6 +26,7 @@ enum LocalCardStoreError: LocalizedError {
     case persistenceFailed
     case cardDeleted
     case missingCard
+    case storeUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -35,6 +36,8 @@ enum LocalCardStoreError: LocalizedError {
             return "This card was removed before your edit could be saved."
         case .missingCard:
             return "FairNest could not find that card."
+        case .storeUnavailable:
+            return "FairNest could not read the local card store. Close and reopen FairNest after unlocking this iPhone, then try again."
         }
     }
 }
@@ -53,6 +56,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
 
     private let fileURL: URL
     private let fileManager: FileManager
+    private var storeUnavailableDueToLoadFailure = false
 
     var activeCards: [LoadCard] {
         cards.filter { !$0.isDeleted }
@@ -89,6 +93,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
             data = try Data(contentsOf: fileURL)
         } catch {
             lastLoadErrorMessage = error.localizedDescription
+            storeUnavailableDueToLoadFailure = true
             return
         }
 
@@ -96,13 +101,16 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
             let envelope = try JSONDecoder.fairNest.decode(CardStoreEnvelope.self, from: data)
             cards = envelope.cards.sorted { $0.updatedAt > $1.updatedAt }
             lastLoadErrorMessage = nil
+            storeUnavailableDueToLoadFailure = false
             WidgetSnapshotStore.write(cards: cards)
         } catch is DecodingError {
             backupCorruptStore()
             cards = []
             lastLoadErrorMessage = "FairNest found an unreadable local card store and moved it aside."
+            storeUnavailableDueToLoadFailure = false
         } catch {
             lastLoadErrorMessage = error.localizedDescription
+            storeUnavailableDueToLoadFailure = true
         }
     }
 
@@ -315,6 +323,9 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     private func persistThrowing() throws {
+        guard !storeUnavailableDueToLoadFailure else {
+            throw LocalCardStoreError.storeUnavailable
+        }
         do {
             let directory = fileURL.deletingLastPathComponent()
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
