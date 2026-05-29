@@ -495,6 +495,17 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertTrue(bundledPolicy.contains("harry.pakhale98@gmail.com"))
     }
 
+    func testPrivacyPolicyDetailUsesReadableSections() throws {
+        let bundledPolicy = try XCTUnwrap(PrivacyPolicyContent.bundledMarkdown())
+        let sections = PrivacyPolicyContent.sections(from: bundledPolicy)
+
+        XCTAssertGreaterThanOrEqual(sections.count, 6)
+        XCTAssertEqual(sections.first?.title, "Overview")
+        XCTAssertTrue(sections.contains { $0.title == "User Controls" })
+        XCTAssertTrue(sections.contains { $0.title == "Deletion Markers" })
+        XCTAssertFalse(sections.contains { $0.body.contains("# FairNest Privacy Policy") })
+    }
+
     func testCorruptLocalStoresAreBackedUpBeforeReset() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

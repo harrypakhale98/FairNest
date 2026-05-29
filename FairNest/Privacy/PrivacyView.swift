@@ -429,14 +429,66 @@ enum PrivacyPolicyContent {
         let text = markdown(bundle: bundle)
         return (try? AttributedString(markdown: text)) ?? AttributedString(text)
     }
+
+    static func sections(bundle: Bundle = .main) -> [PrivacyPolicySection] {
+        sections(from: markdown(bundle: bundle))
+    }
+
+    static func sections(from markdown: String) -> [PrivacyPolicySection] {
+        var sections: [PrivacyPolicySection] = []
+        var currentTitle = "Overview"
+        var currentLines: [String] = []
+
+        func flushSection() {
+            let body = currentLines
+                .joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !body.isEmpty else { return }
+            sections.append(PrivacyPolicySection(title: currentTitle, body: body))
+            currentLines = []
+        }
+
+        for line in markdown.components(separatedBy: .newlines) {
+            if line.hasPrefix("# ") {
+                continue
+            }
+            if line.hasPrefix("## ") {
+                flushSection()
+                currentTitle = String(line.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                currentLines.append(line)
+            }
+        }
+        flushSection()
+
+        if sections.isEmpty {
+            return [PrivacyPolicySection(title: "Policy", body: markdown)]
+        }
+        return sections
+    }
+}
+
+struct PrivacyPolicySection: Identifiable, Equatable {
+    var title: String
+    var body: String
+    var id: String { title }
+
+    var attributedBody: AttributedString {
+        (try? AttributedString(markdown: body)) ?? AttributedString(body)
+    }
 }
 
 private struct PrivacyPolicyDetailView: View {
     var body: some View {
         List {
-            Section {
-                Text(PrivacyPolicyContent.attributedMarkdown())
-                    .textSelection(.enabled)
+            ForEach(PrivacyPolicyContent.sections()) { section in
+                Section {
+                    Text(section.attributedBody)
+                        .textSelection(.enabled)
+                } header: {
+                    Text(section.title)
+                        .accessibilityAddTraits(.isHeader)
+                }
             }
         }
         .navigationTitle("Privacy Policy")
