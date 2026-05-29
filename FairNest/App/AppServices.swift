@@ -119,7 +119,7 @@ final class AppServices: ObservableObject {
             if let sharedDeletionError {
                 throw PrivacyDeletionError.sharedAndLocalDeletionFailed(shared: sharedDeletionError, local: error)
             }
-            throw error
+            throw PrivacyDeletionError.localDeletionFailedAfterSharedDeletion(local: error)
         }
 
         sharedDeletionResult?.acknowledgeErasedZones()
@@ -402,13 +402,16 @@ final class AppServices: ObservableObject {
     }
 }
 
-private enum PrivacyDeletionError: LocalizedError {
+enum PrivacyDeletionError: LocalizedError {
     case sharedAndLocalDeletionFailed(shared: Error, local: Error)
+    case localDeletionFailedAfterSharedDeletion(local: Error)
 
     var errorDescription: String? {
         switch self {
         case let .sharedAndLocalDeletionFailed(shared, local):
             return "FairNest could not finish deleting shared iCloud data (\(shared.localizedDescription)) or local device data (\(local.localizedDescription)). iCloud Sync remains off so local cards are not uploaded again."
+        case let .localDeletionFailedAfterSharedDeletion(local):
+            return "FairNest could not finish deleting local device data after the shared iCloud deletion step (\(local.localizedDescription)). iCloud Sync remains off so old cards are not uploaded again."
         }
     }
 }

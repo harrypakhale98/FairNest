@@ -692,6 +692,7 @@ final class SyncAndCloudKitTests: XCTestCase {
             XCTFail("Expected ambiguous shared-household deletion to fail before clearing local data.")
         } catch {
             XCTAssertEqual(error as? CloudKitHouseholdSelectionError, .ambiguousSharedHouseholdDeletion)
+            XCTAssertEqual(FairNestIssueCopy.sharedDeleteFailureMessage(for: error), FairNestIssueCopy.sharedDeleteSelectionFailure)
         }
 
         XCTAssertFalse(services.iCloudSyncEnabled)
@@ -754,6 +755,7 @@ final class SyncAndCloudKitTests: XCTestCase {
             XCTFail("Expected local deletion failure to keep CloudKit erasure acknowledgement pending.")
         } catch {
             XCTAssertFalse(error.localizedDescription.isEmpty)
+            XCTAssertEqual(FairNestIssueCopy.sharedDeleteFailureMessage(for: error), FairNestIssueCopy.sharedDeleteLocalFailure)
         }
 
         XCTAssertFalse(services.iCloudSyncEnabled)

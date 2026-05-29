@@ -245,7 +245,7 @@ struct PrivacyView: View {
             message = "Shared household data was deleted where this iCloud account has permission."
             messageDetails = nil
         } catch {
-            message = FairNestIssueCopy.sharedDeleteFailure
+            message = FairNestIssueCopy.sharedDeleteFailureMessage(for: error)
             messageDetails = error.localizedDescription
         }
     }

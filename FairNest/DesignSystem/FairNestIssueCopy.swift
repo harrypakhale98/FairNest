@@ -15,8 +15,12 @@ enum FairNestIssueCopy {
     static let pairingFailure = "FairNest couldn't finish the iCloud pairing step. Check iCloud and try again."
     static let exportFailure = "FairNest couldn't prepare the export file. Check available storage and try again."
     static let clearExportFailure = "FairNest couldn't clear the temporary export file. Try again from this screen."
-    static let localDeleteFailure = "FairNest couldn't delete all local data. Nothing was uploaded, and iCloud Sync remains off."
-    static let sharedDeleteFailure = "FairNest couldn't finish deleting shared household data. Check iCloud and try again."
+    static let localDeleteFailure = "FairNest couldn't finish deleting all local data. Your previous iCloud Sync setting was restored; check details before trying again."
+    static let sharedDeleteFailure = "Local data was deleted on this device, but FairNest couldn't finish deleting shared household data in iCloud. iCloud Sync remains off."
+    static let sharedDeleteSelectionFailure = "FairNest couldn't choose which shared household to delete. Local data was kept on this device, and iCloud Sync is off so old cards are not uploaded again."
+    static let sharedDeleteCloudFailure = "Local data was deleted on this device, but FairNest couldn't finish deleting shared household data in iCloud. iCloud Sync remains off."
+    static let sharedDeleteLocalFailure = "FairNest couldn't finish deleting local data after the shared iCloud deletion step. iCloud Sync remains off so old cards are not uploaded again."
+    static let sharedDeleteCloudAndLocalFailure = "FairNest couldn't finish deleting shared iCloud data or local device data. iCloud Sync remains off so old cards are not uploaded again."
     static let sharedHouseholdErased = "Shared household data was erased from iCloud. FairNest turned sync off on this iPhone so old cards are not uploaded again."
     static let sharedHouseholdUnavailable = "FairNest lost access to the shared household in iCloud. Sync was turned off on this iPhone so old shared cards are not uploaded again."
     static let iCloudAccountChanged = "The signed-in iCloud account changed. FairNest turned sync off before uploading local cards to the new iCloud account."
@@ -27,6 +31,21 @@ enum FairNestIssueCopy {
 
     static func reminderSchedulingFailure(scheduleLabel: String) -> String {
         "FairNest couldn't update every reminder. Your cards are still saved. Try again from Settings; the weekly check-in target is \(scheduleLabel)."
+    }
+
+    static func sharedDeleteFailureMessage(for error: Error) -> String {
+        if error as? CloudKitHouseholdSelectionError == .ambiguousSharedHouseholdDeletion {
+            return sharedDeleteSelectionFailure
+        }
+        if let deletionError = error as? PrivacyDeletionError {
+            switch deletionError {
+            case .sharedAndLocalDeletionFailed:
+                return sharedDeleteCloudAndLocalFailure
+            case .localDeletionFailedAfterSharedDeletion:
+                return sharedDeleteLocalFailure
+            }
+        }
+        return sharedDeleteCloudFailure
     }
 }
 

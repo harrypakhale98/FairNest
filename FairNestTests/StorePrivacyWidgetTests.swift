@@ -486,6 +486,10 @@ final class StorePrivacyWidgetTests: XCTestCase {
             XCTFail("Expected privacy deletion to surface the local persistence failure.")
         } catch {
             XCTAssertFalse(error.localizedDescription.isEmpty)
+            XCTAssertEqual(
+                FairNestIssueCopy.localDeleteFailure,
+                "FairNest couldn't finish deleting all local data. Your previous iCloud Sync setting was restored; check details before trying again."
+            )
         }
 
         XCTAssertTrue(services.iCloudSyncEnabled)
@@ -520,6 +524,7 @@ final class StorePrivacyWidgetTests: XCTestCase {
             XCTFail("Expected CloudKit deletion to fail in the test runtime.")
         } catch {
             XCTAssertFalse(error.localizedDescription.isEmpty)
+            XCTAssertEqual(FairNestIssueCopy.sharedDeleteFailureMessage(for: error), FairNestIssueCopy.sharedDeleteCloudFailure)
         }
 
         XCTAssertFalse(services.iCloudSyncEnabled)
