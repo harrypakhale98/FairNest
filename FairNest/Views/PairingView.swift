@@ -11,6 +11,7 @@ struct PairingView: View {
     @State private var isCreatingInvite = false
     @State private var shareError: String?
     @State private var shareErrorDetails: String?
+    @AccessibilityFocusState private var shareErrorFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,7 @@ struct PairingView: View {
                         Task {
                             shareError = nil
                             shareErrorDetails = nil
+                            shareErrorFocused = false
                             await syncService.refreshStatus()
                             await pairingService.refresh()
                         }
@@ -48,27 +50,32 @@ struct PairingView: View {
                         }
                     }
 
-                    Button {
-                        Task {
-                            isCreatingInvite = true
-                            shareError = nil
-                            shareErrorDetails = nil
-                            await pairingService.createPrivateShare()
-                            isCreatingInvite = false
-                            if pairingService.currentShare != nil {
-                                showingCloudSharing = true
-                            } else if case .error(let message) = pairingService.state {
-                                shareError = FairNestIssueCopy.pairingFailure
-                                shareErrorDetails = message
-                            } else if pairingService.state != .partnerNotJoined {
-                                shareError = pairingService.state.message
+                    if services.iCloudSyncEnabled {
+                        Button {
+                            Task {
+                                isCreatingInvite = true
+                                shareError = nil
+                                shareErrorDetails = nil
+                                shareErrorFocused = false
+                                await pairingService.createPrivateShare()
+                                isCreatingInvite = false
+                                if pairingService.currentShare != nil {
+                                    showingCloudSharing = true
+                                } else if case .error(let message) = pairingService.state {
+                                    showShareError(FairNestIssueCopy.pairingFailure, details: message)
+                                } else if pairingService.state != .partnerNotJoined {
+                                    showShareError(pairingService.state.message)
+                                }
                             }
+                        } label: {
+                            Label(isCreatingInvite ? "Creating Invite" : "Create Partner Invite", systemImage: "person.badge.plus")
                         }
-                    } label: {
-                        Label(isCreatingInvite ? "Creating Invite" : "Create Partner Invite", systemImage: "person.badge.plus")
+                        .disabled(!canCreateInvite || isCreatingInvite)
+                        .accessibilityHint(inviteButtonAccessibilityHint)
+                    } else {
+                        Label("Partner invites appear after sync is on", systemImage: "person.badge.plus")
+                            .foregroundStyle(.secondary)
                     }
-                    .disabled(!canCreateInvite || isCreatingInvite)
-                    .accessibilityHint(inviteButtonAccessibilityHint)
 
                     if isCreatingInvite {
                         ProgressView("Preparing iCloud invite")
@@ -78,6 +85,10 @@ struct PairingView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Label(shareError, systemImage: "exclamationmark.triangle")
                                 .foregroundStyle(.red)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityIdentifier("pairingShareError")
+                                .accessibilityLabel("Pairing error: \(shareError)")
+                                .accessibilityFocused($shareErrorFocused)
                             if let shareErrorDetails {
                                 TechnicalDetailsDisclosure(details: shareErrorDetails)
                             }
@@ -122,8 +133,7 @@ struct PairingView: View {
             .sheet(isPresented: $showingCloudSharing) {
                 if let share = pairingService.currentShare {
                     CloudSharingSheet(share: share) { error in
-                        shareError = FairNestIssueCopy.pairingFailure
-                        shareErrorDetails = error.localizedDescription
+                        showShareError(FairNestIssueCopy.pairingFailure, details: error.localizedDescription)
                     } onStoppedSharing: {
                         pairingService.markSharingStopped()
                     }
@@ -163,9 +173,24 @@ struct PairingView: View {
     private func enableICloudSyncForPairing() async {
         shareError = nil
         shareErrorDetails = nil
+        shareErrorFocused = false
         services.iCloudSyncEnabled = true
         await syncService.refreshStatus()
         await pairingService.refresh()
+    }
+
+    private func showShareError(_ message: String, details: String? = nil) {
+        shareError = message
+        shareErrorDetails = details
+        announce(message)
+        Task { @MainActor in
+            await Task.yield()
+            shareErrorFocused = true
+        }
+    }
+
+    private func announce(_ message: String) {
+        UIAccessibility.post(notification: .announcement, argument: message)
     }
 
     private func symbol(for state: PairingState) -> String {

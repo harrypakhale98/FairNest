@@ -37,12 +37,14 @@ struct BrainDumpView: View {
                         .accessibilityHint("Enter household tasks, reminders, decisions, or appreciation to turn into reviewable cards.")
                         .accessibilityIdentifier("brainDumpText")
 
-                    Button {
-                        dismissKeyboard()
-                    } label: {
-                        Label("Done", systemImage: "keyboard.chevron.compact.down")
+                    if focusedField == .thoughts {
+                        Button {
+                            dismissKeyboard()
+                        } label: {
+                            Label("Dismiss Keyboard", systemImage: "keyboard.chevron.compact.down")
+                        }
+                        .accessibilityIdentifier("dismissBrainDumpKeyboard")
                     }
-                    .accessibilityIdentifier("dismissBrainDumpKeyboard")
                 } header: {
                     Text("Household thoughts")
                 } footer: {

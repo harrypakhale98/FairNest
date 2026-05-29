@@ -163,12 +163,14 @@ struct OnboardingView: View {
                     .accessibilityHint("Enter a few household thoughts to create reviewable starter cards.")
                     .accessibilityIdentifier("onboardingBrainDump")
 
-                Button {
-                    dismissKeyboard()
-                } label: {
-                    Label("Done", systemImage: "keyboard.chevron.compact.down")
+                if focusedField == .firstBrainDump {
+                    Button {
+                        dismissKeyboard()
+                    } label: {
+                        Label("Dismiss Keyboard", systemImage: "keyboard.chevron.compact.down")
+                    }
+                    .accessibilityIdentifier("dismissOnboardingBrainDumpKeyboard")
                 }
-                .accessibilityIdentifier("dismissOnboardingBrainDumpKeyboard")
             } header: {
                 Text("First brain dump")
             } footer: {

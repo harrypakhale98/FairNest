@@ -103,6 +103,11 @@ final class BoardEmptyStateTests: XCTestCase {
 }
 
 final class BoardFilterTests: XCTestCase {
+    func testTodayFilterCopyMakesOverdueCardsExplicit() {
+        XCTAssertEqual(BoardFilter.today.rawValue, "Today + Overdue")
+        XCTAssertEqual(BoardFilter.today.defaultEmptyTitle, "Nothing due now")
+    }
+
     func testDecisionsFilterShowsOnlyOpenDecisions() {
         let openDecision = LoadCard(title: "Pick cleaner", type: .decision, status: .inbox)
         let doneDecision = LoadCard(title: "Picked cleaner", type: .decision, status: .done)

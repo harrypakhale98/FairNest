@@ -20,7 +20,7 @@ struct PrivacyView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("iCloud", value: syncService.status.label)
+                LabeledContent("FairNest sync", value: services.iCloudSyncEnabled ? syncService.status.label : "iCloud Sync Off")
                 LabeledContent("Partner sharing", value: pairingService.state.title)
                 LabeledContent("Raw brain dumps", value: "Not auto-shared")
                 LabeledContent("Analytics", value: "None")
@@ -63,10 +63,10 @@ struct PrivacyView: View {
                 } label: {
                     Label(sharedDeleteTitle, systemImage: sharedDeleteSymbol)
                 }
-                .disabled(syncService.status != .available || isDeleting)
+                .disabled(!canDeleteSharedHouseholdData)
                 .accessibilityHint(sharedDeleteHint)
 
-                if syncService.status != .available {
+                if !canDeleteSharedHouseholdData {
                     Text(sharedDeleteHint)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -155,6 +155,10 @@ struct PrivacyView: View {
         deletionOperation != nil
     }
 
+    private var canDeleteSharedHouseholdData: Bool {
+        syncService.status == .available && pairingService.state.allowsSharedHouseholdPrivacyDeletion && !isDeleting
+    }
+
     private var localDeleteTitle: String {
         deletionOperation == .local ? "Deleting Local Data" : "Delete Local Data"
     }
@@ -174,6 +178,9 @@ struct PrivacyView: View {
     private var sharedDeleteHint: String {
         if let deletionOperation {
             return deletionOperation.progressMessage
+        }
+        guard pairingService.state.allowsSharedHouseholdPrivacyDeletion else {
+            return "Shared household deletion appears after this iPhone creates or joins a shared household."
         }
         if syncService.status == .available {
             return "Deletes shared CloudKit household card data where this iCloud account has permission, then clears local data and reminders on this device."

@@ -283,6 +283,14 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertFalse(PairingState.solo.allowsCreatingInvite(iCloudSyncEnabled: false))
     }
 
+    func testSharedPrivacyDeletionRequiresSharedHouseholdState() {
+        XCTAssertTrue(PairingState.partnerNotJoined.allowsSharedHouseholdPrivacyDeletion)
+        XCTAssertTrue(PairingState.paired.allowsSharedHouseholdPrivacyDeletion)
+        XCTAssertFalse(PairingState.solo.allowsSharedHouseholdPrivacyDeletion)
+        XCTAssertFalse(PairingState.sharingRemoved.allowsSharedHouseholdPrivacyDeletion)
+        XCTAssertFalse(PairingState.error("Expired invite").allowsSharedHouseholdPrivacyDeletion)
+    }
+
     func testWidgetTimelineScheduleIncludesReload() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let dates = WidgetTimelineSchedule.reloadDates(now: now)

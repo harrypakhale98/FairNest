@@ -91,6 +91,15 @@ enum PairingState: Equatable {
             return false
         }
     }
+
+    var allowsSharedHouseholdPrivacyDeletion: Bool {
+        switch self {
+        case .partnerNotJoined, .paired:
+            return true
+        case .solo, .checking, .iCloudUnavailable, .notSignedIn, .syncPending, .offline, .permissionDenied, .sharingRemoved, .error:
+            return false
+        }
+    }
 }
 
 @MainActor

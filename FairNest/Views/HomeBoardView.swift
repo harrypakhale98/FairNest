@@ -4,7 +4,7 @@ import UIKit
 #endif
 
 enum BoardFilter: String, CaseIterable, Identifiable {
-    case today = "Today"
+    case today = "Today + Overdue"
     case week = "This Week"
     case recurring = "Recurring"
     case decisions = "Decisions"
@@ -364,7 +364,7 @@ extension BoardFilter {
 
     var defaultEmptyTitle: String {
         switch self {
-        case .today: return "Nothing due today"
+        case .today: return "Nothing due now"
         case .week: return "This week is clear"
         case .recurring: return "No recurring responsibilities"
         case .decisions: return "No open decisions"

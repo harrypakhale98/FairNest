@@ -22,6 +22,7 @@ struct WeeklyCheckInView: View {
     @State private var saveErrorDetails: String?
     @State private var showsEmptyCheckInConfirmation = false
     @FocusState private var focusedPrompt: WeeklyCheckInFocus?
+    @AccessibilityFocusState private var saveErrorFocused: Bool
 
     private let steps = [
         "What felt heavy",
@@ -193,7 +194,7 @@ struct WeeklyCheckInView: View {
                         OwnershipChangeReviewRow(change: changeBinding, focusedPrompt: $focusedPrompt) {
                             let id = changeBinding.wrappedValue.id
                             changes.removeAll { $0.id == id }
-                            saveErrorMessage = nil
+                            clearSaveError()
                         }
                     }
                 }
@@ -201,7 +202,7 @@ struct WeeklyCheckInView: View {
                 Button {
                     let change = OwnershipChange(title: "", owner: .shared, reason: "Reviewed in the weekly check-in.")
                     changes.append(change)
-                    saveErrorMessage = nil
+                    clearSaveError()
                     focusedPrompt = .ownershipTitle(change.id)
                 } label: {
                     Label("Add Ownership Change", systemImage: "plus")
@@ -221,6 +222,10 @@ struct WeeklyCheckInView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.red)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityIdentifier("checkInSaveError")
+                            .accessibilityLabel("Check-in error: \(saveErrorMessage)")
+                            .accessibilityFocused($saveErrorFocused)
                         if let saveErrorDetails {
                             TechnicalDetailsDisclosure(details: saveErrorDetails)
                         }
@@ -237,7 +242,7 @@ struct WeeklyCheckInView: View {
     private func goBack() {
         dismissKeyboard()
         step = max(0, step - 1)
-        saveErrorMessage = nil
+        clearSaveError()
     }
 
     private func advance() {
@@ -247,15 +252,13 @@ struct WeeklyCheckInView: View {
             return
         }
         guard canEditCheckIn else {
-            saveErrorMessage = FairNestIssueCopy.localCheckInReadUnavailable
-            saveErrorDetails = checkInStore.lastLoadErrorMessage
-            announce("Check-in store needs attention.")
+            showSaveError(FairNestIssueCopy.localCheckInReadUnavailable, details: checkInStore.lastLoadErrorMessage)
             return
         }
 
         if step == 3 {
             changes = WeeklyCheckInEngine.generateChanges(from: draft, cards: cardStore.activeCards)
-            saveErrorMessage = nil
+            clearSaveError()
             step += 1
             announce("Review changes.")
             return
@@ -284,8 +287,7 @@ struct WeeklyCheckInView: View {
     private func save() {
         guard !saved else { return }
         guard !checkInStore.isUnavailableDueToLoadFailure else {
-            saveErrorMessage = FairNestIssueCopy.localCheckInReadUnavailable
-            saveErrorDetails = checkInStore.lastLoadErrorMessage
+            showSaveError(FairNestIssueCopy.localCheckInReadUnavailable, details: checkInStore.lastLoadErrorMessage)
             return
         }
         let finalChanges = reviewedChanges
@@ -319,13 +321,10 @@ struct WeeklyCheckInView: View {
 
             changes = finalChanges
             saved = true
-            saveErrorMessage = nil
-            saveErrorDetails = nil
+            clearSaveError()
             announce("Check-in saved.")
         } catch {
-            saveErrorMessage = FairNestIssueCopy.localCheckInSaveFailure
-            saveErrorDetails = error.localizedDescription
-            announce("Check-in could not be saved.")
+            showSaveError(FairNestIssueCopy.localCheckInSaveFailure, details: error.localizedDescription)
         }
     }
 
@@ -410,13 +409,28 @@ struct WeeklyCheckInView: View {
         #endif
     }
 
+    private func showSaveError(_ message: String, details: String? = nil) {
+        saveErrorMessage = message
+        saveErrorDetails = details
+        announce(message)
+        Task { @MainActor in
+            await Task.yield()
+            saveErrorFocused = true
+        }
+    }
+
+    private func clearSaveError() {
+        saveErrorMessage = nil
+        saveErrorDetails = nil
+        saveErrorFocused = false
+    }
+
     private func reset() {
         step = 0
         draft = WeeklyCheckInDraft()
         changes = []
         saved = false
-        saveErrorMessage = nil
-        saveErrorDetails = nil
+        clearSaveError()
         showsEmptyCheckInConfirmation = false
         focusedPrompt = nil
     }
