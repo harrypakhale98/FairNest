@@ -55,9 +55,6 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
         CKSharingSupported: true
         ITSAppUsesNonExemptEncryption: false
         FairNestCloudKitContainerIdentifier: iCloud.com.hardikpakhale.fairnest

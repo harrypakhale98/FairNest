@@ -481,6 +481,30 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertTrue(reasons?.contains("1C8F.1") == true)
     }
 
+    func testReleaseInfoPlistDeclaresPortraitOnlyIPhoneOrientation() throws {
+        let plistURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("FairNest/Supporting/Info.plist")
+        let data = try Data(contentsOf: plistURL)
+        let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+
+        XCTAssertEqual(plist?["UISupportedInterfaceOrientations"] as? [String], ["UIInterfaceOrientationPortrait"])
+    }
+
+    func testWebsiteCopyIsLaunchNeutral() throws {
+        let repositoryURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let index = try String(contentsOf: repositoryURL.appendingPathComponent("website/index.html"), encoding: .utf8)
+        let privacy = try String(contentsOf: repositoryURL.appendingPathComponent("website/privacy.html"), encoding: .utf8)
+
+        XCTAssertFalse(index.contains("Coming to iPhone"))
+        XCTAssertFalse(privacy.contains("Coming to iPhone"))
+        XCTAssertTrue(index.contains("Built for iPhone"))
+        XCTAssertTrue(privacy.contains("Built for iPhone"))
+    }
+
     func testInAppPrivacyPolicyUsesBundledDeletionMarkerDisclosure() throws {
         let bundledPolicy = try XCTUnwrap(PrivacyPolicyContent.bundledMarkdown())
 
