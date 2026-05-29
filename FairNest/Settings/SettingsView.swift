@@ -140,6 +140,7 @@ struct SettingsView: View {
                     LabeledContent("Ads", value: "None")
                     LabeledContent("Subscriptions", value: "None")
                     LabeledContent("Cloud storage", value: "iCloud only")
+                    LabeledContent("Version", value: FairNestAppMetadata.versionLabel())
                 } header: {
                     Text("App")
                 }
@@ -150,7 +151,7 @@ struct SettingsView: View {
                     } label: {
                         Label("Email Support", systemImage: "envelope")
                     }
-                    Text("Include your iPhone model, iOS version, FairNest version, and a short description. Avoid private household card details unless they are needed to explain the issue.")
+                    Text("The email draft includes FairNest version and iOS version. Add your iPhone model and a short description. Avoid private household card details unless they are needed to explain the issue.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } header: {
@@ -369,9 +370,52 @@ struct SettingsView: View {
         components.scheme = "mailto"
         components.path = Self.supportEmail
         components.queryItems = [
-            URLQueryItem(name: "subject", value: "FairNest Support")
+            URLQueryItem(name: "subject", value: "FairNest Support"),
+            URLQueryItem(name: "body", value: supportEmailBody())
         ]
         guard let url = components.url else { return }
         openURL(url)
+    }
+
+    private func supportEmailBody() -> String {
+        [
+            "FairNest version: \(FairNestAppMetadata.versionLabel())",
+            "iOS version: \(Self.systemVersion)",
+            "iPhone model:",
+            "",
+            "What happened:"
+        ].joined(separator: "\n")
+    }
+
+    private static var systemVersion: String {
+        #if canImport(UIKit)
+        UIDevice.current.systemVersion
+        #else
+        "Unknown"
+        #endif
+    }
+}
+
+enum FairNestAppMetadata {
+    static func versionLabel(infoDictionary: [String: Any]? = Bundle.main.infoDictionary) -> String {
+        let version = clean(infoDictionary?["CFBundleShortVersionString"])
+        let build = clean(infoDictionary?["CFBundleVersion"])
+
+        switch (version, build) {
+        case let (version?, build?) where version != build:
+            return "\(version) (\(build))"
+        case let (version?, _):
+            return version
+        case let (nil, build?):
+            return build
+        case (nil, nil):
+            return "Unknown"
+        }
+    }
+
+    private static func clean(_ value: Any?) -> String? {
+        guard let string = value as? String else { return nil }
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

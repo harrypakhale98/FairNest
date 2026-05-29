@@ -188,6 +188,24 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertFalse(services.iCloudSyncEnabled)
     }
 
+    func testAppVersionLabelIncludesVersionAndBuildForSupport() {
+        XCTAssertEqual(
+            FairNestAppMetadata.versionLabel(infoDictionary: [
+                "CFBundleShortVersionString": "1.2",
+                "CFBundleVersion": "34"
+            ]),
+            "1.2 (34)"
+        )
+        XCTAssertEqual(
+            FairNestAppMetadata.versionLabel(infoDictionary: [
+                "CFBundleShortVersionString": "1.2",
+                "CFBundleVersion": "1.2"
+            ]),
+            "1.2"
+        )
+        XCTAssertEqual(FairNestAppMetadata.versionLabel(infoDictionary: [:]), "Unknown")
+    }
+
     func testPairingUnavailableStatesHaveClearCopy() {
         XCTAssertEqual(PairingState.notSignedIn.title, "Sign in to iCloud")
         XCTAssertTrue(PairingState.offline.message.contains("locally"))
