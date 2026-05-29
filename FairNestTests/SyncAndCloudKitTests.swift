@@ -243,6 +243,58 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(rememberedDeletionTargets.map(\.ownerName), ["owner-b"])
     }
 
+    func testHouseholdErasureAcknowledgementIsScopedByAccountAndZone() throws {
+        let suiteName = "FairNestTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let zoneA = CloudKitCardMapper.zoneID(ownerName: "owner-a")
+        let zoneB = CloudKitCardMapper.zoneID(ownerName: "owner-b")
+
+        CloudKitHouseholdErasureState.acknowledge(
+            erasedAt,
+            accountIdentifier: "account-a",
+            zoneID: zoneA,
+            defaults: defaults
+        )
+
+        XCTAssertFalse(CloudKitHouseholdErasureState.requiresAcknowledgement(
+            erasedAt,
+            accountIdentifier: "account-a",
+            zoneID: zoneA,
+            defaults: defaults
+        ))
+        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(
+            erasedAt,
+            accountIdentifier: "account-b",
+            zoneID: zoneA,
+            defaults: defaults
+        ))
+        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(
+            erasedAt,
+            accountIdentifier: "account-a",
+            zoneID: zoneB,
+            defaults: defaults
+        ))
+    }
+
+    func testLegacyHouseholdErasureAcknowledgementDoesNotSuppressScopedMarker() throws {
+        let suiteName = "FairNestTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+
+        CloudKitHouseholdErasureState.acknowledge(erasedAt, defaults: defaults)
+
+        XCTAssertFalse(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt, defaults: defaults))
+        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(
+            erasedAt,
+            accountIdentifier: "account-a",
+            zoneID: CloudKitCardMapper.zoneID(ownerName: "owner-a"),
+            defaults: defaults
+        ))
+    }
+
     @MainActor
     func testAcceptedSharePinsExistingLocalCardsToPrivateDatabase() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")

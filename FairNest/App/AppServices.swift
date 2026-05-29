@@ -297,7 +297,11 @@ final class AppServices: ObservableObject {
         iCloudSyncEnabled = false
         pendingCardsForPush = nil
         suppressNextCardPush = true
-        CloudKitHouseholdErasureState.acknowledge(error.erasedAt)
+        CloudKitHouseholdErasureState.acknowledge(
+            error.erasedAt,
+            accountIdentifier: error.accountIdentifier,
+            zoneID: error.zoneID
+        )
         CloudKitHouseholdSelection.clearSelectedSharedZone()
         do {
             try cardStore.replaceAllThrowing(with: [])
