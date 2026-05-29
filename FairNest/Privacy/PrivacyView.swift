@@ -123,7 +123,7 @@ struct PrivacyView: View {
     }
 
     private var privacyPolicyText: String {
-        "FairNest stores household cards locally and only syncs through CloudKit when iCloud Sync is turned on. Weekly check-ins stay on this device and can be exported. FairNest has no ads, subscriptions, third-party analytics, or custom backend."
+        PrivacyPolicyContent.summary
     }
 
     private var sharedDeleteHint: String {
@@ -189,14 +189,47 @@ struct PrivacyView: View {
     }
 }
 
+enum PrivacyPolicyContent {
+    static let summary = "FairNest stores household cards locally and only syncs through CloudKit when iCloud Sync is turned on. Removed cards use minimal deletion markers in iCloud and exports. Weekly check-ins stay on this device and can be exported. FairNest has no ads, subscriptions, third-party analytics, or custom backend."
+
+    static let fallbackMarkdown = """
+    # FairNest Privacy Policy
+
+    FairNest is a private household organization app. It does not sell data, show ads, use third-party analytics, use a custom server, or use paid APIs.
+
+    Household cards, reminder settings, and pairing state are stored locally on device. iCloud Sync is off by default. When turned on, FairNest uses iCloud to sync card data and Apple's private sharing flow to share a household with invited participants. Weekly check-ins stay on this device and can be exported.
+
+    Brain dump suggestions are prepared on this iPhone. Raw brain dump text is never automatically shared.
+
+    FairNest uses local notifications only after permission is granted. Users can export local data, delete local data and scheduled FairNest reminders from this device, and delete shared household data where their iCloud permissions allow it.
+
+    When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in iCloud sync records and exported data.
+    """
+
+    static func bundledMarkdown(bundle: Bundle = .main) -> String? {
+        guard let url = bundle.url(forResource: "PrivacyPolicy", withExtension: "md"),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return nil
+        }
+        return text
+    }
+
+    static func markdown(bundle: Bundle = .main) -> String {
+        bundledMarkdown(bundle: bundle) ?? fallbackMarkdown
+    }
+
+    static func attributedMarkdown(bundle: Bundle = .main) -> AttributedString {
+        let text = markdown(bundle: bundle)
+        return (try? AttributedString(markdown: text)) ?? AttributedString(text)
+    }
+}
+
 private struct PrivacyPolicyDetailView: View {
     var body: some View {
         List {
             Section {
-                Text("FairNest is a private household organization app. It does not sell data, show ads, use third-party analytics, use a custom server, or use paid APIs.")
-                Text("Household cards, reminder settings, and pairing state are stored locally on device. iCloud Sync is off by default. When turned on, FairNest uses iCloud to sync card data and Apple's private sharing flow to share a household with invited participants. Weekly check-ins stay on this device and can be exported.")
-                Text("Brain dump suggestions are prepared on this iPhone. Raw brain dump text is never automatically shared.")
-                Text("FairNest uses local notifications only after permission is granted. Users can export local data, delete local data and scheduled FairNest reminders from this device, and delete shared household data where their iCloud permissions allow it.")
+                Text(PrivacyPolicyContent.attributedMarkdown())
+                    .textSelection(.enabled)
             }
         }
         .navigationTitle("Privacy Policy")

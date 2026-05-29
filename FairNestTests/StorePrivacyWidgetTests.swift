@@ -224,6 +224,14 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertTrue(reasons?.contains("1C8F.1") == true)
     }
 
+    func testInAppPrivacyPolicyUsesBundledDeletionMarkerDisclosure() throws {
+        let bundledPolicy = try XCTUnwrap(PrivacyPolicyContent.bundledMarkdown())
+
+        XCTAssertTrue(PrivacyPolicyContent.summary.contains("minimal deletion markers"))
+        XCTAssertTrue(bundledPolicy.contains("minimal deletion marker"))
+        XCTAssertTrue(bundledPolicy.contains("omit the card title"))
+    }
+
     func testCorruptLocalStoresAreBackedUpBeforeReset() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
