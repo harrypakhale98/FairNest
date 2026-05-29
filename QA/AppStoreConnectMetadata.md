@@ -1,6 +1,6 @@
 # App Store Connect Metadata Draft
 
-Updated: May 28, 2026
+Updated: May 29, 2026
 
 ## Core Fields
 
@@ -45,8 +45,8 @@ Initial release of FairNest for iPhone.
 
 ## Support And Privacy URLs
 
-- Support URL after hosting: `https://harrypakhale98.github.io/FairNest/support.html`
-- Privacy Policy URL after hosting: `https://harrypakhale98.github.io/FairNest/privacy.html`
+- Support URL: `https://harrypakhale98.github.io/FairNest/support.html`
+- Privacy Policy URL: `https://harrypakhale98.github.io/FairNest/privacy.html`
 
 ## Review Notes Draft
 
