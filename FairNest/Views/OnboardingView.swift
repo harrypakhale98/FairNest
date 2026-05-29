@@ -201,10 +201,12 @@ struct OnboardingView: View {
                         message: "Add a few thoughts above and review the suggested cards before saving."
                     )
                 } else {
-                    ForEach($suggestions) { $suggestion in
+                    ForEach(suggestions.indices, id: \.self) { index in
                         BrainDumpSuggestionReviewRow(
-                            suggestion: $suggestion,
-                            isSelected: selectionBinding(for: suggestion.id),
+                            suggestion: $suggestions[index],
+                            isSelected: selectionBinding(for: suggestions[index].id),
+                            position: index + 1,
+                            totalCount: suggestions.count,
                             focusedField: $focusedField
                         )
                     }

@@ -80,10 +80,12 @@ struct BrainDumpView: View {
                             message: "Add a few thoughts above and review the suggested cards before saving."
                         )
                     } else {
-                        ForEach($suggestions) { $suggestion in
+                        ForEach(suggestions.indices, id: \.self) { index in
                             BrainDumpSuggestionReviewRow(
-                                suggestion: $suggestion,
-                                isSelected: selectionBinding(for: suggestion.id),
+                                suggestion: $suggestions[index],
+                                isSelected: selectionBinding(for: suggestions[index].id),
+                                position: index + 1,
+                                totalCount: suggestions.count,
                                 focusedField: $focusedField
                             )
                         }
@@ -237,28 +239,38 @@ struct BrainDumpSuggestionReviewRow: View {
     @Binding var suggestion: BrainDumpSuggestion
     @Binding var isSelected: Bool
     @State private var hasDueDate: Bool
+    var position: Int
+    var totalCount: Int
     var focusedField: FocusState<BrainDumpInputFocus?>.Binding
 
     init(
         suggestion: Binding<BrainDumpSuggestion>,
         isSelected: Binding<Bool>,
+        position: Int,
+        totalCount: Int,
         focusedField: FocusState<BrainDumpInputFocus?>.Binding
     ) {
         _suggestion = suggestion
         _isSelected = isSelected
         _hasDueDate = State(initialValue: suggestion.wrappedValue.dueDate != nil)
+        self.position = position
+        self.totalCount = totalCount
         self.focusedField = focusedField
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: $isSelected) {
-                Label("Include this card", systemImage: suggestion.type.symbolName)
+                Label(includeLabel, systemImage: suggestion.type.symbolName)
             }
+            .accessibilityLabel(includeAccessibilityLabel)
+            .accessibilityHint("Suggestion \(position) of \(totalCount).")
 
             TextField("Title", text: $suggestion.title, axis: .vertical)
                 .focused(focusedField, equals: .suggestionTitle(suggestion.id))
                 .font(.headline)
+                .accessibilityLabel("Title for suggestion \(position)")
+                .accessibilityHint(suggestionSummary)
                 .accessibilityIdentifier("brainDumpSuggestionTitle")
 
             Picker("Type", selection: $suggestion.type) {
@@ -266,20 +278,24 @@ struct BrainDumpSuggestionReviewRow: View {
                     Label(type.label, systemImage: type.symbolName).tag(type)
                 }
             }
+            .accessibilityLabel("Type for suggestion \(position)")
 
             Picker("Owner", selection: $suggestion.owner) {
                 ForEach(CardOwner.allCases) { owner in
                     Text(owner.label).tag(owner)
                 }
             }
+            .accessibilityLabel("Owner for suggestion \(position)")
 
             Picker("Effort", selection: $suggestion.effort) {
                 ForEach(Effort.allCases) { effort in
                     Text(effort.label).tag(effort)
                 }
             }
+            .accessibilityLabel("Effort for suggestion \(position)")
 
             Toggle("Due date", isOn: dueDateEnabled)
+                .accessibilityLabel("Due date for suggestion \(position)")
 
             if hasDueDate {
                 DatePicker(
@@ -290,6 +306,7 @@ struct BrainDumpSuggestionReviewRow: View {
                     ),
                     displayedComponents: [.date, .hourAndMinute]
                 )
+                .accessibilityLabel("Due date and time for suggestion \(position)")
             }
 
             Picker("Recurrence", selection: $suggestion.recurrence) {
@@ -297,16 +314,36 @@ struct BrainDumpSuggestionReviewRow: View {
                     Text(recurrence.label).tag(recurrence)
                 }
             }
+            .accessibilityLabel("Recurrence for suggestion \(position)")
 
             TextField("Done criteria", text: $suggestion.doneCriteria, axis: .vertical)
                 .focused(focusedField, equals: .suggestionDoneCriteria(suggestion.id))
+                .accessibilityLabel("Done criteria for suggestion \(position)")
                 .accessibilityIdentifier("brainDumpSuggestionDoneCriteria")
 
             TextField("Notes", text: $suggestion.notes, axis: .vertical)
                 .focused(focusedField, equals: .suggestionNotes(suggestion.id))
+                .accessibilityLabel("Notes for suggestion \(position)")
                 .accessibilityIdentifier("brainDumpSuggestionNotes")
         }
         .padding(.vertical, 4)
+    }
+
+    private var displayTitle: String {
+        let title = suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? "Untitled suggestion" : title
+    }
+
+    private var includeLabel: String {
+        "Include \(displayTitle)"
+    }
+
+    private var includeAccessibilityLabel: String {
+        "Include suggestion \(position): \(displayTitle)"
+    }
+
+    private var suggestionSummary: String {
+        "Suggestion \(position) of \(totalCount)."
     }
 
     private var dueDateEnabled: Binding<Bool> {

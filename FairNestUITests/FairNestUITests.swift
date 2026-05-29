@@ -70,6 +70,33 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Buy Milk"].waitForExistence(timeout: 3))
     }
 
+    func testBrainDumpReviewUsesDistinctAccessibilityLabels() {
+        let app = launchCompletedApp()
+
+        app.tabBars.buttons["Brain Dump"].tap()
+
+        let editor = app.textInput(named: "brainDumpText", timeout: 3)
+        XCTAssertTrue(editor.exists)
+        editor.tap()
+        editor.typeText("buy milk. laundry every Sunday")
+        app.buttons["dismissBrainDumpKeyboard"].tap()
+        app.buttons["Suggest Cards"].tap()
+
+        let firstTitle = app.textFields.matching(
+            NSPredicate(format: "label == %@", "Title for suggestion 1")
+        ).firstMatch
+        let secondTitle = app.textFields.matching(
+            NSPredicate(format: "label == %@", "Title for suggestion 2")
+        ).firstMatch
+        let firstToggle = app.switches.matching(
+            NSPredicate(format: "label == %@", "Include suggestion 1: Buy Milk")
+        ).firstMatch
+
+        XCTAssertTrue(firstTitle.waitForExistence(timeout: 10))
+        XCTAssertTrue(secondTitle.exists)
+        XCTAssertTrue(firstToggle.exists)
+    }
+
     func testSettingsShowsPrivacySyncAndReminderControls() {
         let app = launchCompletedApp()
 
