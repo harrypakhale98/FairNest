@@ -250,7 +250,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func exportData() throws -> Data {
-        let envelope = CardStoreEnvelope(version: 1, exportedAt: Date(), cards: cards)
+        let envelope = CardStoreEnvelope(version: 1, exportedAt: Date(), cards: cards.map(\.redactedDeletionTombstone))
         return try JSONEncoder.fairNest.encode(envelope)
     }
 

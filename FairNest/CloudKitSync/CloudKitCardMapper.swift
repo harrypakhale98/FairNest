@@ -57,21 +57,22 @@ enum CloudKitCardMapper {
     }
 
     static func record(from card: LoadCard, zoneID: CKRecordZone.ID) throws -> CKRecord {
-        let record = CKRecord(recordType: recordType, recordID: CKRecord.ID(recordName: card.id.uuidString, zoneID: zoneID))
-        record["title"] = card.title as CKRecordValue
-        record["type"] = card.type.rawValue as CKRecordValue
-        record["owner"] = card.owner.rawValue as CKRecordValue
-        record["status"] = card.status.rawValue as CKRecordValue
-        record["effort"] = card.effort.rawValue as CKRecordValue
-        record["notes"] = card.notes as CKRecordValue
-        record["doneCriteria"] = card.doneCriteria as CKRecordValue
-        record["createdBy"] = card.createdBy.rawValue as CKRecordValue
-        record["modifiedBy"] = card.modifiedBy.rawValue as CKRecordValue
-        record["createdAt"] = card.createdAt as CKRecordValue
-        record["updatedAt"] = card.updatedAt as CKRecordValue
-        record["dueDate"] = card.dueDate as CKRecordValue?
-        record["deletedAt"] = card.deletedAt as CKRecordValue?
-        let recurrenceData = try JSONEncoder.fairNest.encode(card.recurrence)
+        let mappedCard = card.redactedDeletionTombstone
+        let record = CKRecord(recordType: recordType, recordID: CKRecord.ID(recordName: mappedCard.id.uuidString, zoneID: zoneID))
+        record["title"] = mappedCard.title as CKRecordValue
+        record["type"] = mappedCard.type.rawValue as CKRecordValue
+        record["owner"] = mappedCard.owner.rawValue as CKRecordValue
+        record["status"] = mappedCard.status.rawValue as CKRecordValue
+        record["effort"] = mappedCard.effort.rawValue as CKRecordValue
+        record["notes"] = mappedCard.notes as CKRecordValue
+        record["doneCriteria"] = mappedCard.doneCriteria as CKRecordValue
+        record["createdBy"] = mappedCard.createdBy.rawValue as CKRecordValue
+        record["modifiedBy"] = mappedCard.modifiedBy.rawValue as CKRecordValue
+        record["createdAt"] = mappedCard.createdAt as CKRecordValue
+        record["updatedAt"] = mappedCard.updatedAt as CKRecordValue
+        record["dueDate"] = mappedCard.dueDate as CKRecordValue?
+        record["deletedAt"] = mappedCard.deletedAt as CKRecordValue?
+        let recurrenceData = try JSONEncoder.fairNest.encode(mappedCard.recurrence)
         record["recurrence"] = String(decoding: recurrenceData, as: UTF8.self) as CKRecordValue
         return record
     }

@@ -17,7 +17,7 @@ struct PrivacyExportService {
         let envelope = FairNestExportEnvelope(
             version: 1,
             exportedAt: Date(),
-            cards: cardStore.cards,
+            cards: cardStore.cards.map(\.redactedDeletionTombstone),
             checkIns: checkInStore.records,
             iCloudSyncEnabled: UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? false
         )

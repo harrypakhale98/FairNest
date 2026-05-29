@@ -9,3 +9,5 @@ Brain dump suggestions are prepared on device. When Apple Foundation Models are 
 FairNest uses local notifications only, after permission is granted, for due responsibilities, recurring responsibilities, and weekly check-ins. The app does not use remote push notifications.
 
 Users can export their local FairNest data from the Privacy screen, delete local app data and scheduled FairNest reminders from this device, and delete shared household data where CloudKit permissions allow it.
+
+When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in iCloud sync records and exported data.

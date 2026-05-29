@@ -38,6 +38,45 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(mapped.recurrence, .monthly(day: 14))
     }
 
+    func testCloudKitMappingRedactsDeletedCardContent() throws {
+        var card = LoadCard(
+            id: UUID(),
+            title: "Private medication refill",
+            type: .reminder,
+            owner: .partner,
+            status: .planned,
+            effort: .heavy,
+            dueDate: Date(timeIntervalSince1970: 1_800_000_000),
+            recurrence: .weekly(weekday: 3),
+            notes: "Sensitive dosage note",
+            doneCriteria: "Prescription picked up",
+            createdBy: .partner,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            modifiedBy: .partner,
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_100)
+        )
+        card.softDelete(at: Date(timeIntervalSince1970: 1_700_000_200), by: .me)
+
+        let record = try CloudKitCardMapper.record(from: card)
+        let mapped = try CloudKitCardMapper.card(from: record)
+
+        XCTAssertTrue(mapped.isDeleted)
+        XCTAssertEqual(mapped.id, card.id)
+        XCTAssertEqual(mapped.title, "")
+        XCTAssertEqual(mapped.type, .task)
+        XCTAssertEqual(mapped.owner, .unassigned)
+        XCTAssertEqual(mapped.status, .done)
+        XCTAssertEqual(mapped.effort, .tiny)
+        XCTAssertNil(mapped.dueDate)
+        XCTAssertEqual(mapped.recurrence, .none)
+        XCTAssertEqual(mapped.notes, "")
+        XCTAssertEqual(mapped.doneCriteria, "")
+        XCTAssertEqual(mapped.createdBy, .system)
+        XCTAssertEqual(mapped.modifiedBy, .system)
+        XCTAssertEqual(mapped.updatedAt, card.updatedAt)
+        XCTAssertEqual(mapped.deletedAt, card.deletedAt)
+    }
+
     func testCloudKitCardsUseHouseholdZone() throws {
         let card = LoadCard(id: UUID(), title: "Rotate laundry")
         let record = try CloudKitCardMapper.record(from: card)

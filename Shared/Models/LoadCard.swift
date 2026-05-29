@@ -293,6 +293,27 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
 
     var isDeleted: Bool { deletedAt != nil }
 
+    var redactedDeletionTombstone: LoadCard {
+        guard isDeleted else { return self }
+        return LoadCard(
+            id: id,
+            title: "",
+            type: .task,
+            owner: .unassigned,
+            status: .done,
+            effort: .tiny,
+            dueDate: nil,
+            recurrence: .none,
+            notes: "",
+            doneCriteria: "",
+            createdBy: .system,
+            createdAt: createdAt,
+            modifiedBy: .system,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt
+        )
+    }
+
     func normalizedForLocalSave(by member: HouseholdMember = .me, at date: Date = Date()) -> LoadCard {
         var copy = self
         copy.title = copy.title.trimmingCharacters(in: .whitespacesAndNewlines)

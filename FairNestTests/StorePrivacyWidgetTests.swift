@@ -42,6 +42,47 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertEqual(export.checkIns, [record])
     }
 
+    func testPrivacyExportRedactsDeletedCardContent() throws {
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        let sensitiveCard = LoadCard(
+            title: "Private medication refill",
+            type: .reminder,
+            owner: .partner,
+            status: .planned,
+            effort: .heavy,
+            dueDate: Date(timeIntervalSince1970: 1_800_000_000),
+            recurrence: .weekly(weekday: 3),
+            notes: "Sensitive dosage note",
+            doneCriteria: "Prescription picked up",
+            createdBy: .partner,
+            modifiedBy: .partner
+        )
+        try cardStore.upsertThrowing(sensitiveCard)
+        try cardStore.deleteThrowing(id: sensitiveCard.id)
+
+        let data = try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportData()
+        let export = try JSONDecoder.fairNest.decode(FairNestExportEnvelope.self, from: data)
+        let exportedCard = try XCTUnwrap(export.cards.first)
+
+        XCTAssertTrue(exportedCard.isDeleted)
+        XCTAssertEqual(exportedCard.id, sensitiveCard.id)
+        XCTAssertEqual(exportedCard.title, "")
+        XCTAssertEqual(exportedCard.type, .task)
+        XCTAssertEqual(exportedCard.owner, .unassigned)
+        XCTAssertEqual(exportedCard.status, .done)
+        XCTAssertEqual(exportedCard.effort, .tiny)
+        XCTAssertNil(exportedCard.dueDate)
+        XCTAssertEqual(exportedCard.recurrence, .none)
+        XCTAssertEqual(exportedCard.notes, "")
+        XCTAssertEqual(exportedCard.doneCriteria, "")
+        XCTAssertEqual(exportedCard.createdBy, .system)
+        XCTAssertEqual(exportedCard.modifiedBy, .system)
+
+        XCTAssertEqual(cardStore.cards.first?.title, "Private medication refill")
+        XCTAssertEqual(cardStore.cards.first?.notes, "Sensitive dosage note")
+    }
+
     func testOnboardingCompletionPersists() {
         let services = AppServices(cardStore: LocalCardStore(fileURL: tempURL()), checkInStore: LocalCheckInStore(fileURL: tempURL()))
         services.onboardingComplete = false
