@@ -166,7 +166,6 @@ final class ReminderAndCheckInTests: XCTestCase {
         try cardStore.replaceAllThrowing(with: [card])
         try FileManager.default.createDirectory(at: checkInURL, withIntermediateDirectories: true)
         let change = OwnershipChange(title: "Trash", owner: .partner, reason: "Reviewed")
-        let updatedCards = WeeklyCheckInEngine.cardsAfterApplying([change], to: [card])
         let record = CheckInRecord(
             feltHeavy: "Planning",
             gotDone: "Laundry",
@@ -188,7 +187,6 @@ final class ReminderAndCheckInTests: XCTestCase {
         } catch {
             XCTAssertFalse(error.localizedDescription.isEmpty)
         }
-        await services.handleCardsChanged(updatedCards)
         await services.handleCardsChanged(cardStore.cards)
 
         XCTAssertTrue(checkInStore.records.isEmpty)
@@ -196,6 +194,52 @@ final class ReminderAndCheckInTests: XCTestCase {
         XCTAssertTrue(reminderScheduler.scheduledCardIDs.isEmpty)
         XCTAssertTrue(reminderScheduler.cancelledCardIDs.isEmpty)
         XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
+    }
+
+    func testWeeklyCheckInCardPersistenceFailureDoesNotSuppressNextRealChange() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        let cardURL = tempURL()
+        let cardStore = LocalCardStore(fileURL: cardURL)
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        let card = LoadCard(
+            title: "Trash",
+            owner: .me,
+            status: .planned,
+            dueDate: Date(timeIntervalSinceNow: 3600)
+        )
+        try cardStore.replaceAllThrowing(with: [card])
+        try FileManager.default.removeItem(at: cardURL)
+        try FileManager.default.createDirectory(at: cardURL, withIntermediateDirectories: true)
+        let change = OwnershipChange(title: "Trash", owner: .partner, reason: "Reviewed")
+        let record = CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: [change]
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: checkInStore,
+            reminderScheduler: reminderScheduler
+        )
+
+        do {
+            try await services.saveWeeklyCheckIn(record, applying: [change])
+            XCTFail("Expected failing card persistence to leave the board unchanged.")
+        } catch {
+            XCTAssertFalse(error.localizedDescription.isEmpty)
+        }
+        let nextDueCard = LoadCard(
+            title: "Follow up",
+            status: .planned,
+            dueDate: Date(timeIntervalSinceNow: 7200)
+        )
+
+        await services.handleCardsChanged([nextDueCard])
+
+        XCTAssertEqual(cardStore.cards.first?.owner, .me)
+        XCTAssertEqual(reminderScheduler.scheduledCardIDs, [nextDueCard.id])
     }
 
     func testAppServicesSchedulesAndCancelsDueCardReminders() async {

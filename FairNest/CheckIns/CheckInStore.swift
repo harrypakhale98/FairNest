@@ -95,39 +95,26 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
     }
 
     func save(_ record: CheckInRecord) throws {
-        let previousRecords = records
-        records.insert(record, at: 0)
-        do {
-            try persistThrowing()
-        } catch {
-            records = previousRecords
-            throw error
-        }
+        var updatedRecords = records
+        updatedRecords.insert(record, at: 0)
+        try persistAndPublish(updatedRecords)
     }
 
     func deleteAll() throws {
         let previousRecords = records
-        records = []
         do {
-            try persistThrowing()
+            try persistAndPublish([])
             try removeCorruptBackups()
             lastLoadErrorMessage = nil
             storeUnavailableDueToLoadFailure = false
         } catch {
-            records = previousRecords
+            try? persistAndPublish(previousRecords)
             throw error
         }
     }
 
     func replaceAllThrowing(with newRecords: [CheckInRecord]) throws {
-        let previousRecords = records
-        records = newRecords
-        do {
-            try persistThrowing()
-        } catch {
-            records = previousRecords
-            throw error
-        }
+        try persistAndPublish(newRecords)
     }
 
     private func load() {
@@ -156,13 +143,18 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         }
     }
 
-    private func persistThrowing() throws {
+    private func persistAndPublish(_ newRecords: [CheckInRecord]) throws {
+        try persistThrowing(newRecords)
+        records = newRecords
+    }
+
+    private func persistThrowing(_ recordsToPersist: [CheckInRecord]) throws {
         guard !storeUnavailableDueToLoadFailure else {
             throw LocalCheckInStoreError.storeUnavailable
         }
         do {
             try fileManager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try JSONEncoder.fairNest.encode(records)
+            let data = try JSONEncoder.fairNest.encode(recordsToPersist)
             try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
             lastPersistenceErrorMessage = nil
         } catch {

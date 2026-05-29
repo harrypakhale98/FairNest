@@ -165,7 +165,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         at date: Date = Date(),
         expectedRevision: CardRevision? = nil
     ) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             var savedCard = card.normalizedForLocalSave(by: member, at: date)
             if let index = cards.firstIndex(where: { $0.id == card.id }) {
                 let existingCard = cards[index]
@@ -199,26 +199,21 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         let createdCards = suggestions.map { $0.makeCard() }
         guard !createdCards.isEmpty else { return [] }
 
-        let previousCards = cards
-        for card in createdCards {
-            if let index = cards.firstIndex(where: { $0.id == card.id }) {
-                cards[index] = card
-            } else {
-                cards.insert(card, at: 0)
+        try mutateAndPersist { cards in
+            for card in createdCards {
+                if let index = cards.firstIndex(where: { $0.id == card.id }) {
+                    cards[index] = card
+                } else {
+                    cards.insert(card, at: 0)
+                }
             }
         }
 
-        do {
-            try sortAndPersistThrowing()
-            return createdCards
-        } catch {
-            cards = previousCards
-            throw error
-        }
+        return createdCards
     }
 
     func transition(id: UUID, to status: CardStatus) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
             var card = cards[index]
             try card.transition(to: status)
@@ -235,7 +230,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func reassignThrowing(id: UUID, to owner: CardOwner) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
             cards[index].reassign(to: owner)
         }
@@ -250,7 +245,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func snoozeThrowing(id: UUID, days: Int) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
             cards[index].snooze(days: days)
         }
@@ -265,7 +260,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func deleteThrowing(id: UUID) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
             cards[index].softDelete()
         }
@@ -280,7 +275,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func restoreThrowing(id: UUID) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             guard let index = cards.firstIndex(where: { $0.id == id }) else { throw LocalCardStoreError.missingCard }
             guard cards[index].isDeleted else { return }
             guard !cards[index].title.isEmpty else { throw LocalCardStoreError.restoreUnavailable }
@@ -294,7 +289,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         by member: HouseholdMember = .me,
         at date: Date = Date()
     ) throws {
-        try mutateAndPersist {
+        try mutateAndPersist { cards in
             guard let index = cards.firstIndex(where: { $0.id == card.id }) else { throw LocalCardStoreError.missingCard }
             guard cards[index].isDeleted else { return }
             guard !card.title.isEmpty else { throw LocalCardStoreError.restoreUnavailable }
@@ -315,14 +310,13 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
 
     func deleteAllLocalData() {
         let previousCards = cards
-        cards = []
         do {
-            try persistThrowing()
+            try persistAndPublish([])
             try removeCorruptBackups()
             lastLoadErrorMessage = nil
             storeUnavailableDueToLoadFailure = false
         } catch {
-            cards = previousCards
+            try? persistAndPublish(previousCards)
             assertionFailure(error.localizedDescription)
         }
     }
@@ -336,77 +330,69 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     func replaceAllThrowing(with newCards: [LoadCard]) throws {
-        let previousCards = cards
-        cards = newCards
-        do {
-            try sortAndPersistThrowing()
-        } catch {
-            cards = previousCards
-            throw error
-        }
+        try persistAndPublish(newCards)
     }
 
     func deleteAllLocalDataThrowing() throws {
         let previousCards = cards
-        cards = []
         do {
-            try persistThrowing()
+            try persistAndPublish([])
             try removeCorruptBackups()
             lastLoadErrorMessage = nil
             storeUnavailableDueToLoadFailure = false
         } catch {
-            cards = previousCards
+            try? persistAndPublish(previousCards)
             throw error
         }
     }
 
     private func sortAndPersist() {
-        cards.sort { $0.updatedAt > $1.updatedAt }
-        persist()
-    }
-
-    private func sortAndPersistThrowing() throws {
-        cards.sort { $0.updatedAt > $1.updatedAt }
-        try persistThrowing()
-    }
-
-    private func mutateAndPersist(_ mutation: () throws -> Void) throws {
-        let previousCards = cards
         do {
-            try mutation()
-            try sortAndPersistThrowing()
-        } catch {
-            cards = previousCards
-            throw error
-        }
-    }
-
-    private func persist() {
-        do {
-            try persistThrowing()
+            try persistAndPublish(cards)
         } catch {
             assertionFailure(error.localizedDescription)
         }
     }
 
-    private func persistThrowing() throws {
+    private func mutateAndPersist(_ mutation: (inout [LoadCard]) throws -> Void) throws {
+        var updatedCards = cards
+        try mutation(&updatedCards)
+        try persistAndPublish(updatedCards)
+    }
+
+    private func persist() {
+        do {
+            try persistAndPublish(cards)
+        } catch {
+            assertionFailure(error.localizedDescription)
+        }
+    }
+
+    private func persistAndPublish(_ newCards: [LoadCard]) throws {
+        var sortedCards = newCards
+        sortedCards.sort { $0.updatedAt > $1.updatedAt }
+        try persistThrowing(sortedCards)
+        cards = sortedCards
+        WidgetSnapshotStore.write(cards: sortedCards)
+        WidgetSnapshotStore.reloadTimelines()
+    }
+
+    private func persistThrowing(_ cardsToPersist: [LoadCard]) throws {
         guard !storeUnavailableDueToLoadFailure else {
             throw LocalCardStoreError.storeUnavailable
         }
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-uiTestingFailCardPersistence"), !cards.isEmpty {
+        if ProcessInfo.processInfo.arguments.contains("-uiTestingFailCardPersistence"), !cardsToPersist.isEmpty {
             throw LocalCardStoreError.persistenceFailed
         }
         #endif
         do {
             let directory = fileURL.deletingLastPathComponent()
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-            let envelope = CardStoreEnvelope(version: 1, exportedAt: Date(), cards: cards)
+            let envelope = CardStoreEnvelope(version: 1, exportedAt: Date(), cards: cardsToPersist)
             let data = try JSONEncoder.fairNest.encode(envelope)
             try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
             lastPersistenceErrorMessage = nil
-            WidgetSnapshotStore.write(cards: cards)
-            WidgetSnapshotStore.reloadTimelines()
         } catch {
             lastPersistenceErrorMessage = error.localizedDescription
             throw LocalCardStoreError.persistenceFailed

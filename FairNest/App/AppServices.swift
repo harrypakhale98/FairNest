@@ -25,22 +25,22 @@ final class AppServices: ObservableObject {
     let cardStore: LocalCardStore
     let checkInStore: LocalCheckInStore
     let parser: BrainDumpParser
-    let reminderScheduler: ReminderScheduler
+    let reminderScheduler: any ReminderScheduler
     let syncService: CloudKitSyncService
     let pairingService: CloudKitPairingService
     private let syncEngine: any SyncService
     private var pendingCardsForPush: [LoadCard]?
     private var suppressNextCardPush = false
-    private var suppressedCardChangeSideEffectCount = 0
+    private var suppressedCardChangeSideEffectSnapshots: [[LoadCard]] = []
 
     init(
-        cardStore: LocalCardStore = LocalCardStore(),
-        checkInStore: LocalCheckInStore = LocalCheckInStore(),
+        cardStore: LocalCardStore? = nil,
+        checkInStore: LocalCheckInStore? = nil,
         parser: BrainDumpParser? = nil,
-        reminderScheduler: ReminderScheduler = LocalReminderScheduler(),
-        syncService: CloudKitSyncService = CloudKitSyncService(),
+        reminderScheduler: (any ReminderScheduler)? = nil,
+        syncService: CloudKitSyncService? = nil,
         syncEngine: (any SyncService)? = nil,
-        pairingService: CloudKitPairingService = CloudKitPairingService()
+        pairingService: CloudKitPairingService? = nil
     ) {
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
@@ -60,13 +60,14 @@ final class AppServices: ObservableObject {
             UserDefaults.standard.set(false, forKey: "iCloudSyncEnabled")
         }
         self.iCloudSyncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
-        self.cardStore = cardStore
-        self.checkInStore = checkInStore
+        self.cardStore = cardStore ?? LocalCardStore()
+        self.checkInStore = checkInStore ?? LocalCheckInStore()
         self.parser = parser ?? Self.defaultParser()
-        self.reminderScheduler = reminderScheduler
-        self.syncService = syncService
-        self.syncEngine = syncEngine ?? syncService
-        self.pairingService = pairingService
+        self.reminderScheduler = reminderScheduler ?? LocalReminderScheduler()
+        let resolvedSyncService = syncService ?? CloudKitSyncService()
+        self.syncService = resolvedSyncService
+        self.syncEngine = syncEngine ?? resolvedSyncService
+        self.pairingService = pairingService ?? CloudKitPairingService()
     }
 
     private static func defaultParser() -> BrainDumpParser {
@@ -206,8 +207,8 @@ final class AppServices: ObservableObject {
     }
 
     func handleCardsChanged(_ cards: [LoadCard]) async {
-        guard suppressedCardChangeSideEffectCount == 0 else {
-            suppressedCardChangeSideEffectCount -= 1
+        if let suppressionIndex = suppressedCardChangeSideEffectSnapshots.firstIndex(of: cards) {
+            suppressedCardChangeSideEffectSnapshots.remove(at: suppressionIndex)
             return
         }
         await performCardChangeSideEffects(for: cards)
@@ -219,8 +220,7 @@ final class AppServices: ObservableObject {
 
         do {
             if updatedCards != previousCards {
-                suppressNextCardChangeSideEffects()
-                try cardStore.replaceAllThrowing(with: updatedCards)
+                try replaceCardsSuppressingAutomaticSideEffects(with: updatedCards)
             }
 
             do {
@@ -231,8 +231,7 @@ final class AppServices: ObservableObject {
                     updatedCards: updatedCards,
                     originalError: error
                 ) {
-                    suppressNextCardChangeSideEffects()
-                    try cardStore.replaceAllThrowing(with: previousCards)
+                    try replaceCardsSuppressingAutomaticSideEffects(with: previousCards)
                 }
             }
 
@@ -258,8 +257,9 @@ final class AppServices: ObservableObject {
         await pushCardsIfAvailable(cards)
     }
 
-    private func suppressNextCardChangeSideEffects() {
-        suppressedCardChangeSideEffectCount += 1
+    private func replaceCardsSuppressingAutomaticSideEffects(with cards: [LoadCard]) throws {
+        try cardStore.replaceAllThrowing(with: cards)
+        suppressedCardChangeSideEffectSnapshots.append(cardStore.cards)
     }
 
     func scheduleRemindersForCurrentCards() async throws {

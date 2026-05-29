@@ -16,7 +16,7 @@ enum FairNestRouteRequest {
     static let pendingAcceptedCloudKitShareKey = "FairNestPendingAcceptedCloudKitShare"
 }
 
-final class FairNestAppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
+final class FairNestAppDelegate: NSObject, UIApplicationDelegate, @MainActor UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         return true
