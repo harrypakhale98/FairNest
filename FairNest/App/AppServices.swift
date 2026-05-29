@@ -5,6 +5,7 @@ import UserNotifications
 @MainActor
 final class AppServices: ObservableObject {
     private static let acceptedSharePrivateCardIDsKey = "acceptedSharePrivateCardIDs"
+    private static let activeCloudKitAccountIdentifierKey = "activeCloudKitAccountIdentifier"
 
     @Published var onboardingComplete: Bool {
         didSet {
@@ -43,6 +44,7 @@ final class AppServices: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
             UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
             UserDefaults.standard.removeObject(forKey: Self.acceptedSharePrivateCardIDsKey)
+            UserDefaults.standard.removeObject(forKey: Self.activeCloudKitAccountIdentifierKey)
             CloudKitHouseholdSelection.clearSelectedSharedZone()
             UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
         }
@@ -87,6 +89,7 @@ final class AppServices: ObservableObject {
             lastSyncMessage = nil
             lastReminderMessage = nil
             acceptedSharePrivateCardIDs = []
+            UserDefaults.standard.removeObject(forKey: Self.activeCloudKitAccountIdentifierKey)
             CloudKitHouseholdSelection.clearSelectedSharedZone()
             writeWidgetSnapshot(cards: [], syncPending: false)
         } catch {
@@ -139,6 +142,10 @@ final class AppServices: ObservableObject {
         await syncEngine.refreshStatus()
         guard syncEngine.status == .available else {
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: syncEngine.status == .offline || syncEngine.status == .pending)
+            await finishSyncAndFlushPending()
+            return
+        }
+        guard allowSyncForCurrentCloudKitAccount() else {
             await finishSyncAndFlushPending()
             return
         }
@@ -195,6 +202,14 @@ final class AppServices: ObservableObject {
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {
         guard iCloudSyncEnabled else { return }
         applyPrivateUploadPins()
+        if !syncInProgress {
+            await syncEngine.refreshStatus()
+            guard syncEngine.status == .available else {
+                writeWidgetSnapshot(cards: cards, syncPending: syncEngine.status == .offline || syncEngine.status == .pending)
+                return
+            }
+            guard allowSyncForCurrentCloudKitAccount() else { return }
+        }
         guard syncEngine.status == .available else {
             if syncInProgress {
                 pendingCardsForPush = cards
@@ -303,6 +318,28 @@ final class AppServices: ObservableObject {
         CloudKitHouseholdSelection.clearSelectedSharedZone()
         writeWidgetSnapshot(cards: [], syncPending: false)
         lastSyncMessage = FairNestIssueCopy.sharedHouseholdUnavailable
+    }
+
+    private func allowSyncForCurrentCloudKitAccount() -> Bool {
+        guard let accountIdentifier = syncEngine.accountIdentifier else {
+            return true
+        }
+
+        let previousIdentifier = UserDefaults.standard.string(forKey: Self.activeCloudKitAccountIdentifierKey)
+        guard let previousIdentifier, previousIdentifier != accountIdentifier else {
+            UserDefaults.standard.set(accountIdentifier, forKey: Self.activeCloudKitAccountIdentifierKey)
+            return true
+        }
+
+        iCloudSyncEnabled = false
+        pendingCardsForPush = nil
+        suppressNextCardPush = false
+        acceptedSharePrivateCardIDs = []
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
+        UserDefaults.standard.set(accountIdentifier, forKey: Self.activeCloudKitAccountIdentifierKey)
+        writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
+        lastSyncMessage = FairNestIssueCopy.iCloudAccountChanged
+        return false
     }
 
     private func protectCurrentLocalCardsFromSharedUpload() {

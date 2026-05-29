@@ -19,6 +19,7 @@ enum FairNestIssueCopy {
     static let sharedDeleteFailure = "FairNest couldn't finish deleting shared household data. Check iCloud and try again."
     static let sharedHouseholdErased = "Shared household data was erased from iCloud. FairNest turned sync off on this iPhone so old cards are not uploaded again."
     static let sharedHouseholdUnavailable = "FairNest lost access to the shared household in iCloud. Sync was turned off on this iPhone so old shared cards are not uploaded again."
+    static let iCloudAccountChanged = "The signed-in iCloud account changed. FairNest turned sync off before uploading local cards to the new iCloud account."
 
     static func boardOperationFailure(actionDescription: String) -> String {
         "FairNest couldn't \(actionDescription). Try again."

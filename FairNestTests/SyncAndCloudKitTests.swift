@@ -450,6 +450,41 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
     }
 
+    @MainActor
+    func testCloudKitAccountChangeTurnsOffSyncBeforeUploadingLocalCards() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousAccount = UserDefaults.standard.object(forKey: "activeCloudKitAccountIdentifier")
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousAccount {
+                UserDefaults.standard.set(previousAccount, forKey: "activeCloudKitAccountIdentifier")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "activeCloudKitAccountIdentifier")
+            }
+        }
+        UserDefaults.standard.set("old-account", forKey: "activeCloudKitAccountIdentifier")
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        _ = cardStore.add(BrainDumpSuggestion(title: "Old household card", type: .task))
+        let syncEngine = CapturingSyncEngine(status: .available, remoteCards: [], accountIdentifier: "new-account")
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        await services.pushCardsIfAvailable(cardStore.cards)
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
+        XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.iCloudAccountChanged)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "activeCloudKitAccountIdentifier"), "new-account")
+    }
+
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
     }
@@ -496,16 +531,18 @@ private final class RecordingHouseholdDeletionExecutor: CloudKitHouseholdDeletio
 @MainActor
 private final class CapturingSyncEngine: SyncService {
     var status: SyncStatus
+    var accountIdentifier: String?
     var remoteCards: [LoadCard]
     var fetchError: Error?
     var uploadedBatches: [[LoadCard]] = []
     var fetchCount = 0
     var pinnedCardIDs = Set<UUID>()
 
-    init(status: SyncStatus, remoteCards: [LoadCard], fetchError: Error? = nil) {
+    init(status: SyncStatus, remoteCards: [LoadCard], fetchError: Error? = nil, accountIdentifier: String? = nil) {
         self.status = status
         self.remoteCards = remoteCards
         self.fetchError = fetchError
+        self.accountIdentifier = accountIdentifier
     }
 
     func refreshStatus() async {}

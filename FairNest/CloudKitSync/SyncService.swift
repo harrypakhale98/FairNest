@@ -30,6 +30,7 @@ enum SyncStatus: Equatable {
 @MainActor
 protocol SyncService: AnyObject {
     var status: SyncStatus { get }
+    var accountIdentifier: String? { get }
     func refreshStatus() async
     func merge(local: [LoadCard], remote: [LoadCard]) -> [LoadCard]
     func upload(cards: [LoadCard]) async throws
@@ -66,6 +67,7 @@ struct CloudKitSharedHouseholdUnavailableError: LocalizedError {
 @MainActor
 final class CloudKitSyncService: ObservableObject, SyncService {
     @Published private(set) var status: SyncStatus = .checking
+    @Published private(set) var accountIdentifier: String?
 
     nonisolated static var containerIdentifier: String {
         Bundle.main.object(forInfoDictionaryKey: "FairNestCloudKitContainerIdentifier") as? String ?? "iCloud.com.hardikpakhale.fairnest"
@@ -82,11 +84,13 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     func refreshStatus() async {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
             ProcessInfo.processInfo.arguments.contains("-disableCloudKit") {
+            accountIdentifier = nil
             status = .unavailable
             return
         }
         #if targetEnvironment(simulator)
         guard ProcessInfo.processInfo.environment["FAIRNEST_ENABLE_CLOUDKIT"] == "1" else {
+            accountIdentifier = nil
             status = .unavailable
             return
         }
@@ -97,16 +101,21 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             let accountStatus = try await container.accountStatus()
             switch accountStatus {
             case .available:
+                accountIdentifier = try await container.userRecordID().recordName
                 status = .available
             case .noAccount:
+                accountIdentifier = nil
                 status = .notSignedIn
             case .restricted:
+                accountIdentifier = nil
                 status = .restricted
             case .couldNotDetermine:
+                accountIdentifier = nil
                 status = .unavailable
             case .temporarilyUnavailable:
                 status = .offline
             @unknown default:
+                accountIdentifier = nil
                 status = .unavailable
             }
         } catch {
