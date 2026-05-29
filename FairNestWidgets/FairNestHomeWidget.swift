@@ -105,19 +105,22 @@ struct FairNestWidgetView: View {
     }
 
     private var nextView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Next", systemImage: "house")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
+        Group {
             if let card = entry.snapshot.nextResponsibility {
-                Text(card.displayTitle)
-                    .font(.headline)
-                    .lineLimit(4)
-                Spacer(minLength: 0)
-                Text(card.owner.label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Next", systemImage: "house")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(card.displayTitle)
+                        .font(.headline)
+                        .lineLimit(4)
+                    Spacer(minLength: 0)
+                    Text(card.owner.label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                completedView
             }
         }
     }
@@ -183,6 +186,16 @@ struct FairNestWidgetView: View {
             Label("FairNest", systemImage: "house")
                 .font(.headline)
             Text("No cards yet")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var completedView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("All caught up", systemImage: "checkmark.circle")
+                .font(.headline)
+            Text("No open cards")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

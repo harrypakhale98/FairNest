@@ -233,6 +233,20 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertEqual(summaries.filter { $0.status == .done }.count, 24)
     }
 
+    func testWidgetNextResponsibilityIsEmptyWhenAllCardsAreDone() {
+        let doneCard = WidgetCardSummary(
+            id: UUID(),
+            type: .task,
+            owner: .me,
+            effort: .tiny,
+            dueDate: Date(timeIntervalSince1970: 1_800_000_000),
+            status: .done
+        )
+        let snapshot = WidgetHouseholdSnapshot(generatedAt: Date(), syncPending: false, cards: [doneCard])
+
+        XCTAssertNil(snapshot.nextResponsibility)
+    }
+
     func testWidgetSnapshotClearRemovesStoredMetadata() {
         let suiteName = UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
