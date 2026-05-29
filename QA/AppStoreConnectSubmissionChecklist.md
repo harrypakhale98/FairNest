@@ -26,6 +26,7 @@ Updated: May 28, 2026, 23:32 CDT
 
 ## App Store Connect Inputs
 
+- Metadata draft: `QA/AppStoreConnectMetadata.md`
 - App name: FairNest
 - Bundle ID: `com.hardikpakhale.fairnest`
 - Widget bundle ID: `com.hardikpakhale.fairnest.widgets`
