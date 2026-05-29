@@ -148,6 +148,12 @@ enum WidgetSnapshotStore {
         cards
             .filter { !$0.isDeleted }
             .sorted { lhs, rhs in
+                switch (lhs.status == .done, rhs.status == .done) {
+                case (false, true): return true
+                case (true, false): return false
+                case (true, true), (false, false): break
+                }
+
                 switch (lhs.dueDate, rhs.dueDate) {
                 case let (left?, right?): return left < right
                 case (_?, nil): return true

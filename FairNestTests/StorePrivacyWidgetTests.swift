@@ -194,6 +194,39 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertFalse(json.contains(privateTitle))
     }
 
+    func testWidgetSnapshotKeepsOpenCardsWhenDoneCardsHitSnapshotLimit() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let openCard = LoadCard(
+            id: UUID(),
+            title: "Open card",
+            type: .task,
+            owner: .shared,
+            status: .inbox,
+            effort: .medium,
+            dueDate: nil,
+            updatedAt: now
+        )
+        let doneCards = (0..<25).map { index in
+            LoadCard(
+                id: UUID(),
+                title: "Done \(index)",
+                type: .task,
+                owner: .me,
+                status: .done,
+                effort: .tiny,
+                dueDate: now.addingTimeInterval(TimeInterval(-index - 1) * 3_600),
+                updatedAt: now.addingTimeInterval(TimeInterval(index + 1))
+            )
+        }
+
+        let summaries = WidgetSnapshotStore.summaries(for: doneCards + [openCard])
+
+        XCTAssertEqual(summaries.count, 25)
+        XCTAssertEqual(summaries.first?.id, openCard.id)
+        XCTAssertTrue(summaries.contains { $0.id == openCard.id })
+        XCTAssertEqual(summaries.filter { $0.status == .done }.count, 24)
+    }
+
     func testWidgetSnapshotClearRemovesStoredMetadata() {
         let suiteName = UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
