@@ -1,27 +1,33 @@
 # App Store Connect Submission Checklist
 
-Updated: May 28, 2026, 23:32 CDT
+Updated: May 29, 2026, 00:50 CDT
 
 ## Build Evidence
 
-- App artifact evidence commit: `65f485b`.
-- Full scheme tests passed on iOS Simulator 26.5 (iPhone 17): 80 unit tests and 9 UI tests, 89 total, 0 failures.
-- Test result bundle: `/tmp/FairNestFullTest-65f485b.xcresult`.
-- The latest `.xcresult` was scanned for `Invalid frame dimension`, `Runtime Warning`, warning, error, failure, and failed markers; no matches were found.
-- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyze-65f485b`.
-- `plutil -lint` passed for exported app and widget Info.plists, privacy manifests, `QA/AppStoreExportOptions.plist`, and `QA/AppStoreUploadOptions.plist`.
-- Release archive succeeded at `/tmp/FairNest-65f485b.xcarchive`.
-- App Store export succeeded at `/tmp/FairNest-AppStoreExport-65f485b/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
+- App artifact evidence commit: `d11e156`.
+- Release archive succeeded at `/tmp/FairNest-d11e156.xcarchive`.
+- App Store export succeeded at `/tmp/FairNest-AppStoreExport-d11e156/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
+- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyze-d11e156-code` with `COMPRESS_PNG_FILES=NO`. The normal compressed-asset Release path is covered by the successful archive and App Store export; two default analyze attempts were interrupted after Xcode's `actool --compress-pngs` helper stalled in asset compilation.
+- Full scheme tests last completed at `65f485b` on iOS Simulator 26.5 (iPhone 17): 80 unit tests and 9 UI tests, 89 total, 0 failures.
+- Full scheme test result bundle: `/tmp/FairNestFullTest-65f485b.xcresult`.
+- Incremental tests after the CloudKit hardening changes covered the sync regression paths: iCloud account change disables sync before upload, shared-household access loss stops stale uploads, pinned private cards survive shared-card cleanup, CloudKit card mapper preserves unknown server fields, and scoped erasure acknowledgements do not suppress another account or zone.
+- Focused erasure acknowledgement tests passed after the final `d11e156` changes. Broader simulator reruns were interrupted after the simulator test runner hung at launch after `Testing started`.
+- The latest completed `.xcresult` was scanned for `Invalid frame dimension`, `Runtime Warning`, warning, error, failure, and failed markers; no matches were found.
+- `plutil -lint` passed for archived and exported app and widget Info.plists, exported privacy manifests, `QA/AppStoreExportOptions.plist`, and `QA/AppStoreUploadOptions.plist`.
 - The archive and exported IPA include the app privacy manifest, widget privacy manifest, bundled `PrivacyPolicy.md`, and `FairNestWidgets.appex`.
 - `FairNest/Resources/AppReviewNotes.md` is intentionally excluded from the app target resources and was not present in the built app bundle or exported IPA.
 - Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
 - The exported app signature contains CloudKit `Production`; the embedded Store provisioning profile exposes both `Production` and `Development` iCloud environments, which is normal profile metadata and does not override the signed app entitlement.
 - The exported widget extension is iPhone-only: `UIDeviceFamily = [1]`.
-- `/tmp/FairNest-AppStoreExport-65f485b/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
+- `/tmp/FairNest-AppStoreExport-d11e156/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
 - Shared household erase writes a content-free CloudKit erasure marker so stale devices acknowledge the reset before uploading local shared cards again.
 - Shared household erase deletes visible FairNest shared zones where permission allows, even when the remembered share owner is unavailable.
 - Removed cards are kept in local storage, sync to iCloud, and export as minimal deletion markers without title, notes, done criteria, scheduling, ownership, or effort fields.
 - Lost shared-household access turns iCloud Sync off and clears pending pushes instead of retrying stale shared-card uploads.
+- iCloud account changes turn iCloud Sync off, clear pending CloudKit pushes and widget/pin state, and prevent uploads under the wrong account.
+- Shared-household access loss removes stale shared cards locally while preserving pinned private cards.
+- CloudKit card saves fetch the existing record, apply only changed FairNest fields, and save with changed keys instead of overwriting the whole server record.
+- Shared-household erasure acknowledgements are scoped by CloudKit account and zone when those identifiers are available.
 - Static website files include local-only icons, a privacy page, and a support page. The website has no forms, cookies, analytics, ads, remote scripts, or custom backend.
 
 ## App Store Connect Inputs
@@ -95,5 +101,5 @@ Reference: https://developer.apple.com/help/app-store-connect/reference/screensh
 
 ## Current External Blockers
 
-- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-65f485b/FairNest.ipa` or rerun the upload export.
+- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-d11e156/FairNest.ipa` or rerun the upload export.
 - Host the static website at a public HTTPS URL before submission, then paste the final privacy policy URL and support URL into App Store Connect.
