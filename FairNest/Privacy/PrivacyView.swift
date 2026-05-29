@@ -11,6 +11,7 @@ struct PrivacyView: View {
     @State private var showingSharedDeleteConfirmation = false
     @State private var message: String?
     @State private var messageDetails: String?
+    @State private var deletionOperation: PrivacyDeletionOperation?
 
     var body: some View {
         List {
@@ -29,31 +30,36 @@ struct PrivacyView: View {
                 } label: {
                     Label("Export Data", systemImage: "square.and.arrow.up")
                 }
+                .disabled(isDeleting)
 
                 if let exportURL {
                     ShareLink(item: exportURL) {
                         Label("Share Export File", systemImage: "doc")
                     }
+                    .disabled(isDeleting)
+
                     Button(role: .destructive) {
                         clearExportFile()
                     } label: {
                         Label("Clear Export File", systemImage: "xmark.bin")
                     }
                     .accessibilityIdentifier("clearPrivacyExport")
+                    .disabled(isDeleting)
                 }
 
                 Button(role: .destructive) {
                     showingDeleteConfirmation = true
                 } label: {
-                    Label("Delete Local Data", systemImage: "trash")
+                    Label(localDeleteTitle, systemImage: localDeleteSymbol)
                 }
+                .disabled(isDeleting)
 
                 Button(role: .destructive) {
                     showingSharedDeleteConfirmation = true
                 } label: {
-                    Label("Delete Shared Household Data", systemImage: "trash.slash")
+                    Label(sharedDeleteTitle, systemImage: sharedDeleteSymbol)
                 }
-                .disabled(syncService.status != .available)
+                .disabled(syncService.status != .available || isDeleting)
                 .accessibilityHint(sharedDeleteHint)
 
                 if syncService.status != .available {
@@ -63,6 +69,16 @@ struct PrivacyView: View {
                 }
             } header: {
                 Text("Data controls")
+            }
+
+            if let deletionOperation {
+                Section {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                        Text(deletionOperation.progressMessage)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
 
             Section {
@@ -129,7 +145,30 @@ struct PrivacyView: View {
         PrivacyPolicyContent.summary
     }
 
+    private var isDeleting: Bool {
+        deletionOperation != nil
+    }
+
+    private var localDeleteTitle: String {
+        deletionOperation == .local ? "Deleting Local Data" : "Delete Local Data"
+    }
+
+    private var localDeleteSymbol: String {
+        deletionOperation == .local ? "hourglass" : "trash"
+    }
+
+    private var sharedDeleteTitle: String {
+        deletionOperation == .shared ? "Deleting Shared Household Data" : "Delete Shared Household Data"
+    }
+
+    private var sharedDeleteSymbol: String {
+        deletionOperation == .shared ? "hourglass" : "trash.slash"
+    }
+
     private var sharedDeleteHint: String {
+        if let deletionOperation {
+            return deletionOperation.progressMessage
+        }
         if syncService.status == .available {
             return "Deletes shared CloudKit household card data where this iCloud account has permission, then clears local data and reminders on this device."
         }
@@ -182,6 +221,9 @@ struct PrivacyView: View {
     }
 
     private func deleteLocalData() async {
+        guard deletionOperation == nil else { return }
+        deletionOperation = .local
+        defer { deletionOperation = nil }
         do {
             try await services.deleteAllLocalDataForPrivacy()
             exportURL = nil
@@ -194,6 +236,9 @@ struct PrivacyView: View {
     }
 
     private func deleteSharedHouseholdData() async {
+        guard deletionOperation == nil else { return }
+        deletionOperation = .shared
+        defer { deletionOperation = nil }
         do {
             try await services.deleteSharedHouseholdDataForPrivacy()
             exportURL = nil
@@ -202,6 +247,20 @@ struct PrivacyView: View {
         } catch {
             message = FairNestIssueCopy.sharedDeleteFailure
             messageDetails = error.localizedDescription
+        }
+    }
+}
+
+private enum PrivacyDeletionOperation {
+    case local
+    case shared
+
+    var progressMessage: String {
+        switch self {
+        case .local:
+            return "Deleting local FairNest data, temporary exports, and reminders..."
+        case .shared:
+            return "Deleting shared household data, local data, temporary exports, and reminders..."
         }
     }
 }
