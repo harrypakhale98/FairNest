@@ -142,14 +142,14 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             try await throwIfHouseholdWasErased(in: sharedDatabase, zoneID: preferredSharedZoneID, clearsSharedSelection: true)
         }
 
-        var privateRecords: [CKRecord] = []
-        var sharedRecordsByZone: [(zoneID: CKRecordZone.ID, records: [CKRecord])] = []
+        var privateWrites: [CloudKitRecordWrite] = []
+        var sharedWritesByZone: [(zoneID: CKRecordZone.ID, writes: [CloudKitRecordWrite])] = []
 
-        func appendSharedRecord(_ record: CKRecord, zoneID: CKRecordZone.ID) {
-            if let index = sharedRecordsByZone.firstIndex(where: { $0.zoneID == zoneID }) {
-                sharedRecordsByZone[index].records.append(record)
+        func appendSharedWrite(_ write: CloudKitRecordWrite, zoneID: CKRecordZone.ID) {
+            if let index = sharedWritesByZone.firstIndex(where: { $0.zoneID == zoneID }) {
+                sharedWritesByZone[index].writes.append(write)
             } else {
-                sharedRecordsByZone.append((zoneID, [record]))
+                sharedWritesByZone.append((zoneID, [write]))
             }
         }
 
@@ -157,22 +157,22 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             switch recordLocations[card.id]?.scope {
             case .sharedDatabase:
                 let zoneID = recordLocations[card.id]?.zoneID ?? CloudKitCardMapper.zoneID()
-                appendSharedRecord(try CloudKitCardMapper.record(from: card, zoneID: zoneID), zoneID: zoneID)
+                appendSharedWrite(CloudKitRecordWrite(card: card, zoneID: zoneID), zoneID: zoneID)
             case .privateDatabase:
                 let zoneID = recordLocations[card.id]?.zoneID ?? CloudKitCardMapper.zoneID()
-                privateRecords.append(try CloudKitCardMapper.record(from: card, zoneID: zoneID))
+                privateWrites.append(CloudKitRecordWrite(card: card, zoneID: zoneID))
             case nil:
                 if let sharedZoneID = preferredSharedZoneID {
-                    appendSharedRecord(try CloudKitCardMapper.record(from: card, zoneID: sharedZoneID), zoneID: sharedZoneID)
+                    appendSharedWrite(CloudKitRecordWrite(card: card, zoneID: sharedZoneID), zoneID: sharedZoneID)
                 } else {
-                    privateRecords.append(try CloudKitCardMapper.record(from: card))
+                    privateWrites.append(CloudKitRecordWrite(card: card, zoneID: CloudKitCardMapper.zoneID()))
                 }
             }
         }
 
-        try await save(privateRecords, in: privateDatabase, scope: .privateDatabase)
-        for group in sharedRecordsByZone {
-            try await save(group.records, in: sharedDatabase, scope: .sharedDatabase)
+        try await save(privateWrites, in: privateDatabase, scope: .privateDatabase)
+        for group in sharedWritesByZone {
+            try await save(group.writes, in: sharedDatabase, scope: .sharedDatabase)
         }
         status = .available
     }
@@ -461,12 +461,18 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         )
     }
 
-    private func save(_ records: [CKRecord], in database: CKDatabase, scope: CloudKitDatabaseScope) async throws {
-        guard !records.isEmpty else { return }
+    private func save(_ writes: [CloudKitRecordWrite], in database: CKDatabase, scope: CloudKitDatabaseScope) async throws {
+        guard !writes.isEmpty else { return }
+        var records: [CKRecord] = []
+        for write in writes {
+            let record = try await writableRecord(for: write, in: database)
+            try CloudKitCardMapper.apply(write.card, to: record)
+            records.append(record)
+        }
         let result = try await database.modifyRecords(
             saving: records,
             deleting: [],
-            savePolicy: .allKeys,
+            savePolicy: .changedKeys,
             atomically: false
         )
         let savedRecords = try CloudKitRecordOperationValidator.savedRecords(
@@ -477,6 +483,15 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             if let id = UUID(uuidString: record.recordID.recordName) {
                 recordLocations[id] = CloudKitRecordLocation(scope: scope, zoneID: record.recordID.zoneID)
             }
+        }
+    }
+
+    private func writableRecord(for write: CloudKitRecordWrite, in database: CKDatabase) async throws -> CKRecord {
+        let recordID = CloudKitCardMapper.recordID(for: write.card, zoneID: write.zoneID)
+        do {
+            return try await database.record(for: recordID)
+        } catch let error as CKError where error.code == .unknownItem {
+            return CKRecord(recordType: CloudKitCardMapper.recordType, recordID: recordID)
         }
     }
 
@@ -562,6 +577,11 @@ private enum CloudKitDatabaseScope {
 
 private struct CloudKitRecordLocation {
     var scope: CloudKitDatabaseScope
+    var zoneID: CKRecordZone.ID
+}
+
+private struct CloudKitRecordWrite {
+    var card: LoadCard
     var zoneID: CKRecordZone.ID
 }
 

@@ -92,6 +92,36 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(mapped.recurrence, .monthly(day: 14))
     }
 
+    func testCloudKitMappingAppliesUpdatesToExistingRecordWithoutDroppingUnknownFields() throws {
+        let card = LoadCard(
+            id: UUID(),
+            title: "Pay utilities",
+            type: .reminder,
+            owner: .me,
+            status: .planned,
+            effort: .light,
+            dueDate: Date(timeIntervalSince1970: 1_800_000_000),
+            recurrence: .monthly(day: 14),
+            notes: "Use household account",
+            doneCriteria: "Bill paid",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_100)
+        )
+        let record = try CloudKitCardMapper.record(from: card)
+        record["serverOnly"] = "keep me" as CKRecordValue
+        var updatedCard = card
+        updatedCard.title = "Pay utilities today"
+        updatedCard.notes = "Check autopay first"
+        updatedCard.updatedAt = Date(timeIntervalSince1970: 1_700_000_200)
+
+        try CloudKitCardMapper.apply(updatedCard, to: record)
+        let mapped = try CloudKitCardMapper.card(from: record)
+
+        XCTAssertEqual(mapped.title, "Pay utilities today")
+        XCTAssertEqual(mapped.notes, "Check autopay first")
+        XCTAssertEqual(record["serverOnly"] as? String, "keep me")
+    }
+
     func testCloudKitMappingRedactsDeletedCardContent() throws {
         var card = LoadCard(
             id: UUID(),

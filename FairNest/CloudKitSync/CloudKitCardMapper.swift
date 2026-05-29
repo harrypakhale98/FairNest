@@ -14,6 +14,10 @@ enum CloudKitCardMapper {
         CKRecord.ID(recordName: card.id.uuidString, zoneID: zoneID(ownerName: ownerName))
     }
 
+    static func recordID(for card: LoadCard, zoneID: CKRecordZone.ID) -> CKRecord.ID {
+        CKRecord.ID(recordName: card.id.uuidString, zoneID: zoneID)
+    }
+
     static func isHouseholdErasureMarker(_ id: UUID) -> Bool {
         id == householdErasureMarkerID
     }
@@ -58,23 +62,28 @@ enum CloudKitCardMapper {
 
     static func record(from card: LoadCard, zoneID: CKRecordZone.ID) throws -> CKRecord {
         let mappedCard = card.redactedDeletionTombstone
-        let record = CKRecord(recordType: recordType, recordID: CKRecord.ID(recordName: mappedCard.id.uuidString, zoneID: zoneID))
-        record["title"] = mappedCard.title as CKRecordValue
-        record["type"] = mappedCard.type.rawValue as CKRecordValue
-        record["owner"] = mappedCard.owner.rawValue as CKRecordValue
-        record["status"] = mappedCard.status.rawValue as CKRecordValue
-        record["effort"] = mappedCard.effort.rawValue as CKRecordValue
-        record["notes"] = mappedCard.notes as CKRecordValue
-        record["doneCriteria"] = mappedCard.doneCriteria as CKRecordValue
-        record["createdBy"] = mappedCard.createdBy.rawValue as CKRecordValue
-        record["modifiedBy"] = mappedCard.modifiedBy.rawValue as CKRecordValue
-        record["createdAt"] = mappedCard.createdAt as CKRecordValue
-        record["updatedAt"] = mappedCard.updatedAt as CKRecordValue
-        record["dueDate"] = mappedCard.dueDate as CKRecordValue?
-        record["deletedAt"] = mappedCard.deletedAt as CKRecordValue?
-        let recurrenceData = try JSONEncoder.fairNest.encode(mappedCard.recurrence)
-        record["recurrence"] = String(decoding: recurrenceData, as: UTF8.self) as CKRecordValue
+        let record = CKRecord(recordType: recordType, recordID: recordID(for: mappedCard, zoneID: zoneID))
+        try apply(mappedCard, to: record)
         return record
+    }
+
+    static func apply(_ card: LoadCard, to record: CKRecord) throws {
+        let mappedCard = card.redactedDeletionTombstone
+        set(mappedCard.title, forKey: "title", on: record)
+        set(mappedCard.type.rawValue, forKey: "type", on: record)
+        set(mappedCard.owner.rawValue, forKey: "owner", on: record)
+        set(mappedCard.status.rawValue, forKey: "status", on: record)
+        set(mappedCard.effort.rawValue, forKey: "effort", on: record)
+        set(mappedCard.notes, forKey: "notes", on: record)
+        set(mappedCard.doneCriteria, forKey: "doneCriteria", on: record)
+        set(mappedCard.createdBy.rawValue, forKey: "createdBy", on: record)
+        set(mappedCard.modifiedBy.rawValue, forKey: "modifiedBy", on: record)
+        set(mappedCard.createdAt, forKey: "createdAt", on: record)
+        set(mappedCard.updatedAt, forKey: "updatedAt", on: record)
+        set(mappedCard.dueDate, forKey: "dueDate", on: record)
+        set(mappedCard.deletedAt, forKey: "deletedAt", on: record)
+        let recurrenceData = try JSONEncoder.fairNest.encode(mappedCard.recurrence)
+        set(String(decoding: recurrenceData, as: UTF8.self), forKey: "recurrence", on: record)
     }
 
     static func card(from record: CKRecord) throws -> LoadCard {
@@ -118,6 +127,28 @@ enum CloudKitCardMapper {
             updatedAt: updatedAt,
             deletedAt: record["deletedAt"] as? Date
         )
+    }
+}
+
+private extension CloudKitCardMapper {
+    static func set(_ value: String, forKey key: String, on record: CKRecord) {
+        guard record[key] as? String != value else { return }
+        record[key] = value as CKRecordValue
+    }
+
+    static func set(_ value: Int, forKey key: String, on record: CKRecord) {
+        guard record[key] as? Int != value else { return }
+        record[key] = value as CKRecordValue
+    }
+
+    static func set(_ value: Date, forKey key: String, on record: CKRecord) {
+        guard record[key] as? Date != value else { return }
+        record[key] = value as CKRecordValue
+    }
+
+    static func set(_ value: Date?, forKey key: String, on record: CKRecord) {
+        guard record[key] as? Date != value else { return }
+        record[key] = value as CKRecordValue?
     }
 }
 
