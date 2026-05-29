@@ -4,10 +4,10 @@ Generated: May 28, 2026
 
 ## Build Evidence
 
-- Full scheme tests passed on iOS Simulator 26.5 (iPhone 17): 61 unit tests and 9 UI tests, 0 failures.
-- Test result bundle: `/tmp/FairNestFullTestDerivedData3/Logs/Test/Test-FairNest-2026.05.28_19-15-13--0500.xcresult`.
+- Full scheme tests passed on iOS Simulator 26.5 (iPhone 17): 62 unit tests and 9 UI tests, 0 failures.
+- Test result bundle: `/tmp/FairNestFullTestDerivedData5/Logs/Test/Test-FairNest-2026.05.28_19-38-16--0500.xcresult`.
 - The latest `.xcresult` was scanned for `Invalid frame dimension` and `Runtime Warning`; no matches were found.
-- Static analysis passed with the full FairNest scheme for generic iOS.
+- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyzeDerivedData5`.
 - `plutil -lint` passed for app and widget Info.plists, privacy manifests, entitlements, and App Store export option plists.
 - Release archive succeeded at `/tmp/FairNest-Readiness.xcarchive`.
 - App Store export succeeded at `/tmp/FairNest-AppStoreExport/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
@@ -15,6 +15,7 @@ Generated: May 28, 2026
 - `FairNest/Resources/AppReviewNotes.md` is intentionally excluded from the app target resources and was not present in the built app bundle or exported IPA.
 - Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
 - The exported app signature contains CloudKit `Production`; the embedded Store provisioning profile exposes both `Production` and `Development` iCloud environments, which is normal profile metadata and does not override the signed app entitlement.
+- The exported widget extension is iPhone-only: `UIDeviceFamily = [1]`.
 
 ## App Store Connect Inputs
 
@@ -58,6 +59,10 @@ Suggested starting point: general audience / lowest age rating available for a p
 
 Claim only what has been manually checked. The SwiftUI UI uses native controls and labels in the core flows, Dynamic Type stress paths were fixed for onboarding, board, brain dump, weekly check-in, and pairing, and the UI suite passed after those changes. A full manual accessibility audit with VoiceOver has not been completed in this pass.
 
+## Screenshot Readiness
+
+Current local screenshots in `QA/Screenshots` are 1206 x 2622 and 750 x 1334 pixels. Apple lists 1206 x 2622 as a 6.3-inch iPhone size and 750 x 1334 as a 4.7-inch iPhone size, not the primary 6.9-inch or 6.5-inch submission sizes. Capture a clean App Store screenshot set at an accepted 6.9-inch size, or at an accepted 6.5-inch size if a 6.9-inch set will not be provided, before submission. Reference: https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications
+
 ## Remaining Technical Risk
 
 - Sync is foreground/manual/on-local-change driven. CloudKit subscriptions, change-token processing, and remote-notification-triggered background sync are not implemented in this pass, so do not describe sync as instant push-driven sync in App Store metadata.
@@ -66,3 +71,4 @@ Claim only what has been manually checked. The SwiftUI UI uses native controls a
 
 - App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport/FairNest.ipa` or rerun the upload export.
 - Host the privacy policy at a public HTTPS URL before submission and paste that URL into App Store Connect.
+- Capture and upload accepted App Store screenshots for the required iPhone display size.
