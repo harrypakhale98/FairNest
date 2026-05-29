@@ -396,6 +396,7 @@ private struct CheckInStoreStatusRow: View {
 }
 
 private struct OwnershipChangeReviewRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var change: OwnershipChange
     var onDelete: () -> Void
 
@@ -408,12 +409,8 @@ private struct OwnershipChangeReviewRow: View {
                 .accessibilityLabel("Responsibility for ownership change")
                 .accessibilityIdentifier("checkInOwnershipTitle")
 
-            Picker("Owner", selection: $change.owner) {
-                ForEach(owners) { owner in
-                    Text(owner.label).tag(owner)
-                }
-            }
-            .pickerStyle(.segmented)
+            ownerPicker
+                .accessibilityIdentifier("checkInOwnershipOwner")
 
             Text(change.reason)
                 .font(.footnote)
@@ -427,5 +424,24 @@ private struct OwnershipChangeReviewRow: View {
             .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var ownerPicker: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            Picker("Owner", selection: $change.owner) {
+                ForEach(owners) { owner in
+                    Label(owner.label, systemImage: owner.symbolName).tag(owner)
+                }
+            }
+            .pickerStyle(.menu)
+        } else {
+            Picker("Owner", selection: $change.owner) {
+                ForEach(owners) { owner in
+                    Text(owner.label).tag(owner)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
     }
 }
