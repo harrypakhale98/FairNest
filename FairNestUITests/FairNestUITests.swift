@@ -188,12 +188,129 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Check-in saved"].waitForExistence(timeout: 3))
     }
 
+    func testCaptureAppStoreScreenshotsWhenDirectoryProvided() throws {
+        let screenshotDirectory = try appStoreScreenshotDirectory()
+        let app = launchCompletedApp()
+
+        app.tabBars.buttons["Brain Dump"].tap()
+        let brainDumpEditor = app.textInput(named: "brainDumpText", timeout: 3)
+        XCTAssertTrue(brainDumpEditor.exists)
+        brainDumpEditor.tap()
+        brainDumpEditor.typeText("meal plan. laundry every Sunday. thank Alex for dinner")
+        app.buttons["dismissBrainDumpKeyboard"].tap()
+        app.buttons["Suggest Cards"].tap()
+        XCTAssertTrue(app.textFields["brainDumpSuggestionTitle"].waitForExistence(timeout: 10))
+        try captureAppStoreScreenshot("appstore-iphone17promax-brain-dump-light", in: screenshotDirectory)
+
+        app.tabBars.buttons["Check-In"].tap()
+        let heavy = app.textViews["checkInFeltHeavy"]
+        XCTAssertTrue(heavy.waitForExistence(timeout: 3))
+        heavy.tap()
+        heavy.typeText("Meal planning")
+        app.buttons["checkInNext"].tap()
+
+        let done = app.textViews["checkInGotDone"]
+        XCTAssertTrue(done.waitForExistence(timeout: 3))
+        done.tap()
+        done.typeText("Laundry and groceries")
+        app.buttons["checkInNext"].tap()
+
+        let ownership = app.textViews["checkInNeedsOwnership"]
+        XCTAssertTrue(ownership.waitForExistence(timeout: 3))
+        ownership.tap()
+        ownership.typeText("partner owns trash night")
+        app.buttons["checkInNext"].tap()
+
+        let appreciation = app.textViews["checkInAppreciation"]
+        XCTAssertTrue(appreciation.waitForExistence(timeout: 3))
+        appreciation.tap()
+        appreciation.typeText("Thanks for making dinner")
+        app.buttons["checkInNext"].tap()
+
+        XCTAssertTrue(app.textFields["checkInOwnershipTitle"].waitForExistence(timeout: 3))
+        try captureAppStoreScreenshot("appstore-iphone17promax-check-in-light", in: screenshotDirectory)
+
+        app.tabBars.buttons["Pair"].tap()
+        XCTAssertTrue(app.navigationBars["Pair"].waitForExistence(timeout: 3))
+        try captureAppStoreScreenshot("appstore-iphone17promax-pairing-light", in: screenshotDirectory)
+
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        try captureAppStoreScreenshot("appstore-iphone17promax-settings-light", in: screenshotDirectory)
+    }
+
     private func launchCompletedApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
         app.launch()
+        if !app.navigationBars["Home Board"].waitForExistence(timeout: 5) {
+            completeOnboardingIfNeeded(in: app)
+        }
         XCTAssertTrue(app.navigationBars["Home Board"].waitForExistence(timeout: 8))
         return app
+    }
+
+    private func completeOnboardingIfNeeded(in app: XCUIApplication) {
+        let timeout = Date().addingTimeInterval(8)
+        while Date() < timeout {
+            if app.navigationBars["Home Board"].exists {
+                return
+            }
+            let startButton = app.buttons["Start FairNest"]
+            if startButton.waitForExistence(timeout: 1) {
+                startButton.tap()
+                continue
+            }
+            let continueButton = app.buttons["onboardingContinue"]
+            if continueButton.waitForExistence(timeout: 1) {
+                continueButton.tap()
+                continue
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
+    }
+
+    private func appStoreScreenshotDirectory() throws -> URL {
+        if let directory = ProcessInfo.processInfo.environment["FAIRNEST_APP_STORE_SCREENSHOT_DIR"],
+           !directory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let url = URL(fileURLWithPath: directory, isDirectory: true)
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sentinel = repoRoot.appendingPathComponent("QA/.capture-app-store-screenshots")
+        guard FileManager.default.fileExists(atPath: sentinel.path) else {
+            throw XCTSkip("Create QA/.capture-app-store-screenshots to write App Store screenshots.")
+        }
+
+        let screenshots = repoRoot.appendingPathComponent("QA/Screenshots", isDirectory: true)
+        try FileManager.default.createDirectory(at: screenshots, withIntermediateDirectories: true)
+        return screenshots
+    }
+
+    private func captureAppStoreScreenshot(
+        _ name: String,
+        in directory: URL,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        let screenshot = XCUIScreen.main.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        let url = directory.appendingPathComponent("\(name).png")
+        do {
+            try screenshot.pngRepresentation.write(to: url, options: .atomic)
+        } catch {
+            XCTFail("Failed to write \(url.path): \(error)", file: file, line: line)
+            throw error
+        }
     }
 }
 

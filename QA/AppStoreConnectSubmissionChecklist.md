@@ -1,6 +1,6 @@
 # App Store Connect Submission Checklist
 
-Updated: May 28, 2026, 22:56 CDT
+Updated: May 28, 2026, 23:32 CDT
 
 ## Build Evidence
 
@@ -79,8 +79,12 @@ Accepted 6.9-inch iPhone screenshots were captured at 1320 x 2868 pixels and vis
 - `QA/Screenshots/appstore-iphone17promax-board-light.png`
 - `QA/Screenshots/appstore-iphone17promax-board-dark.png`
 - `QA/Screenshots/appstore-iphone17promax-empty-light.png`
+- `QA/Screenshots/appstore-iphone17promax-brain-dump-light.png`
+- `QA/Screenshots/appstore-iphone17promax-check-in-light.png`
+- `QA/Screenshots/appstore-iphone17promax-pairing-light.png`
+- `QA/Screenshots/appstore-iphone17promax-settings-light.png`
 
-Current screenshots cover Home Board and empty-board states. Add Brain Dump, Check-In, Pairing, and Settings screenshots before submission if the App Store metadata emphasizes those flows.
+Screenshot capture evidence: `FairNestUITests/FairNestUITests/testCaptureAppStoreScreenshotsWhenDirectoryProvided` passed on `FairNest-AppStore-6-9` with result bundle `/tmp/FairNestAppStoreScreenshotCapture-current.xcresult`.
 
 Reference: https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications
 
