@@ -167,16 +167,15 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let container = containerProvider()
         let privateDatabase = container.privateCloudDatabase
         let sharedDatabase = container.sharedCloudDatabase
-        var deletedData = false
-        var permissionFailure: Error?
+        var deletionProgress = CloudKitHouseholdDeletionProgress()
 
         do {
             try await deletePrivateHouseholdZone(in: privateDatabase)
-            deletedData = true
+            deletionProgress.markDeletedData()
         } catch let error as CKError where error.code == .zoneNotFound {
             // Nothing private exists for this account.
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
-            permissionFailure = error
+            deletionProgress.recordPermissionFailure(error)
         } catch {
             status = .error(error.localizedDescription)
             throw error
@@ -185,18 +184,20 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         do {
             if let zoneID = try await activeSharedHouseholdZoneID(in: sharedDatabase) {
                 try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
-                deletedData = true
+                deletionProgress.markDeletedData()
             }
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
-            permissionFailure = error
+            deletionProgress.recordPermissionFailure(error)
         } catch {
             status = .error(error.localizedDescription)
             throw error
         }
 
-        if let permissionFailure, !deletedData {
+        do {
+            try deletionProgress.throwPermissionFailureIfPresent()
+        } catch {
             status = .permissionDenied
-            throw permissionFailure
+            throw error
         }
 
         preferredSharedZoneID = nil
@@ -372,6 +373,25 @@ private enum CloudKitDatabaseScope {
 private struct CloudKitRecordLocation {
     var scope: CloudKitDatabaseScope
     var zoneID: CKRecordZone.ID
+}
+
+struct CloudKitHouseholdDeletionProgress {
+    private(set) var deletedData = false
+    private var permissionFailure: Error?
+
+    mutating func markDeletedData() {
+        deletedData = true
+    }
+
+    mutating func recordPermissionFailure(_ error: Error) {
+        permissionFailure = error
+    }
+
+    func throwPermissionFailureIfPresent() throws {
+        if let permissionFailure {
+            throw permissionFailure
+        }
+    }
 }
 
 enum CloudKitRecordOperationValidator {

@@ -139,6 +139,17 @@ final class SyncAndCloudKitTests: XCTestCase {
         }
     }
 
+    func testHouseholdDeletionDoesNotMaskPermissionFailureAfterPartialDelete() throws {
+        var progress = CloudKitHouseholdDeletionProgress()
+        progress.markDeletedData()
+        progress.recordPermissionFailure(TestCloudKitPartialFailure())
+
+        XCTAssertTrue(progress.deletedData)
+        XCTAssertThrowsError(try progress.throwPermissionFailureIfPresent()) { error in
+            XCTAssertEqual(error.localizedDescription, "Simulated partial failure")
+        }
+    }
+
     @MainActor
     func testPushCardsFetchesAndMergesRemoteBeforeUploading() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
