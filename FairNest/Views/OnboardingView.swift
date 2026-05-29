@@ -322,7 +322,11 @@ struct OnboardingView: View {
             lastParsedBrainDump = input
             errorMessage = nil
             let count = result.suggestions.count
-            announce(count == 1 ? "1 starter card ready to review." : "\(count) starter cards ready to review.")
+            if count == 0 {
+                announce("No starter cards found.")
+            } else {
+                announce(count == 1 ? "1 starter card ready to review." : "\(count) starter cards ready to review.")
+            }
         } catch {
             lastParsedBrainDump = nil
             errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure

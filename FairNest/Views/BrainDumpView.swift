@@ -205,7 +205,11 @@ struct BrainDumpView: View {
             lastParsedText = input
             errorMessage = nil
             let count = result.suggestions.count
-            announce(count == 1 ? "1 suggestion ready to review." : "\(count) suggestions ready to review.")
+            if count == 0 {
+                announce("No suggestions found.")
+            } else {
+                announce(count == 1 ? "1 suggestion ready to review." : "\(count) suggestions ready to review.")
+            }
         } catch {
             lastParsedText = nil
             errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure
