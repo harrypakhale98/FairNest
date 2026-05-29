@@ -66,6 +66,7 @@ struct PairingView: View {
                         Label(isCreatingInvite ? "Creating Invite" : "Create Partner Invite", systemImage: "person.badge.plus")
                     }
                     .disabled(!canCreateInvite || isCreatingInvite)
+                    .accessibilityHint(inviteButtonAccessibilityHint)
 
                     if isCreatingInvite {
                         ProgressView("Preparing iCloud invite")
@@ -131,6 +132,26 @@ struct PairingView: View {
 
     private var canCreateInvite: Bool {
         pairingService.state.allowsCreatingInvite(iCloudSyncEnabled: services.iCloudSyncEnabled)
+    }
+
+    private var inviteButtonAccessibilityHint: String {
+        if isCreatingInvite {
+            return "Wait for the iCloud invite to finish preparing."
+        }
+        guard services.iCloudSyncEnabled else {
+            return "Turn on iCloud Sync before creating a partner invite."
+        }
+        if canCreateInvite {
+            return "Creates a private iCloud share for this household."
+        }
+        switch pairingService.state {
+        case .paired:
+            return "This household is already shared. Manage participants from the iCloud sharing sheet."
+        case .checking:
+            return "Wait for FairNest to finish checking iCloud sharing status."
+        default:
+            return "Resolve the current iCloud sharing status before creating a partner invite."
+        }
     }
 
     private func enableICloudSyncForPairing() async {
