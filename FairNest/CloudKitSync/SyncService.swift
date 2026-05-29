@@ -201,8 +201,11 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         do {
             let privateZoneID = CloudKitCardMapper.zoneID()
             try await ensureHouseholdZone(in: privateDatabase)
-            try await deleteCardRecords(in: privateDatabase, zoneID: privateZoneID)
-            try await saveHouseholdErasureMarker(in: privateDatabase, zoneID: privateZoneID, erasedAt: erasedAt)
+            try await CloudKitHouseholdDeletionWorkflow.eraseHouseholdData(
+                in: cloudKitDeletionExecutor(for: privateDatabase),
+                zoneID: privateZoneID,
+                erasedAt: erasedAt
+            )
             deletionProgress.markDeletedData()
         } catch let error as CKError where error.code == .zoneNotFound {
             // Nothing private exists for this account.
@@ -217,8 +220,11 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             let zoneIDs = try await deletableSharedHouseholdZoneIDs(in: sharedDatabase)
             for zoneID in zoneIDs {
                 do {
-                    try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
-                    try await saveHouseholdErasureMarker(in: sharedDatabase, zoneID: zoneID, erasedAt: erasedAt)
+                    try await CloudKitHouseholdDeletionWorkflow.eraseHouseholdData(
+                        in: cloudKitDeletionExecutor(for: sharedDatabase),
+                        zoneID: zoneID,
+                        erasedAt: erasedAt
+                    )
                     deletionProgress.markDeletedData()
                 } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
                     deletionProgress.recordPermissionFailure(error)
@@ -430,6 +436,17 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         _ = try await database.save(record)
     }
 
+    private func cloudKitDeletionExecutor(for database: CKDatabase) -> CloudKitHouseholdZoneDeletionExecutor {
+        CloudKitHouseholdZoneDeletionExecutor(
+            saveMarker: { [self] zoneID, erasedAt in
+                try await saveHouseholdErasureMarker(in: database, zoneID: zoneID, erasedAt: erasedAt)
+            },
+            deleteRecords: { [self] zoneID in
+                try await deleteCardRecords(in: database, zoneID: zoneID)
+            }
+        )
+    }
+
     private func save(_ records: [CKRecord], in database: CKDatabase, scope: CloudKitDatabaseScope) async throws {
         guard !records.isEmpty else { return }
         let result = try await database.modifyRecords(
@@ -490,6 +507,37 @@ enum CloudKitHouseholdErasureState {
             return
         }
         defaults.set(erasedAt, forKey: acknowledgedErasedAtKey)
+    }
+}
+
+@MainActor
+protocol CloudKitHouseholdDeletionExecutor {
+    func saveHouseholdErasureMarker(zoneID: CKRecordZone.ID, erasedAt: Date) async throws
+    func deleteCardRecords(zoneID: CKRecordZone.ID) async throws
+}
+
+@MainActor
+enum CloudKitHouseholdDeletionWorkflow {
+    static func eraseHouseholdData(
+        in executor: some CloudKitHouseholdDeletionExecutor,
+        zoneID: CKRecordZone.ID,
+        erasedAt: Date
+    ) async throws {
+        try await executor.saveHouseholdErasureMarker(zoneID: zoneID, erasedAt: erasedAt)
+        try await executor.deleteCardRecords(zoneID: zoneID)
+    }
+}
+
+private struct CloudKitHouseholdZoneDeletionExecutor: CloudKitHouseholdDeletionExecutor {
+    var saveMarker: (CKRecordZone.ID, Date) async throws -> Void
+    var deleteRecords: (CKRecordZone.ID) async throws -> Void
+
+    func saveHouseholdErasureMarker(zoneID: CKRecordZone.ID, erasedAt: Date) async throws {
+        try await saveMarker(zoneID, erasedAt)
+    }
+
+    func deleteCardRecords(zoneID: CKRecordZone.ID) async throws {
+        try await deleteRecords(zoneID)
     }
 }
 

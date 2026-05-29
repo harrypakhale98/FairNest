@@ -252,6 +252,43 @@ final class SyncAndCloudKitTests: XCTestCase {
     }
 
     @MainActor
+    func testHouseholdDeletionWritesErasureMarkerBeforeDeletingCards() async throws {
+        let executor = RecordingHouseholdDeletionExecutor()
+        let zoneID = CloudKitCardMapper.zoneID(ownerName: "owner-a")
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_000)
+
+        try await CloudKitHouseholdDeletionWorkflow.eraseHouseholdData(
+            in: executor,
+            zoneID: zoneID,
+            erasedAt: erasedAt
+        )
+
+        XCTAssertEqual(executor.operations, ["saveMarker", "deleteCards"])
+        XCTAssertEqual(executor.savedZoneIDs, [zoneID])
+        XCTAssertEqual(executor.deletedZoneIDs, [zoneID])
+        XCTAssertEqual(executor.savedErasedAt, erasedAt)
+    }
+
+    @MainActor
+    func testHouseholdDeletionDoesNotDeleteCardsWhenErasureMarkerSaveFails() async {
+        let executor = RecordingHouseholdDeletionExecutor(saveError: TestCloudKitPartialFailure())
+        let zoneID = CloudKitCardMapper.zoneID(ownerName: "owner-a")
+
+        do {
+            try await CloudKitHouseholdDeletionWorkflow.eraseHouseholdData(
+                in: executor,
+                zoneID: zoneID,
+                erasedAt: Date(timeIntervalSince1970: 1_800_000_000)
+            )
+            XCTFail("Expected marker save failure to abort shared household deletion.")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, "Simulated partial failure")
+            XCTAssertEqual(executor.operations, ["saveMarker"])
+            XCTAssertEqual(executor.deletedZoneIDs, [])
+        }
+    }
+
+    @MainActor
     func testPushCardsFetchesAndMergesRemoteBeforeUploading() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         defer {
@@ -385,6 +422,38 @@ final class SyncAndCloudKitTests: XCTestCase {
 private struct TestCloudKitPartialFailure: LocalizedError {
     var errorDescription: String? {
         "Simulated partial failure"
+    }
+}
+
+@MainActor
+private final class RecordingHouseholdDeletionExecutor: CloudKitHouseholdDeletionExecutor {
+    var operations: [String] = []
+    var savedZoneIDs: [CKRecordZone.ID] = []
+    var deletedZoneIDs: [CKRecordZone.ID] = []
+    var savedErasedAt: Date?
+    var saveError: Error?
+    var deleteError: Error?
+
+    init(saveError: Error? = nil, deleteError: Error? = nil) {
+        self.saveError = saveError
+        self.deleteError = deleteError
+    }
+
+    func saveHouseholdErasureMarker(zoneID: CKRecordZone.ID, erasedAt: Date) async throws {
+        operations.append("saveMarker")
+        savedZoneIDs.append(zoneID)
+        savedErasedAt = erasedAt
+        if let saveError {
+            throw saveError
+        }
+    }
+
+    func deleteCardRecords(zoneID: CKRecordZone.ID) async throws {
+        operations.append("deleteCards")
+        deletedZoneIDs.append(zoneID)
+        if let deleteError {
+            throw deleteError
+        }
     }
 }
 
