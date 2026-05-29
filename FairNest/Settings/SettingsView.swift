@@ -139,6 +139,19 @@ struct SettingsView: View {
                 } header: {
                     Text("App")
                 }
+
+                Section {
+                    Button {
+                        emailSupport()
+                    } label: {
+                        Label("Email Support", systemImage: "envelope")
+                    }
+                    Text("Include your iPhone model, iOS version, FairNest version, and a short description. Avoid private household card details unless they are needed to explain the issue.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Support")
+                }
             }
             .navigationTitle("Settings")
             .alert(
@@ -262,6 +275,7 @@ struct SettingsView: View {
     private static let weeklyCheckInWeekday = 1
     private static let weeklyCheckInHour = 18
     private static let weeklyCheckInMinute = 0
+    private static let supportEmail = "harry.pakhale98@gmail.com"
 
     private func handleICloudSyncToggleChanged(_ enabled: Bool) {
         if enabled {
@@ -335,5 +349,16 @@ struct SettingsView: View {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         openURL(url)
         #endif
+    }
+
+    private func emailSupport() {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = Self.supportEmail
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "FairNest Support")
+        ]
+        guard let url = components.url else { return }
+        openURL(url)
     }
 }

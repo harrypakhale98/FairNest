@@ -1,6 +1,6 @@
 # App Store Connect Submission Checklist
 
-Updated: May 28, 2026, 21:53 CDT
+Updated: May 28, 2026, 22:19 CDT
 
 ## Build Evidence
 
@@ -21,6 +21,7 @@ Updated: May 28, 2026, 21:53 CDT
 - Shared household erase deletes visible FairNest shared zones where permission allows, even when the remembered share owner is unavailable.
 - Removed cards are kept in local storage, sync to iCloud, and export as minimal deletion markers without title, notes, done criteria, scheduling, ownership, or effort fields.
 - Lost shared-household access turns iCloud Sync off and clears pending pushes instead of retrying stale shared-card uploads.
+- Static website files include local-only icons, a privacy page, and a support page. The website has no forms, cookies, analytics, ads, remote scripts, or custom backend.
 
 ## App Store Connect Inputs
 
@@ -33,6 +34,9 @@ Updated: May 28, 2026, 21:53 CDT
 - App Store version: `1.0`
 - Build number: `1`
 - Minimum OS: iOS 26.0
+- Support contact: `harry.pakhale98@gmail.com`
+- Support URL candidate after hosting: `https://harrypakhale98.github.io/FairNest/support.html`
+- Privacy Policy URL candidate after hosting: `https://harrypakhale98.github.io/FairNest/privacy.html`
 
 ## Review Notes
 
@@ -44,13 +48,16 @@ Use `FairNest/Resources/AppReviewNotes.md` as the base review note. It is a repo
 - Partner pairing is optional and uses Apple's private CloudKit sharing sheet.
 - Local notifications only, after permission.
 - Brain dump parsing is on-device with a deterministic local fallback.
+- Support email is available from website support and in-app Settings. Users are told not to include private household card details unless needed to explain the issue.
 - Not therapy, medical advice, legal advice, counseling, treatment, or diagnosis.
 
 ## Privacy Label Draft
 
 Based on the current repo, the privacy label should be "Data Not Collected" by the developer, assuming there is no external service outside Apple CloudKit and the developer does not access user private CloudKit records. Re-check this before submission if analytics, crash SDKs, support forms, email capture, logging, or any backend is added.
 
-Privacy policy URL is required in App Store Connect. Use the text in `FairNest/Resources/PrivacyPolicy.md`, but host it at a public HTTPS URL before submission. The policy markdown is bundled in the app and rendered by the in-app Privacy Policy screen, but App Store Connect still requires a public URL.
+Privacy policy URL is required in App Store Connect. Use the text in `FairNest/Resources/PrivacyPolicy.md` and the matching static `website/privacy.html`, but host it at a public HTTPS URL before submission. The policy markdown is bundled in the app and rendered by the in-app Privacy Policy screen, but App Store Connect still requires a public URL.
+
+The policy now discloses invited participant access to shared CloudKit card data, retention duration, deletion markers, optional iCloud Sync withdrawal, stopping CloudKit sharing where permissions allow it, and optional support email handling.
 
 ## Export Compliance Draft
 
@@ -83,4 +90,4 @@ Reference: https://developer.apple.com/help/app-store-connect/reference/screensh
 ## Current External Blockers
 
 - App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-5769ae4/FairNest.ipa` or rerun the upload export.
-- Host the privacy policy at a public HTTPS URL before submission and paste that URL into App Store Connect.
+- Host the static website at a public HTTPS URL before submission, then paste the final privacy policy URL and support URL into App Store Connect.

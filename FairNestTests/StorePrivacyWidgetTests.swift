@@ -286,9 +286,13 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
         XCTAssertTrue(PrivacyPolicyContent.summary.contains("minimal deletion markers"))
         XCTAssertTrue(PrivacyPolicyContent.summary.contains("local storage"))
+        XCTAssertTrue(PrivacyPolicyContent.summary.contains("Invited participants"))
         XCTAssertTrue(bundledPolicy.contains("minimal deletion marker"))
         XCTAssertTrue(bundledPolicy.contains("omit the card title"))
         XCTAssertTrue(bundledPolicy.contains("local storage"))
+        XCTAssertTrue(bundledPolicy.contains("withdraw optional iCloud Sync"))
+        XCTAssertTrue(bundledPolicy.contains("Local FairNest data remains"))
+        XCTAssertTrue(bundledPolicy.contains("harry.pakhale98@gmail.com"))
     }
 
     func testCorruptLocalStoresAreBackedUpBeforeReset() throws {

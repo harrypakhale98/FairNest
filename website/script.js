@@ -38,12 +38,4 @@
   } else {
     revealTargets.forEach((element) => element.classList.add("is-visible"));
   }
-
-  if (window.lucide) {
-    window.lucide.createIcons({
-      attrs: {
-        "aria-hidden": "true"
-      }
-    });
-  }
 })();

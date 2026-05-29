@@ -5,9 +5,10 @@ This folder is a static website for FairNest. It can be published as-is on GitHu
 ## Files
 
 - `index.html` - product explainer homepage.
+- `support.html` - App Store support page and contact surface.
 - `privacy.html` - standalone privacy policy page.
 - `styles.css` - responsive visual system.
-- `script.js` - header and screenshot toggle behavior.
+- `script.js` - header and reveal behavior.
 - `assets/` - local app icon and real iPhone screenshots.
 
 ## Local Preview

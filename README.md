@@ -9,6 +9,7 @@ FairNest is a local-first iOS household organization app built with SwiftUI, Wid
 - Partner sharing uses private CloudKit Sharing instead of public read/write invite links.
 - Widgets store generic card labels instead of raw household card titles.
 - The app has no ads, subscriptions, third-party analytics, custom backend, or paid API dependency.
+- Static support and privacy pages live in `website/`; support contact is `harry.pakhale98@gmail.com`.
 
 ## Apple Identifier Setup
 

@@ -36,6 +36,7 @@ html {
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background:
     linear-gradient(180deg, #ffffff 0, var(--bg) 520px, var(--bg) 100%) var(--bg);
   color: var(--text);
@@ -63,6 +64,11 @@ a {
 
 button {
   font: inherit;
+}
+
+.icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
 .skip-link {
@@ -199,7 +205,7 @@ button {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.9) 34%, rgba(245, 245, 247, 0.2) 58%, rgba(245, 245, 247, 0) 100%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 46%, rgba(245, 245, 247, 0.34) 66%, rgba(245, 245, 247, 0) 100%),
     linear-gradient(0deg, var(--bg) 0%, rgba(245, 245, 247, 0) 28%);
   pointer-events: none;
 }
@@ -229,10 +235,11 @@ button {
 }
 
 .hero-phone-shadow {
-  right: max(250px, calc((100% - var(--max)) / 2 + 260px));
+  --phone-shadow-opacity: 0.62;
+  right: max(70px, calc((100% - var(--max)) / 2 + 60px));
   bottom: -220px;
   transform: rotate(7deg);
-  opacity: 0.82;
+  opacity: var(--phone-shadow-opacity);
   animation: phone-secondary-enter 1080ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
 }
 
@@ -264,7 +271,7 @@ button {
 }
 
 .hero-lede {
-  max-width: 680px;
+  max-width: 580px;
   margin: 24px 0 0;
   font-size: 32px;
   line-height: 1.12;
@@ -796,6 +803,23 @@ button {
   color: var(--muted-strong);
 }
 
+.policy-content a {
+  color: var(--accent-dark);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.policy-content ul {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  color: var(--muted-strong);
+}
+
+.policy-content li + li {
+  margin-top: 8px;
+}
+
 .reveal-item {
   opacity: 0;
   transform: translateY(22px);
@@ -838,7 +862,7 @@ button {
     transform: translateY(70px) rotate(2deg) scale(0.96);
   }
   to {
-    opacity: 0.82;
+    opacity: var(--phone-shadow-opacity);
     transform: translateY(0) rotate(7deg) scale(1);
   }
 }
@@ -927,9 +951,9 @@ button {
   }
 
   .hero-phone-shadow {
-    right: 128px;
+    --phone-shadow-opacity: 0.32;
+    right: -18px;
     bottom: -156px;
-    opacity: 0.46;
   }
 
   .hero h1,
@@ -940,6 +964,13 @@ button {
   .hero-lede {
     max-width: 520px;
     font-size: 25px;
+  }
+
+  .hero-copy,
+  .hero-lede,
+  .hero-support,
+  .hero-actions {
+    max-width: min(100%, 340px);
   }
 
   .hero-support,
@@ -960,7 +991,7 @@ button {
   }
 
   .signal-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .signal-grid strong {

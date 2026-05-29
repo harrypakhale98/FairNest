@@ -12,7 +12,6 @@
     <link rel="icon" href="assets/icons/favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="styles.css">
-    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script defer src="script.js"></script>
   </head>
   <body class="policy-page">
@@ -27,11 +26,12 @@
         <div class="nav-links">
           <a href="index.html#features">Features</a>
           <a href="index.html#privacy">Privacy</a>
+          <a href="support.html">Support</a>
           <a href="privacy.html" aria-current="page">Policy</a>
         </div>
         <a class="nav-cta" href="index.html#waitlist">
           <span>Coming to iPhone</span>
-          <i data-lucide="smartphone" aria-hidden="true"></i>
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/site-icons.svg#smartphone"></use></svg>
         </a>
       </nav>
     </header>
@@ -46,12 +46,14 @@
       </section>
 
       <article class="policy-content">
+        <p><strong>Last updated:</strong> May 28, 2026</p>
+
         <h2>Storage and Sharing</h2>
         <p>
           Household cards, reminder settings, and pairing state are stored locally on the device. iCloud Sync is off by default. When the user turns it on, FairNest uses CloudKit to sync card data and private CloudKit Sharing to share a household with invited participants.
         </p>
         <p>
-          Weekly check-ins stay on the device and can be exported by the user. Apple provides iCloud and CloudKit infrastructure; FairNest&apos;s developer does not operate a separate backend for this data.
+          Invited household participants can see shared household card data inside the private CloudKit share. Weekly check-ins stay on the device and can be exported by the user. Apple provides iCloud and CloudKit infrastructure; FairNest&apos;s developer does not operate a separate backend for this data.
         </p>
 
         <h2>Brain Dump Suggestions</h2>
@@ -66,12 +68,22 @@
 
         <h2>User Controls</h2>
         <p>
-          Users can export their local FairNest data from the Privacy screen, delete local app data and scheduled FairNest reminders from this device, and delete shared household data where CloudKit permissions allow it.
+          Users can export their local FairNest data from the Privacy screen, delete local app data and scheduled FairNest reminders from this device, and delete shared household data where CloudKit permissions allow it. Users can withdraw optional iCloud Sync by turning it off in Settings. Users can stop partner sharing or remove participants from the iCloud sharing sheet where their iCloud permissions allow it.
+        </p>
+
+        <h2>Retention</h2>
+        <p>
+          Local FairNest data remains on the device until the user edits or deletes it, uses FairNest&apos;s deletion controls, deletes the app, or removes it through operating system storage controls. iCloud card data remains in the user&apos;s iCloud account and private CloudKit shares until removed by the user, a permitted share participant, FairNest&apos;s deletion controls, or Apple iCloud controls.
         </p>
 
         <h2>Deletion Markers</h2>
         <p>
           When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in local storage, iCloud sync records, and exported data.
+        </p>
+
+        <h2>Support Contact</h2>
+        <p>
+          For support, email <a href="mailto:harry.pakhale98@gmail.com?subject=FairNest%20Support">harry.pakhale98@gmail.com</a>. Support email is optional and handled through the sender&apos;s and developer&apos;s email providers. Do not include private household card details unless they are needed to explain the issue.
         </p>
       </article>
     </main>
@@ -85,6 +97,7 @@
         <p>Free. No ads. No subscriptions. iCloud Sync optional.</p>
         <div class="footer-links">
           <a href="index.html#features">Features</a>
+          <a href="support.html">Support</a>
           <a href="privacy.html">Privacy Policy</a>
         </div>
       </div>
