@@ -660,10 +660,21 @@ enum ConflictResolver {
     }
 
     static func resolve(local: LoadCard, remote: LoadCard) -> LoadCard {
-        if local.isDeleted, !remote.isDeleted { return local }
-        if remote.isDeleted, !local.isDeleted { return remote }
+        if local.isDeleted != remote.isDeleted {
+            let localDate = conflictDate(for: local)
+            let remoteDate = conflictDate(for: remote)
+            if localDate > remoteDate { return local }
+            if remoteDate > localDate { return remote }
+            return local.isDeleted ? local : remote
+        }
         if remote.updatedAt > local.updatedAt { return remote }
         if local.updatedAt > remote.updatedAt { return local }
         return local
+    }
+
+    private static func conflictDate(for card: LoadCard) -> Date {
+        guard card.isDeleted else { return card.updatedAt }
+        guard let deletedAt = card.deletedAt else { return card.updatedAt }
+        return max(deletedAt, card.updatedAt)
     }
 }

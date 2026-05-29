@@ -13,7 +13,25 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(ConflictResolver.resolve(local: newer, remote: older).title, "Newer")
     }
 
-    func testConflictResolutionPrefersDeletedTombstoneOverActiveCard() {
+    func testConflictResolutionPrefersNewerDeletedTombstoneOverStaleActiveCard() {
+        let id = UUID()
+        var newerDeleted = LoadCard(
+            id: id,
+            title: "Deleted",
+            updatedAt: Date(timeIntervalSince1970: 20)
+        )
+        newerDeleted.softDelete(at: Date(timeIntervalSince1970: 20))
+        let olderActive = LoadCard(
+            id: id,
+            title: "Stale device edit",
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+
+        XCTAssertTrue(ConflictResolver.resolve(local: olderActive, remote: newerDeleted).isDeleted)
+        XCTAssertTrue(ConflictResolver.resolve(local: newerDeleted, remote: olderActive).isDeleted)
+    }
+
+    func testConflictResolutionAllowsNewerRestoreToBeatOlderTombstone() {
         let id = UUID()
         var olderDeleted = LoadCard(
             id: id,
@@ -21,14 +39,32 @@ final class SyncAndCloudKitTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 10)
         )
         olderDeleted.softDelete(at: Date(timeIntervalSince1970: 10))
-        let newerActive = LoadCard(
+        let restoredActive = LoadCard(
             id: id,
-            title: "Stale device edit",
+            title: "Restored card",
             updatedAt: Date(timeIntervalSince1970: 20)
         )
 
-        XCTAssertTrue(ConflictResolver.resolve(local: newerActive, remote: olderDeleted).isDeleted)
-        XCTAssertTrue(ConflictResolver.resolve(local: olderDeleted, remote: newerActive).isDeleted)
+        XCTAssertEqual(ConflictResolver.resolve(local: restoredActive, remote: olderDeleted).title, "Restored card")
+        XCTAssertEqual(ConflictResolver.resolve(local: olderDeleted, remote: restoredActive).title, "Restored card")
+    }
+
+    func testConflictResolutionPrefersTombstoneWhenDeleteAndActiveTie() {
+        let id = UUID()
+        var deleted = LoadCard(
+            id: id,
+            title: "Deleted",
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+        deleted.softDelete(at: Date(timeIntervalSince1970: 10))
+        let active = LoadCard(
+            id: id,
+            title: "Same timestamp",
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+
+        XCTAssertTrue(ConflictResolver.resolve(local: active, remote: deleted).isDeleted)
+        XCTAssertTrue(ConflictResolver.resolve(local: deleted, remote: active).isDeleted)
     }
 
     func testCloudKitMappingRoundTripsCardFields() throws {
