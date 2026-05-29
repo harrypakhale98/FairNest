@@ -52,8 +52,33 @@ enum PairingState: Equatable {
             return "The shared household was removed. You can continue in solo mode."
         case .paired:
             return "This household is shared through iCloud."
+        case let .error(message):
+            return message
+        }
+    }
+
+    var modeLabel: String {
+        switch self {
+        case .solo, .sharingRemoved:
+            return "Solo-ready"
+        case .checking:
+            return "Checking"
+        case .iCloudUnavailable:
+            return "iCloud unavailable"
+        case .notSignedIn:
+            return "Needs iCloud sign-in"
+        case .partnerNotJoined:
+            return "Invite pending"
+        case .syncPending:
+            return "Sync pending"
+        case .offline:
+            return "Offline"
+        case .permissionDenied:
+            return "Needs permission"
+        case .paired:
+            return "Shared"
         case .error:
-            return FairNestIssueCopy.pairingFailure
+            return "Needs attention"
         }
     }
 

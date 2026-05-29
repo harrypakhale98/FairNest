@@ -178,6 +178,16 @@ final class StorePrivacyWidgetTests: XCTestCase {
         service.markShareAcceptanceFailed(TestPairingError.expiredInvite)
 
         XCTAssertEqual(service.state, .error("Invite expired"))
+        XCTAssertEqual(service.state.message, "Invite expired")
+    }
+
+    func testPairingModeLabelsMatchPendingAndErrorStates() {
+        XCTAssertEqual(PairingState.solo.modeLabel, "Solo-ready")
+        XCTAssertEqual(PairingState.paired.modeLabel, "Shared")
+        XCTAssertEqual(PairingState.partnerNotJoined.modeLabel, "Invite pending")
+        XCTAssertEqual(PairingState.syncPending.modeLabel, "Sync pending")
+        XCTAssertEqual(PairingState.error("Invite expired").modeLabel, "Needs attention")
+        XCTAssertEqual(PairingState.permissionDenied.modeLabel, "Needs permission")
     }
 
     func testAcceptedShareEnablesSyncBeforeMarkingPaired() async {

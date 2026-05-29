@@ -96,7 +96,7 @@ struct PairingView: View {
 
                 Section {
                     LabeledContent("Sync", value: syncService.status.label)
-                    LabeledContent("Mode", value: pairingService.state == .paired ? "Shared" : "Solo-ready")
+                    LabeledContent("Mode", value: pairingService.state.modeLabel)
                     if pairingService.state == .paired {
                         Text("This iPhone is already part of a shared household. Manage participants from the iCloud sharing sheet when this device owns the share.")
                             .foregroundStyle(.secondary)
