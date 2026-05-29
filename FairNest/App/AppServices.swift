@@ -106,6 +106,8 @@ final class AppServices: ObservableObject {
         var sharedDeletionError: Error?
         do {
             try await syncEngine.deleteSharedHouseholdData()
+        } catch let error as CloudKitHouseholdSelectionError {
+            throw error
         } catch {
             sharedDeletionError = error
         }

@@ -217,7 +217,7 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(rememberedSelection?.ownerName, "owner-b")
     }
 
-    func testSharedHouseholdDeletionTargetsVisibleHouseholdZonesWhenSelectionIsAmbiguous() {
+    func testSharedHouseholdDeletionFailsClosedWhenSelectionIsAmbiguous() throws {
         let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
         defer {
             if let previousSelection {
@@ -232,13 +232,17 @@ final class SyncAndCloudKitTests: XCTestCase {
         let ownerA = CloudKitCardMapper.zoneID(ownerName: "owner-a")
         let unrelated = CKRecordZone.ID(zoneName: "OtherZone", ownerName: "owner-0")
 
-        let ambiguousDeletionTargets = CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerB, unrelated, ownerA])
-
-        XCTAssertEqual(ambiguousDeletionTargets.map(\.ownerName), ["owner-a", "owner-b"])
+        XCTAssertThrowsError(try CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerB, unrelated, ownerA])) { error in
+            XCTAssertEqual(error as? CloudKitHouseholdSelectionError, .ambiguousSharedHouseholdDeletion)
+        }
         XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
 
+        let singleDeletionTarget = try CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerA, unrelated])
+        XCTAssertEqual(singleDeletionTarget.map(\.ownerName), ["owner-a"])
+
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
         CloudKitHouseholdSelection.rememberSharedZoneID(ownerB)
-        let rememberedDeletionTargets = CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerA, ownerB])
+        let rememberedDeletionTargets = try CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerA, ownerB])
 
         XCTAssertEqual(rememberedDeletionTargets.map(\.ownerName), ["owner-b"])
     }
@@ -607,6 +611,52 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(UserDefaults.standard.string(forKey: "activeCloudKitAccountIdentifier"), "new-account")
     }
 
+    @MainActor
+    func testSharedPrivacyDeleteDoesNotClearLocalDataWhenSharedSelectionIsAmbiguous() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+        }
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        let card = cardStore.add(BrainDumpSuggestion(title: "Keep until household is clear", type: .task))
+        let checkIn = CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: []
+        )
+        try checkInStore.save(checkIn)
+        let syncEngine = CapturingSyncEngine(
+            status: .available,
+            remoteCards: [],
+            deleteSharedHouseholdDataError: CloudKitHouseholdSelectionError.ambiguousSharedHouseholdDeletion
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: checkInStore,
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        do {
+            try await services.deleteSharedHouseholdDataForPrivacy()
+            XCTFail("Expected ambiguous shared-household deletion to fail before clearing local data.")
+        } catch {
+            XCTAssertEqual(error as? CloudKitHouseholdSelectionError, .ambiguousSharedHouseholdDeletion)
+        }
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertEqual(syncEngine.deleteSharedHouseholdDataCallCount, 1)
+        XCTAssertEqual(cardStore.cards.map(\.id), [card.id])
+        XCTAssertEqual(checkInStore.records, [checkIn])
+    }
+
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
     }
@@ -656,14 +706,23 @@ private final class CapturingSyncEngine: SyncService {
     var accountIdentifier: String?
     var remoteCards: [LoadCard]
     var fetchError: Error?
+    var deleteSharedHouseholdDataError: Error?
     var uploadedBatches: [[LoadCard]] = []
     var fetchCount = 0
+    var deleteSharedHouseholdDataCallCount = 0
     var pinnedCardIDs = Set<UUID>()
 
-    init(status: SyncStatus, remoteCards: [LoadCard], fetchError: Error? = nil, accountIdentifier: String? = nil) {
+    init(
+        status: SyncStatus,
+        remoteCards: [LoadCard],
+        fetchError: Error? = nil,
+        deleteSharedHouseholdDataError: Error? = nil,
+        accountIdentifier: String? = nil
+    ) {
         self.status = status
         self.remoteCards = remoteCards
         self.fetchError = fetchError
+        self.deleteSharedHouseholdDataError = deleteSharedHouseholdDataError
         self.accountIdentifier = accountIdentifier
     }
 
@@ -691,7 +750,12 @@ private final class CapturingSyncEngine: SyncService {
         return merged
     }
 
-    func deleteSharedHouseholdData() async throws {}
+    func deleteSharedHouseholdData() async throws {
+        deleteSharedHouseholdDataCallCount += 1
+        if let deleteSharedHouseholdDataError {
+            throw deleteSharedHouseholdDataError
+        }
+    }
 
     func acceptShare(metadata: CKShare.Metadata) async throws {}
 

@@ -312,7 +312,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     }
 
     private func deletableSharedHouseholdZoneIDs(in database: CKDatabase) async throws -> [CKRecordZone.ID] {
-        let zoneIDs = CloudKitHouseholdSelection.deletableSharedZoneIDs(from: try await householdZoneIDs(in: database))
+        let zoneIDs = try CloudKitHouseholdSelection.deletableSharedZoneIDs(from: try await householdZoneIDs(in: database))
         preferredSharedZoneID = zoneIDs.count == 1 ? zoneIDs.first : nil
         return zoneIDs
     }

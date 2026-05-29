@@ -193,7 +193,7 @@ enum CloudKitHouseholdSelection {
         return selected
     }
 
-    static func deletableSharedZoneIDs(from zoneIDs: [CKRecordZone.ID]) -> [CKRecordZone.ID] {
+    static func deletableSharedZoneIDs(from zoneIDs: [CKRecordZone.ID]) throws -> [CKRecordZone.ID] {
         let householdZoneIDs = sortedHouseholdZoneIDs(from: zoneIDs)
 
         guard !householdZoneIDs.isEmpty else {
@@ -206,8 +206,13 @@ enum CloudKitHouseholdSelection {
             return [rememberedZoneID]
         }
 
+        if householdZoneIDs.count == 1, let onlyZoneID = householdZoneIDs.first {
+            rememberSharedZoneID(onlyZoneID)
+            return [onlyZoneID]
+        }
+
         clearSelectedSharedZone()
-        return householdZoneIDs
+        throw CloudKitHouseholdSelectionError.ambiguousSharedHouseholdDeletion
     }
 
     private static func sortedHouseholdZoneIDs(from zoneIDs: [CKRecordZone.ID]) -> [CKRecordZone.ID] {
@@ -220,6 +225,17 @@ enum CloudKitHouseholdSelection {
 
     private static func matches(_ lhs: CKRecordZone.ID, _ rhs: CKRecordZone.ID) -> Bool {
         lhs.zoneName == rhs.zoneName && lhs.ownerName == rhs.ownerName
+    }
+}
+
+enum CloudKitHouseholdSelectionError: LocalizedError, Equatable {
+    case ambiguousSharedHouseholdDeletion
+
+    var errorDescription: String? {
+        switch self {
+        case .ambiguousSharedHouseholdDeletion:
+            return "FairNest found more than one shared household in iCloud and could not tell which one to delete. Open the invite for the household you want to manage, then try again."
+        }
     }
 }
 
