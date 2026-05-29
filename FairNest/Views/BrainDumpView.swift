@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 enum BrainDumpInputFocus: Hashable {
     case thoughts
@@ -17,6 +20,7 @@ struct BrainDumpView: View {
     @State private var safetyNotice: SafetyNotice?
     @State private var errorMessage: String?
     @State private var saveConfirmation: String?
+    @State private var validationMessage: String?
     @State private var isParsing = false
     @State private var lastParsedText: String?
     @FocusState private var focusedField: BrainDumpInputFocus?
@@ -69,6 +73,12 @@ struct BrainDumpView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    if let reviewReadinessMessage {
+                        Label(reviewReadinessMessage, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                            .accessibilityIdentifier("brainDumpValidationMessage")
+                    }
+
                     if let safetyNotice, !hasStaleReview {
                         SafetyNoticeRow(notice: safetyNotice)
                     }
@@ -116,6 +126,13 @@ struct BrainDumpView: View {
                 if !normalized(newValue).isEmpty {
                     saveConfirmation = nil
                 }
+                validationMessage = nil
+            }
+            .onChange(of: suggestions) { _, _ in
+                validationMessage = nil
+            }
+            .onChange(of: selectedIDs) { _, _ in
+                validationMessage = nil
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -131,10 +148,7 @@ struct BrainDumpView: View {
     }
 
     private var hasSavableSelection: Bool {
-        isReviewCurrent && suggestions.contains { suggestion in
-            selectedIDs.contains(suggestion.id) &&
-                !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
+        isReviewCurrent && !selectedSuggestions.isEmpty && firstSelectedBlankTitleSuggestion == nil
     }
 
     private var hasStaleReview: Bool {
@@ -154,6 +168,24 @@ struct BrainDumpView: View {
         return lastParsedText == nil ? .initial : .nothingFound
     }
 
+    private var selectedSuggestions: [BrainDumpSuggestion] {
+        suggestions.filter { selectedIDs.contains($0.id) }
+    }
+
+    private var firstSelectedBlankTitleSuggestion: BrainDumpSuggestion? {
+        selectedSuggestions.first { normalized($0.title).isEmpty }
+    }
+
+    private var reviewReadinessMessage: String? {
+        if let validationMessage {
+            return validationMessage
+        }
+        if firstSelectedBlankTitleSuggestion != nil {
+            return "Add a title for each selected suggestion or turn off suggestions you do not want to save."
+        }
+        return nil
+    }
+
     private func parse() async {
         dismissKeyboard()
         let input = normalized(text)
@@ -163,6 +195,7 @@ struct BrainDumpView: View {
         safetyNotice = nil
         errorMessage = nil
         saveConfirmation = nil
+        validationMessage = nil
         defer { isParsing = false }
         do {
             let result = try await services.parser.parse(input, context: BrainDumpContext())
@@ -171,17 +204,22 @@ struct BrainDumpView: View {
             safetyNotice = result.safetyNotice
             lastParsedText = input
             errorMessage = nil
+            let count = result.suggestions.count
+            announce(count == 1 ? "1 suggestion ready to review." : "\(count) suggestions ready to review.")
         } catch {
             lastParsedText = nil
             errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure
+            announce("Brain dump could not be read.")
         }
     }
 
     private func saveSelected() {
         dismissKeyboard()
-        let selectedSuggestions = suggestions.filter { suggestion in
-            selectedIDs.contains(suggestion.id) &&
-                !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if let blankSuggestion = firstSelectedBlankTitleSuggestion {
+            validationMessage = "Add a title for each selected suggestion or turn off suggestions you do not want to save."
+            focusedField = .suggestionTitle(blankSuggestion.id)
+            announce("Add a title before saving selected suggestions.")
+            return
         }
 
         do {
@@ -194,9 +232,12 @@ struct BrainDumpView: View {
             selectedIDs = []
             safetyNotice = nil
             lastParsedText = nil
+            validationMessage = nil
+            announce(saveConfirmation ?? "Brain dump saved.")
         } catch {
             saveConfirmation = nil
             errorMessage = FairNestIssueCopy.brainDumpSaveFailure
+            announce("Brain dump suggestions could not be saved.")
         }
     }
 
@@ -219,6 +260,12 @@ struct BrainDumpView: View {
 
     private func dismissKeyboard() {
         focusedField = nil
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 }
 

@@ -131,6 +131,10 @@ struct CardEditorView: View {
                 saveErrorMessage = nil
                 saveErrorDetails = nil
             }
+            .task {
+                guard originalCard.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                focusedField = .title
+            }
             .interactiveDismissDisabled(isDirty)
             .confirmationDialog(
                 "Discard unsaved changes?",

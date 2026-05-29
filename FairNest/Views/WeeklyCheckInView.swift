@@ -8,6 +8,7 @@ private enum WeeklyCheckInFocus: Hashable {
     case gotDone
     case needsOwnership
     case appreciation
+    case ownershipTitle(UUID)
 }
 
 struct WeeklyCheckInView: View {
@@ -183,17 +184,27 @@ struct WeeklyCheckInView: View {
                     )
                 } else {
                     ForEach($changes) { changeBinding in
-                        OwnershipChangeReviewRow(change: changeBinding) {
+                        OwnershipChangeReviewRow(change: changeBinding, focusedPrompt: $focusedPrompt) {
                             let id = changeBinding.wrappedValue.id
                             changes.removeAll { $0.id == id }
+                            saveErrorMessage = nil
                         }
                     }
                 }
 
                 Button {
-                    changes.append(OwnershipChange(title: "", owner: .shared, reason: "Reviewed in the weekly check-in."))
+                    let change = OwnershipChange(title: "", owner: .shared, reason: "Reviewed in the weekly check-in.")
+                    changes.append(change)
+                    saveErrorMessage = nil
+                    focusedPrompt = .ownershipTitle(change.id)
                 } label: {
                     Label("Add Ownership Change", systemImage: "plus")
+                }
+
+                if hasBlankOwnershipChange {
+                    Label("Add a responsibility for each ownership change or remove blank changes.", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("checkInValidationMessage")
                 }
 
                 if !draft.appreciation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -234,10 +245,18 @@ struct WeeklyCheckInView: View {
             changes = WeeklyCheckInEngine.generateChanges(from: draft, cards: cardStore.activeCards)
             saveErrorMessage = nil
             step += 1
+            announce("Review changes.")
             return
         }
 
         if step == steps.count - 1 {
+            if let blankChange = firstBlankOwnershipChange {
+                saveErrorMessage = "Add a responsibility for each ownership change, or remove blank changes before saving."
+                saveErrorDetails = nil
+                focusedPrompt = .ownershipTitle(blankChange.id)
+                announce("Add a responsibility before saving.")
+                return
+            }
             if requiresEmptyCheckInConfirmation {
                 showsEmptyCheckInConfirmation = true
                 return
@@ -247,6 +266,7 @@ struct WeeklyCheckInView: View {
         }
 
         step += 1
+        announce(steps[step])
     }
 
     private func save() {
@@ -286,9 +306,11 @@ struct WeeklyCheckInView: View {
             saved = true
             saveErrorMessage = nil
             saveErrorDetails = nil
+            announce("Check-in saved.")
         } catch {
             saveErrorMessage = FairNestIssueCopy.localCheckInSaveFailure
             saveErrorDetails = error.localizedDescription
+            announce("Check-in could not be saved.")
         }
     }
 
@@ -322,6 +344,14 @@ struct WeeklyCheckInView: View {
         ].allSatisfy { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
+    private var firstBlankOwnershipChange: OwnershipChange? {
+        changes.first { $0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    private var hasBlankOwnershipChange: Bool {
+        firstBlankOwnershipChange != nil
+    }
+
     private var requiresEmptyCheckInConfirmation: Bool {
         isEmptyCheckIn && reviewedChanges.isEmpty
     }
@@ -352,6 +382,12 @@ struct WeeklyCheckInView: View {
         focusedPrompt = nil
         #if canImport(UIKit)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
         #endif
     }
 
@@ -397,6 +433,7 @@ private struct CheckInStoreStatusRow: View {
 private struct OwnershipChangeReviewRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var change: OwnershipChange
+    var focusedPrompt: FocusState<WeeklyCheckInFocus?>.Binding
     var onDelete: () -> Void
 
     private let owners: [CardOwner] = [.me, .partner, .shared]
@@ -404,6 +441,7 @@ private struct OwnershipChangeReviewRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("Responsibility", text: $change.title, axis: .vertical)
+                .focused(focusedPrompt, equals: .ownershipTitle(change.id))
                 .font(.headline)
                 .accessibilityLabel("Responsibility for ownership change")
                 .accessibilityIdentifier("checkInOwnershipTitle")

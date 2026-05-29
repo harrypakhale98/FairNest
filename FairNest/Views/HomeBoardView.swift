@@ -96,15 +96,18 @@ struct HomeBoardView: View {
                 } else {
                     Section {
                         ForEach(filteredCards) { card in
-                            CardRow(
-                                card: card,
-                                showsActionMenu: dynamicTypeSize.isAccessibilitySize,
-                                onDone: { markDone(card) },
-                                onSnooze: { snooze(card) },
-                                onRemove: { remove(card) }
-                            )
+                            HStack(spacing: 8) {
+                                Button {
+                                    editingCard = card
+                                } label: {
+                                    CardRow(
+                                        card: card,
+                                        showsDisclosureIndicator: !dynamicTypeSize.isAccessibilitySize
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
-                                .onTapGesture { editingCard = card }
                                 .accessibilityAction(named: "Mark Done") {
                                     markDone(card)
                                 }
@@ -114,6 +117,15 @@ struct HomeBoardView: View {
                                 .accessibilityAction(named: "Remove") {
                                     remove(card)
                                 }
+
+                                if dynamicTypeSize.isAccessibilitySize {
+                                    CardActionMenu(
+                                        onDone: { markDone(card) },
+                                        onSnooze: { snooze(card) },
+                                        onRemove: { remove(card) }
+                                    )
+                                }
+                            }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
                                         remove(card)
@@ -178,13 +190,13 @@ struct HomeBoardView: View {
             .safeAreaInset(edge: .bottom) {
                 if let recentlyDeleted {
                     HStack {
-                        Text("Removed \(recentlyDeleted.title)")
+                        Text("Removed \(recentlyDeleted.displayTitle)")
                             .lineLimit(2)
                         Spacer()
                         Button("Undo") {
                             restore(recentlyDeleted)
                         }
-                        .accessibilityLabel("Undo remove \(recentlyDeleted.title)")
+                        .accessibilityLabel("Undo remove \(recentlyDeleted.displayTitle)")
                     }
                     .font(.footnote)
                     .padding()
@@ -254,7 +266,7 @@ struct HomeBoardView: View {
         performBoardOperation("remove this card") {
             try cardStore.deleteThrowing(id: card.id)
             recentlyDeleted = card
-            announce("Removed \(card.title). Undo is available.")
+            announce("Removed \(card.displayTitle). Undo is available.")
         }
     }
 
@@ -262,7 +274,7 @@ struct HomeBoardView: View {
         performBoardOperation("restore this card") {
             try cardStore.restoreThrowing(card)
             recentlyDeleted = nil
-            announce("Restored \(card.title).")
+            announce("Restored \(card.displayTitle).")
         }
     }
 
@@ -364,10 +376,7 @@ private extension BoardFilter {
 struct CardRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var card: LoadCard
-    var showsActionMenu = false
-    var onDone: (() -> Void)?
-    var onSnooze: (() -> Void)?
-    var onRemove: (() -> Void)?
+    var showsDisclosureIndicator = true
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -405,29 +414,7 @@ struct CardRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if showsActionMenu {
-                Menu {
-                    Button {
-                        onDone?()
-                    } label: {
-                        Label("Done", systemImage: "checkmark")
-                    }
-                    Button {
-                        onSnooze?()
-                    } label: {
-                        Label("Tomorrow", systemImage: "moon")
-                    }
-                    Button(role: .destructive) {
-                        onRemove?()
-                    } label: {
-                        Label("Remove", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                }
-                .accessibilityLabel("Card actions")
-            } else {
+            if showsDisclosureIndicator {
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.tertiary)
@@ -443,7 +430,7 @@ struct CardRow: View {
 
     private var accessibilitySummary: String {
         var parts = [
-            card.title.isEmpty ? "Untitled card" : card.title,
+            card.displayTitle,
             card.type.label,
             "Owner \(card.owner.label)",
             "Status \(card.status.label)",
@@ -453,6 +440,42 @@ struct CardRow: View {
             parts.append("Due \(dueDate.formatted(date: .abbreviated, time: .shortened))")
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+private struct CardActionMenu: View {
+    var onDone: () -> Void
+    var onSnooze: () -> Void
+    var onRemove: () -> Void
+
+    var body: some View {
+        Menu {
+            Button {
+                onDone()
+            } label: {
+                Label("Done", systemImage: "checkmark")
+            }
+            Button {
+                onSnooze()
+            } label: {
+                Label("Tomorrow", systemImage: "moon")
+            }
+            Button(role: .destructive) {
+                onRemove()
+            } label: {
+                Label("Remove", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.title3)
+        }
+        .accessibilityLabel("Card actions")
+    }
+}
+
+private extension LoadCard {
+    var displayTitle: String {
+        title.isEmpty ? "Untitled card" : title
     }
 }
 

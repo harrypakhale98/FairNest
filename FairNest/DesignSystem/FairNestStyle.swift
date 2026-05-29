@@ -14,8 +14,7 @@ struct OwnerBadge: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .labelStyle(.titleAndIcon)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+            .lineLimit(2)
             .accessibilityLabel("Owner: \(owner.label)")
     }
 }
@@ -27,8 +26,7 @@ struct StatusBadge: View {
         Text(status.label)
             .font(.caption)
             .foregroundStyle(status == .done ? .green : .secondary)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+            .lineLimit(2)
             .accessibilityLabel("Status: \(status.label)")
     }
 }

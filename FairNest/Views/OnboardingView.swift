@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct OnboardingView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -11,6 +14,7 @@ struct OnboardingView: View {
     @State private var notice: SafetyNotice?
     @State private var isParsing = false
     @State private var errorMessage: String?
+    @State private var validationMessage: String?
     @State private var lastParsedBrainDump: String?
     @FocusState private var focusedField: BrainDumpInputFocus?
 
@@ -195,6 +199,12 @@ struct OnboardingView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if let validationMessage {
+                    Label(validationMessage, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("onboardingBrainDumpValidation")
+                }
+
                 if let notice, !hasStaleReview {
                     safetyNoticeView(notice)
                 }
@@ -252,6 +262,13 @@ struct OnboardingView: View {
         }
     }
 
+    private var firstSelectedBlankTitleSuggestion: BrainDumpSuggestion? {
+        suggestions.first { suggestion in
+            selectedSuggestionIDs.contains(suggestion.id) &&
+                normalized(suggestion.title).isEmpty
+        }
+    }
+
     private var shouldParseBeforeFinish: Bool {
         let input = normalized(brainDump)
         return !input.isEmpty && lastParsedBrainDump != input
@@ -295,6 +312,7 @@ struct OnboardingView: View {
         selectedSuggestionIDs = []
         notice = nil
         errorMessage = nil
+        validationMessage = nil
         defer { isParsing = false }
         do {
             let result = try await services.parser.parse(input, context: BrainDumpContext())
@@ -303,14 +321,23 @@ struct OnboardingView: View {
             selectedSuggestionIDs = Set(result.suggestions.map(\.id))
             lastParsedBrainDump = input
             errorMessage = nil
+            let count = result.suggestions.count
+            announce(count == 1 ? "1 starter card ready to review." : "\(count) starter cards ready to review.")
         } catch {
             lastParsedBrainDump = nil
             errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure
+            announce("First brain dump could not be read.")
         }
     }
 
     private func saveAndFinish() {
         dismissKeyboard()
+        if let blankSuggestion = firstSelectedBlankTitleSuggestion {
+            validationMessage = "Add a title for each selected starter card or turn off cards you do not want to save."
+            focusedField = .suggestionTitle(blankSuggestion.id)
+            announce("Add a title before starting FairNest.")
+            return
+        }
         let selectedSuggestions = suggestions.filter { suggestion in
             selectedSuggestionIDs.contains(suggestion.id) &&
                 !suggestion.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -318,8 +345,10 @@ struct OnboardingView: View {
         do {
             _ = try cardStore.addReviewed(selectedSuggestions)
             services.completeOnboarding()
+            announce("FairNest is ready.")
         } catch {
             errorMessage = FairNestIssueCopy.brainDumpSaveFailure
+            announce("Starter cards could not be saved.")
         }
     }
 
@@ -343,5 +372,11 @@ struct OnboardingView: View {
 
     private func dismissKeyboard() {
         focusedField = nil
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 }
