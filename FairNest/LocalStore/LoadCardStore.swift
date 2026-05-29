@@ -434,9 +434,13 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     }
 
     private static func sampleCards(now: Date = Date()) -> [LoadCard] {
-        [
-            LoadCard(title: "Set out recycling", type: .recurringResponsibility, owner: .shared, status: .planned, effort: .light, dueDate: now, recurrence: .weekly(weekday: Calendar.current.component(.weekday, from: now)), doneCriteria: "Bins are outside."),
-            LoadCard(title: "Decide grocery plan", type: .decision, owner: .me, status: .inbox, effort: .medium, dueDate: Calendar.current.date(byAdding: .day, value: 1, to: now), doneCriteria: "Plan is recorded."),
+        let calendar = Calendar.current
+        let todayMorning = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+        let tomorrowEvening = calendar.date(bySettingHour: 5, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        return [
+            LoadCard(title: "Set out recycling", type: .recurringResponsibility, owner: .shared, status: .planned, effort: .light, dueDate: todayMorning, recurrence: .weekly(weekday: calendar.component(.weekday, from: todayMorning)), doneCriteria: "Bins are outside."),
+            LoadCard(title: "Decide grocery plan", type: .decision, owner: .me, status: .inbox, effort: .medium, dueDate: tomorrowEvening, doneCriteria: "Plan is recorded."),
             LoadCard(title: "Thank partner for handling dishes", type: .appreciation, owner: .partner, status: .done, effort: .tiny, notes: "Small notes count.")
         ]
     }
