@@ -230,21 +230,9 @@ struct OnboardingView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
-        .toolbar {
-            ToolbarItem(placement: .keyboard) {
-                Button("Done") {
-                    dismissKeyboard()
-                }
-                .accessibilityIdentifier(onboardingKeyboardDismissIdentifier)
-            }
+        .onDisappear {
+            dismissKeyboard()
         }
-    }
-
-    private var onboardingKeyboardDismissIdentifier: String {
-        if focusedField == .firstBrainDump {
-            return "dismissOnboardingBrainDumpKeyboard"
-        }
-        return "dismissOnboardingReviewKeyboard"
     }
 
     private var primaryActionTitle: String {

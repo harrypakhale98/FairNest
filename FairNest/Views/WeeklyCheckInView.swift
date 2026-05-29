@@ -67,12 +67,6 @@ struct WeeklyCheckInView: View {
                     .accessibilityIdentifier("checkInNext")
                 }
 
-                ToolbarItem(placement: .keyboard) {
-                    Button("Done") {
-                        dismissKeyboard()
-                    }
-                    .accessibilityIdentifier("dismissCheckInKeyboard")
-                }
             }
             .alert("Save Empty Check-In?", isPresented: $showsEmptyCheckInConfirmation) {
                 Button("Save Empty Check-In") {

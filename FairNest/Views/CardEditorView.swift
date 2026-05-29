@@ -126,12 +126,6 @@ struct CardEditorView: View {
                     .accessibilityIdentifier("saveCard")
                     .accessibilityHint(card.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Enter a title before saving." : "Saves this card.")
                 }
-                ToolbarItem(placement: .keyboard) {
-                    Button("Done") {
-                        focusedField = nil
-                    }
-                    .accessibilityIdentifier("dismissCardEditorKeyboard")
-                }
             }
             .onChange(of: card) { _, _ in
                 saveErrorMessage = nil

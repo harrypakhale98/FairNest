@@ -126,12 +126,6 @@ struct BrainDumpView: View {
                     .accessibilityIdentifier("saveBrainDumpSuggestions")
                 }
 
-                ToolbarItem(placement: .keyboard) {
-                    Button("Done") {
-                        dismissKeyboard()
-                    }
-                    .accessibilityIdentifier("dismissBrainDumpReviewKeyboard")
-                }
             }
         }
     }
