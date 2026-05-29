@@ -1,25 +1,24 @@
 # App Store Connect Submission Checklist
 
-Updated: May 29, 2026, 03:37 CDT
+Updated: May 29, 2026, 04:12 CDT
 
 ## Build Evidence
 
-- App artifact evidence commit: `7e5edd9`.
-- Release archive succeeded at `/tmp/FairNest-7e5edd9.xcarchive`.
-- App Store export succeeded at `/tmp/FairNest-AppStoreExport-7e5edd9/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
-- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyze-7e5edd9` with `COMPRESS_PNG_FILES=NO`.
-- Unit tests passed at `7e5edd9` on isolated iOS Simulator 26.5 (iPhone 17) with result bundle `/tmp/FairNestUnitTest-7e5edd9.xcresult`: 98 executed tests, 98 passed, 0 failures.
-- UI tests passed at `7e5edd9` on isolated iOS Simulator 26.5 (iPhone 17) with result bundle `/tmp/FairNestUITestIsolated-7e5edd9.xcresult`: 11 executed tests, 11 passed, 0 failures. The App Store screenshot-capture test was run separately.
-- Focused audit regressions passed with result bundle `/tmp/FairNestFocusedAuditTests/Logs/Test/Test-FairNest-2026.05.29_03-02-30--0500.xcresult`: editor status options, incomplete privacy export refusal, corrupt-card widget clearing, stale reminder cancellation without notification permission, and shared-access-loss local-card preservation.
+- App artifact evidence commit: `6f3fb62`.
+- Release archive succeeded at `/tmp/FairNest-6f3fb62.xcarchive`.
+- App Store export succeeded at `/tmp/FairNest-AppStoreExport-6f3fb62/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
+- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyze-6f3fb62` with `COMPRESS_PNG_FILES=NO`.
+- Unit tests passed at `6f3fb62` on iOS Simulator 26.5 with result bundle `/tmp/FairNestFullUnitTests/Logs/Test/Test-FairNest-2026.05.29_04-01-06--0500.xcresult`: 107 executed tests, 107 passed, 0 failures.
+- UI tests passed at `6f3fb62` on iOS Simulator 26.5 with result bundle `/tmp/FairNestFullUITests-6f3fb62/Logs/Test/Test-FairNest-2026.05.29_04-08-19--0500.xcresult`: 12 reported tests, 1 expected screenshot-capture skip, 0 failures.
 - `plutil -lint` passed for archived and exported app and widget Info.plists, exported privacy manifests, `QA/AppStoreExportOptions.plist`, and `QA/AppStoreUploadOptions.plist`.
 - The archive and exported IPA include the app privacy manifest, widget privacy manifest, bundled `PrivacyPolicy.md`, and `FairNestWidgets.appex`.
 - `FairNest/Resources/AppReviewNotes.md` is intentionally excluded from the app target resources and was not present in the built app bundle or exported IPA.
 - Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
 - The exported app signature contains CloudKit `Production`; the embedded Store provisioning profile exposes both `Production` and `Development` iCloud environments, which is normal profile metadata and does not override the signed app entitlement.
 - The exported app is iPhone-only: `UIDeviceFamily = [1]`.
-- `/tmp/FairNest-AppStoreExport-7e5edd9/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
+- `/tmp/FairNest-AppStoreExport-6f3fb62/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
 - Common secret-pattern scan with `rg` returned no matches, and `git status --ignored --short` was empty in the clean `/tmp/FairNestRemoteWork` verification clone.
-- GitHub Pages deploy completed successfully, and the public home, support, and privacy URLs returned HTTP 200.
+- GitHub Pages deploy completed successfully for `6f3fb62`, and the public home, support, and privacy URLs returned HTTP 200.
 - Shared household erase writes a content-free CloudKit erasure marker so stale devices acknowledge the reset before uploading local shared cards again.
 - Shared household erase deletes visible FairNest shared zones where permission allows, even when the remembered share owner is unavailable.
 - Removed cards are kept in local storage, sync to iCloud, and export as minimal deletion markers without title, notes, done criteria, scheduling, ownership, or effort fields.
@@ -96,6 +95,8 @@ Accepted 6.9-inch iPhone screenshots were captured at 1320 x 2868 pixels and vis
 
 Automated screenshot capture evidence: `FairNestUITests/FairNestUITests/testCaptureAppStoreScreenshotsWhenDirectoryProvided` passed on `FairNest-AppStore-6-9` with result bundle `/tmp/FairNestAppStoreScreenshotCapture-7e5edd9.xcresult`, refreshing the brain dump, check-in, pairing, and settings screenshots at 1320 x 2868. Board, dark-mode board, and empty-state screenshots remain retained manual QA captures and should be rechecked visually immediately before upload.
 
+The App Store board light, board dark, and empty-state screenshots, plus the website copies, were flattened from fully opaque RGBA to RGB at `6f3fb62`; `sips -g hasAlpha` reports `no` for those PNGs.
+
 Reference: https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications
 
 ## Remaining Technical Risk
@@ -104,4 +105,4 @@ Reference: https://developer.apple.com/help/app-store-connect/reference/screensh
 
 ## Current External Blockers
 
-- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-7e5edd9/FairNest.ipa` or rerun the upload export.
+- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-6f3fb62/FairNest.ipa` or rerun the upload export.
