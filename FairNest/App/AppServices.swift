@@ -31,6 +31,7 @@ final class AppServices: ObservableObject {
     private let syncEngine: any SyncService
     private var pendingCardsForPush: [LoadCard]?
     private var suppressNextCardPush = false
+    private var suppressedCardChangeSideEffectCount = 0
 
     init(
         cardStore: LocalCardStore = LocalCardStore(),
@@ -200,6 +201,45 @@ final class AppServices: ObservableObject {
     }
 
     func handleCardsChanged(_ cards: [LoadCard]) async {
+        guard suppressedCardChangeSideEffectCount == 0 else {
+            suppressedCardChangeSideEffectCount -= 1
+            return
+        }
+        await performCardChangeSideEffects(for: cards)
+    }
+
+    func saveWeeklyCheckIn(_ record: CheckInRecord, applying changes: [OwnershipChange]) async throws {
+        let previousCards = cardStore.cards
+        let updatedCards = WeeklyCheckInEngine.cardsAfterApplying(changes, to: previousCards)
+
+        do {
+            if updatedCards != previousCards {
+                suppressNextCardChangeSideEffects()
+                try cardStore.replaceAllThrowing(with: updatedCards)
+            }
+
+            do {
+                try checkInStore.save(record)
+            } catch {
+                try WeeklyCheckInSaveCoordinator.handleCheckInSaveFailure(
+                    previousCards: previousCards,
+                    updatedCards: updatedCards,
+                    originalError: error
+                ) {
+                    suppressNextCardChangeSideEffects()
+                    try cardStore.replaceAllThrowing(with: previousCards)
+                }
+            }
+
+            if updatedCards != previousCards {
+                await performCardChangeSideEffects(for: updatedCards)
+            }
+        } catch {
+            throw error
+        }
+    }
+
+    private func performCardChangeSideEffects(for cards: [LoadCard]) async {
         do {
             try await reconcileDueReminders(for: cards)
             lastReminderMessage = nil
@@ -211,6 +251,10 @@ final class AppServices: ObservableObject {
             return
         }
         await pushCardsIfAvailable(cards)
+    }
+
+    private func suppressNextCardChangeSideEffects() {
+        suppressedCardChangeSideEffectCount += 1
     }
 
     func scheduleRemindersForCurrentCards() async throws {

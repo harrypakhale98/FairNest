@@ -12,6 +12,7 @@ private enum WeeklyCheckInFocus: Hashable {
 }
 
 struct WeeklyCheckInView: View {
+    @EnvironmentObject private var services: AppServices
     @EnvironmentObject private var cardStore: LocalCardStore
     @EnvironmentObject private var checkInStore: LocalCheckInStore
     @State private var step = 0
@@ -21,6 +22,7 @@ struct WeeklyCheckInView: View {
     @State private var saveErrorMessage: String?
     @State private var saveErrorDetails: String?
     @State private var showsEmptyCheckInConfirmation = false
+    @State private var isSaving = false
     @FocusState private var focusedPrompt: WeeklyCheckInFocus?
     @AccessibilityFocusState private var saveErrorFocused: Bool
     @AccessibilityFocusState private var accessibilityFocus: WeeklyCheckInAccessibilityFocus?
@@ -73,6 +75,7 @@ struct WeeklyCheckInView: View {
                         Button(primaryActionTitle) {
                             advance()
                         }
+                        .disabled(isSaving)
                         .accessibilityIdentifier("checkInNext")
                     }
                 }
@@ -294,11 +297,18 @@ struct WeeklyCheckInView: View {
     }
 
     private func save() {
-        guard !saved else { return }
+        guard !saved, !isSaving else { return }
         guard !checkInStore.isUnavailableDueToLoadFailure else {
             showSaveError(FairNestIssueCopy.localCheckInReadUnavailable, details: checkInStore.lastLoadErrorMessage)
             return
         }
+        Task { await saveCheckIn() }
+    }
+
+    private func saveCheckIn() async {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         let finalChanges = reviewedChanges
         let record = CheckInRecord(
             feltHeavy: draft.feltHeavy.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -308,26 +318,8 @@ struct WeeklyCheckInView: View {
             changes: finalChanges
         )
 
-        let previousCards = cardStore.cards
-        let updatedCards = WeeklyCheckInEngine.cardsAfterApplying(finalChanges, to: previousCards)
-
         do {
-            if updatedCards != previousCards {
-                try cardStore.replaceAllThrowing(with: updatedCards)
-            }
-
-            do {
-                try checkInStore.save(record)
-            } catch {
-                try WeeklyCheckInSaveCoordinator.handleCheckInSaveFailure(
-                    previousCards: previousCards,
-                    updatedCards: updatedCards,
-                    originalError: error
-                ) {
-                    try cardStore.replaceAllThrowing(with: previousCards)
-                }
-            }
-
+            try await services.saveWeeklyCheckIn(record, applying: finalChanges)
             changes = finalChanges
             saved = true
             clearSaveError()
@@ -339,6 +331,9 @@ struct WeeklyCheckInView: View {
     }
 
     private var primaryActionTitle: String {
+        if isSaving {
+            return "Saving"
+        }
         if saved && step == steps.count - 1 {
             return "New"
         }
@@ -440,6 +435,7 @@ struct WeeklyCheckInView: View {
         draft = WeeklyCheckInDraft()
         changes = []
         saved = false
+        isSaving = false
         clearSaveError()
         showsEmptyCheckInConfirmation = false
         focusedPrompt = nil

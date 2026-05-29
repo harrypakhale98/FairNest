@@ -1,3 +1,4 @@
+import CloudKit
 import XCTest
 import UserNotifications
 @testable import FairNest
@@ -111,6 +112,90 @@ final class ReminderAndCheckInTests: XCTestCase {
             XCTAssertTrue(error.localizedDescription.contains("Could not save check-in"))
             XCTAssertTrue(error.localizedDescription.contains("Could not restore cards"))
         }
+    }
+
+    func testWeeklyCheckInSaveRunsCardSideEffectsAfterBothStoresPersist() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        let syncEngine = CheckInCapturingSyncEngine()
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        let card = LoadCard(
+            title: "Trash",
+            owner: .me,
+            status: .planned,
+            dueDate: Date(timeIntervalSinceNow: 3600)
+        )
+        try cardStore.replaceAllThrowing(with: [card])
+        let change = OwnershipChange(title: "Trash", owner: .partner, reason: "Reviewed")
+        let record = CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: [change]
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: checkInStore,
+            reminderScheduler: reminderScheduler,
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        try await services.saveWeeklyCheckIn(record, applying: [change])
+
+        XCTAssertEqual(checkInStore.records, [record])
+        XCTAssertEqual(cardStore.cards.first?.owner, .partner)
+        XCTAssertEqual(reminderScheduler.scheduledCardIDs, [card.id])
+        XCTAssertEqual(syncEngine.uploadedBatches.count, 1)
+        XCTAssertEqual(syncEngine.uploadedBatches.first?.first?.owner, .partner)
+    }
+
+    func testWeeklyCheckInSaveFailureSuppressesTransientCardSideEffects() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        let syncEngine = CheckInCapturingSyncEngine()
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInURL = tempURL()
+        let checkInStore = LocalCheckInStore(fileURL: checkInURL)
+        let card = LoadCard(
+            title: "Trash",
+            owner: .me,
+            status: .planned,
+            dueDate: Date(timeIntervalSinceNow: 3600)
+        )
+        try cardStore.replaceAllThrowing(with: [card])
+        try FileManager.default.createDirectory(at: checkInURL, withIntermediateDirectories: true)
+        let change = OwnershipChange(title: "Trash", owner: .partner, reason: "Reviewed")
+        let updatedCards = WeeklyCheckInEngine.cardsAfterApplying([change], to: [card])
+        let record = CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: [change]
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: checkInStore,
+            reminderScheduler: reminderScheduler,
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        do {
+            try await services.saveWeeklyCheckIn(record, applying: [change])
+            XCTFail("Expected failing check-in persistence to roll back board changes.")
+        } catch {
+            XCTAssertFalse(error.localizedDescription.isEmpty)
+        }
+        await services.handleCardsChanged(updatedCards)
+        await services.handleCardsChanged(cardStore.cards)
+
+        XCTAssertTrue(checkInStore.records.isEmpty)
+        XCTAssertEqual(cardStore.cards.first?.owner, .me)
+        XCTAssertTrue(reminderScheduler.scheduledCardIDs.isEmpty)
+        XCTAssertTrue(reminderScheduler.cancelledCardIDs.isEmpty)
+        XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
     }
 
     func testAppServicesSchedulesAndCancelsDueCardReminders() async {
@@ -353,6 +438,47 @@ private final class CapturingReminderScheduler: ReminderScheduler {
     func cancelAllFairNestReminders() async {
         cancelledAllFairNestReminders = true
         pendingIdentifiers.removeAll()
+    }
+}
+
+@MainActor
+private final class CheckInCapturingSyncEngine: SyncService {
+    var status: SyncStatus = .available
+    var accountIdentifier: String?
+    var remoteCards: [LoadCard] = []
+    var uploadedBatches: [[LoadCard]] = []
+    var fetchCount = 0
+    var pinnedCardIDs = Set<UUID>()
+
+    func refreshStatus() async {}
+
+    func merge(local: [LoadCard], remote: [LoadCard]) -> [LoadCard] {
+        ConflictResolver.merge(local: local, remote: remote)
+    }
+
+    func upload(cards: [LoadCard]) async throws {
+        uploadedBatches.append(cards)
+    }
+
+    func fetchCards() async throws -> [LoadCard] {
+        fetchCount += 1
+        return remoteCards
+    }
+
+    func synchronize(local cards: [LoadCard]) async throws -> [LoadCard] {
+        let merged = merge(local: cards, remote: remoteCards)
+        try await upload(cards: merged)
+        return merged
+    }
+
+    func deleteSharedHouseholdData() async throws -> CloudKitHouseholdDeletionResult {
+        .empty
+    }
+
+    func acceptShare(metadata: CKShare.Metadata) async throws {}
+
+    func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>) {
+        pinnedCardIDs.formUnion(cardIDs)
     }
 }
 
