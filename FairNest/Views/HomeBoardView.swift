@@ -85,7 +85,7 @@ struct HomeBoardView: View {
                     .accessibilityIdentifier("boardFilter")
                 }
 
-                if filteredCards.isEmpty {
+                if filteredCards.isEmpty, !isCardStoreUnavailable {
                     Section {
                         BoardEmptyRow(
                             state: emptyState
@@ -166,6 +166,7 @@ struct HomeBoardView: View {
                     }
                     .accessibilityLabel("Add card")
                     .accessibilityIdentifier("addCard")
+                    .disabled(isCardStoreUnavailable)
                 }
             }
             .sheet(item: $editingCard) { card in
@@ -250,6 +251,10 @@ struct HomeBoardView: View {
         return nil
     }
 
+    private var isCardStoreUnavailable: Bool {
+        cardStore.isUnavailableDueToLoadFailure
+    }
+
     private func markDone(_ card: LoadCard) {
         performBoardOperation("mark this card done") {
             try cardStore.transition(id: card.id, to: .done)
@@ -316,6 +321,10 @@ struct HomeBoardView: View {
     }
 
     private func handleEmptyAction(_ action: BoardEmptyAction) {
+        guard !isCardStoreUnavailable else {
+            boardError = BoardOperationError(message: FairNestIssueCopy.localCardReadUnavailable)
+            return
+        }
         switch action {
         case .addCard:
             showingAdd = true
