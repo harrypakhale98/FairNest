@@ -295,6 +295,7 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
 
     var redactedDeletionTombstone: LoadCard {
         guard isDeleted else { return self }
+        let markerDate = deletedAt ?? updatedAt
         return LoadCard(
             id: id,
             title: "",
@@ -307,10 +308,10 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
             notes: "",
             doneCriteria: "",
             createdBy: .system,
-            createdAt: createdAt,
+            createdAt: markerDate,
             modifiedBy: .system,
-            updatedAt: updatedAt,
-            deletedAt: deletedAt
+            updatedAt: markerDate,
+            deletedAt: markerDate
         )
     }
 

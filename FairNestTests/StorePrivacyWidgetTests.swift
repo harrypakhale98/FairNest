@@ -45,6 +45,7 @@ final class StorePrivacyWidgetTests: XCTestCase {
     func testDeletedCardTombstoneRedactsLocalContentAndPrivacyExport() throws {
         let cardStore = LocalCardStore(fileURL: tempURL())
         let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        let originalCreatedAt = Date(timeIntervalSince1970: 1_600_000_000)
         let sensitiveCard = LoadCard(
             title: "Private medication refill",
             type: .reminder,
@@ -56,6 +57,7 @@ final class StorePrivacyWidgetTests: XCTestCase {
             notes: "Sensitive dosage note",
             doneCriteria: "Prescription picked up",
             createdBy: .partner,
+            createdAt: originalCreatedAt,
             modifiedBy: .partner
         )
         try cardStore.upsertThrowing(sensitiveCard)
@@ -65,6 +67,7 @@ final class StorePrivacyWidgetTests: XCTestCase {
         let data = try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportData()
         let export = try JSONDecoder.fairNest.decode(FairNestExportEnvelope.self, from: data)
         let exportedCard = try XCTUnwrap(export.cards.first)
+        let deletionDate = try XCTUnwrap(exportedCard.deletedAt)
 
         XCTAssertEqual(storedCard, exportedCard)
         XCTAssertTrue(exportedCard.isDeleted)
@@ -79,7 +82,10 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertEqual(exportedCard.notes, "")
         XCTAssertEqual(exportedCard.doneCriteria, "")
         XCTAssertEqual(exportedCard.createdBy, .system)
+        XCTAssertEqual(exportedCard.createdAt, deletionDate)
+        XCTAssertNotEqual(exportedCard.createdAt, originalCreatedAt)
         XCTAssertEqual(exportedCard.modifiedBy, .system)
+        XCTAssertEqual(exportedCard.updatedAt, deletionDate)
     }
 
     func testDeletedCardCanBeRestoredFromTransientSnapshot() throws {
