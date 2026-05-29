@@ -4,18 +4,19 @@ Generated: May 28, 2026
 
 ## Build Evidence
 
-- Full scheme tests passed on iOS Simulator 26.5 (iPhone 17): 62 unit tests and 9 UI tests, 0 failures.
-- Test result bundle: `/tmp/FairNestFullTestDerivedData5/Logs/Test/Test-FairNest-2026.05.28_19-38-16--0500.xcresult`.
+- Full scheme tests passed on iOS Simulator 26.5 (iPhone 17): 64 unit tests and 9 UI tests, 73 total, 0 failures.
+- Test result bundle: `/tmp/FairNestFullTestDerivedData7/Logs/Test/Test-FairNest-2026.05.28_20-12-00--0500.xcresult`.
 - The latest `.xcresult` was scanned for `Invalid frame dimension` and `Runtime Warning`; no matches were found.
-- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyzeDerivedData5`.
+- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyzeDerivedData7`.
 - `plutil -lint` passed for app and widget Info.plists, privacy manifests, entitlements, and App Store export option plists.
-- Release archive succeeded at `/tmp/FairNest-Readiness.xcarchive`.
-- App Store export succeeded at `/tmp/FairNest-AppStoreExport/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
+- Release archive succeeded at `/tmp/FairNest-Readiness-c8c2633.xcarchive`.
+- App Store export succeeded at `/tmp/FairNest-AppStoreExport-c8c2633/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
 - The archive and exported IPA include the app privacy manifest, widget privacy manifest, bundled `PrivacyPolicy.md`, and `FairNestWidgets.appex`.
 - `FairNest/Resources/AppReviewNotes.md` is intentionally excluded from the app target resources and was not present in the built app bundle or exported IPA.
 - Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
 - The exported app signature contains CloudKit `Production`; the embedded Store provisioning profile exposes both `Production` and `Development` iCloud environments, which is normal profile metadata and does not override the signed app entitlement.
 - The exported widget extension is iPhone-only: `UIDeviceFamily = [1]`.
+- Shared household erase writes a content-free CloudKit erasure marker so stale devices acknowledge the reset before uploading local shared cards again.
 
 ## App Store Connect Inputs
 
@@ -75,5 +76,5 @@ Reference: https://developer.apple.com/help/app-store-connect/reference/screensh
 
 ## Current External Blockers
 
-- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport/FairNest.ipa` or rerun the upload export.
+- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-c8c2633/FairNest.ipa` or rerun the upload export.
 - Host the privacy policy at a public HTTPS URL before submission and paste that URL into App Store Connect.
