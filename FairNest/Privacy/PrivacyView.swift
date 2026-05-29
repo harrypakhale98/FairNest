@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct PrivacyView: View {
     @EnvironmentObject private var services: AppServices
@@ -12,6 +15,7 @@ struct PrivacyView: View {
     @State private var message: String?
     @State private var messageDetails: String?
     @State private var deletionOperation: PrivacyDeletionOperation?
+    @AccessibilityFocusState private var resultFocused: Bool
 
     var body: some View {
         List {
@@ -71,6 +75,18 @@ struct PrivacyView: View {
                 Text("Data controls")
             }
 
+            if let message {
+                Section {
+                    Text(message)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("privacyResultMessage")
+                        .accessibilityFocused($resultFocused)
+                    if let messageDetails {
+                        TechnicalDetailsDisclosure(details: messageDetails)
+                    }
+                }
+            }
+
             if let deletionOperation {
                 Section {
                     HStack(spacing: 12) {
@@ -93,16 +109,6 @@ struct PrivacyView: View {
                 }
             } header: {
                 Text("Policy summary")
-            }
-
-            if let message {
-                Section {
-                    Text(message)
-                        .foregroundStyle(.secondary)
-                    if let messageDetails {
-                        TechnicalDetailsDisclosure(details: messageDetails)
-                    }
-                }
             }
         }
         .navigationTitle("Privacy")
@@ -178,11 +184,9 @@ struct PrivacyView: View {
     private func export() {
         do {
             exportURL = try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportToTemporaryFile()
-            message = "Export file is ready. Clear it from this screen when you are done sharing."
-            messageDetails = nil
+            showResult("Export file is ready. Clear it from this screen when you are done sharing.")
         } catch {
-            message = FairNestIssueCopy.exportFailure
-            messageDetails = error.localizedDescription
+            showResult(FairNestIssueCopy.exportFailure, details: error.localizedDescription)
         }
     }
 
@@ -190,11 +194,9 @@ struct PrivacyView: View {
         do {
             try removePreparedExportFile()
             exportURL = nil
-            message = "Temporary export file cleared."
-            messageDetails = nil
+            showResult("Temporary export file cleared.")
         } catch {
-            message = FairNestIssueCopy.clearExportFailure
-            messageDetails = error.localizedDescription
+            showResult(FairNestIssueCopy.clearExportFailure, details: error.localizedDescription)
         }
     }
 
@@ -227,11 +229,9 @@ struct PrivacyView: View {
         do {
             try await services.deleteAllLocalDataForPrivacy()
             exportURL = nil
-            message = "Local FairNest data, temporary exports, and scheduled reminders were deleted on this device. iCloud Sync is off."
-            messageDetails = nil
+            showResult("Local FairNest data, temporary exports, and scheduled reminders were deleted on this device. iCloud Sync is off.")
         } catch {
-            message = FairNestIssueCopy.localDeleteFailure
-            messageDetails = error.localizedDescription
+            showResult(FairNestIssueCopy.localDeleteFailure, details: error.localizedDescription)
         }
     }
 
@@ -242,12 +242,26 @@ struct PrivacyView: View {
         do {
             try await services.deleteSharedHouseholdDataForPrivacy()
             exportURL = nil
-            message = "Shared household data was deleted where this iCloud account has permission."
-            messageDetails = nil
+            showResult("Shared household data was deleted where this iCloud account has permission.")
         } catch {
-            message = FairNestIssueCopy.sharedDeleteFailureMessage(for: error)
-            messageDetails = error.localizedDescription
+            showResult(FairNestIssueCopy.sharedDeleteFailureMessage(for: error), details: error.localizedDescription)
         }
+    }
+
+    private func showResult(_ newMessage: String, details: String? = nil) {
+        message = newMessage
+        messageDetails = details
+        announce(newMessage)
+        Task { @MainActor in
+            await Task.yield()
+            resultFocused = true
+        }
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 }
 

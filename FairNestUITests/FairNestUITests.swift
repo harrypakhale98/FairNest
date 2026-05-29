@@ -141,8 +141,26 @@ final class FairNestUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["Turn on iCloud Sync?"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["Turn On iCloud Sync"].waitForExistence(timeout: 3))
+        XCTAssertEqual(syncSwitch.value as? String, "0")
         app.buttons["Cancel"].tap()
         XCTAssertEqual(syncSwitch.value as? String, "0")
+    }
+
+    func testPrivacyExportShowsAccessibleResultMessage() {
+        let app = launchCompletedApp()
+
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        let privacyLink = app.buttons["Privacy"].firstMatch
+        XCTAssertTrue(privacyLink.waitForExistence(timeout: 3))
+        privacyLink.tap()
+
+        XCTAssertTrue(app.navigationBars["Privacy"].waitForExistence(timeout: 3))
+        app.buttons["Export Data"].tap()
+
+        let result = app.descendants(matching: .any).matching(identifier: "privacyResultMessage").firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 3))
+        XCTAssertTrue(result.label.contains("Export file is ready"), "Actual label: \(result.label)")
     }
 
     func testWeeklyCheckInSavesReviewedOwnershipChange() {

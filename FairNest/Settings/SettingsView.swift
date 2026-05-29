@@ -17,7 +17,6 @@ struct SettingsView: View {
     @State private var cloudStatusRefreshInProgress = false
     @State private var notificationActionInProgress = false
     @State private var reminderRemovalInProgress = false
-    @State private var iCloudSyncToggleValue = false
 
     var body: some View {
         NavigationStack {
@@ -31,7 +30,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Use iCloud Sync", isOn: $iCloudSyncToggleValue)
+                    Toggle("Use iCloud Sync", isOn: iCloudSyncBinding)
                         .accessibilityIdentifier("settingsICloudSync")
                     if services.iCloudSyncEnabled {
                         LabeledContent("Status", value: syncService.status.label)
@@ -161,9 +160,7 @@ struct SettingsView: View {
                 Button("Turn On iCloud Sync") {
                     Task { await enableICloudSync() }
                 }
-                Button("Cancel", role: .cancel) {
-                    iCloudSyncToggleValue = services.iCloudSyncEnabled
-                }
+                Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Existing local cards will sync to iCloud. If this device joins a shared household, cards can be visible to invited participants. Weekly check-ins stay local.")
             }
@@ -180,7 +177,6 @@ struct SettingsView: View {
                 Text("This removes weekly check-in reminders and due-card reminders from this device. Notification permission itself is managed in iOS Settings.")
             }
             .task {
-                iCloudSyncToggleValue = services.iCloudSyncEnabled
                 await refreshSettingsState()
             }
             .refreshable {
@@ -191,20 +187,18 @@ struct SettingsView: View {
                 Task { await refreshSettingsState() }
             }
             .onChange(of: services.iCloudSyncEnabled) { _, enabled in
-                iCloudSyncToggleValue = enabled
                 if enabled {
                     Task { await refreshCloudStatus() }
                 }
             }
-            .onChange(of: iCloudSyncToggleValue) { _, enabled in
-                handleICloudSyncToggleChanged(enabled)
-            }
-            .onChange(of: showingICloudSyncConfirmation) { _, isPresented in
-                if !isPresented && !services.iCloudSyncEnabled {
-                    iCloudSyncToggleValue = false
-                }
-            }
         }
+    }
+
+    private var iCloudSyncBinding: Binding<Bool> {
+        Binding(
+            get: { services.iCloudSyncEnabled },
+            set: { handleICloudSyncToggleChanged($0) }
+        )
     }
 
     private var statusLabel: String {
@@ -289,7 +283,6 @@ struct SettingsView: View {
 
     private func enableICloudSync() async {
         services.iCloudSyncEnabled = true
-        iCloudSyncToggleValue = true
         await refreshCloudStatus()
     }
 
