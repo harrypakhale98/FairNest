@@ -79,6 +79,40 @@ final class ReminderAndCheckInTests: XCTestCase {
         XCTAssertEqual(updated.first { $0.title == "Current budget" }?.owner, .shared)
     }
 
+    func testWeeklyCheckInSaveFailureRestoresChangedCardsAndRethrowsOriginalError() {
+        let previousCards = [LoadCard(title: "Trash", owner: .me)]
+        let updatedCards = [LoadCard(title: "Trash", owner: .partner)]
+        var didRestoreCards = false
+
+        XCTAssertThrowsError(try WeeklyCheckInSaveCoordinator.handleCheckInSaveFailure(
+            previousCards: previousCards,
+            updatedCards: updatedCards,
+            originalError: TestCheckInPersistenceError.checkInSaveFailed
+        ) {
+            didRestoreCards = true
+        }) { error in
+            XCTAssertEqual(error as? TestCheckInPersistenceError, .checkInSaveFailed)
+        }
+        XCTAssertTrue(didRestoreCards)
+    }
+
+    func testWeeklyCheckInSaveFailureSurfacesRollbackFailureDetails() {
+        let previousCards = [LoadCard(title: "Trash", owner: .me)]
+        let updatedCards = [LoadCard(title: "Trash", owner: .partner)]
+
+        XCTAssertThrowsError(try WeeklyCheckInSaveCoordinator.handleCheckInSaveFailure(
+            previousCards: previousCards,
+            updatedCards: updatedCards,
+            originalError: TestCheckInPersistenceError.checkInSaveFailed
+        ) {
+            throw TestCheckInPersistenceError.cardRollbackFailed
+        }) { error in
+            XCTAssertTrue(error is WeeklyCheckInSaveError)
+            XCTAssertTrue(error.localizedDescription.contains("Could not save check-in"))
+            XCTAssertTrue(error.localizedDescription.contains("Could not restore cards"))
+        }
+    }
+
     func testAppServicesSchedulesAndCancelsDueCardReminders() async {
         let reminderScheduler = CapturingReminderScheduler()
         let services = AppServices(
@@ -303,5 +337,19 @@ private enum TestReminderError: LocalizedError {
 
     var errorDescription: String? {
         "Could not schedule reminder"
+    }
+}
+
+private enum TestCheckInPersistenceError: LocalizedError {
+    case checkInSaveFailed
+    case cardRollbackFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .checkInSaveFailed:
+            return "Could not save check-in"
+        case .cardRollbackFailed:
+            return "Could not restore cards"
+        }
     }
 }

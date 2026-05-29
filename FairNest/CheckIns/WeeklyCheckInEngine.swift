@@ -55,6 +55,38 @@ enum WeeklyCheckInEngine {
     }
 }
 
+enum WeeklyCheckInSaveCoordinator {
+    static func handleCheckInSaveFailure(
+        previousCards: [LoadCard],
+        updatedCards: [LoadCard],
+        originalError: Error,
+        restorePreviousCards: () throws -> Void
+    ) throws {
+        guard updatedCards != previousCards else {
+            throw originalError
+        }
+
+        do {
+            try restorePreviousCards()
+        } catch let rollbackError {
+            throw WeeklyCheckInSaveError.cardRollbackFailed(original: originalError, rollback: rollbackError)
+        }
+
+        throw originalError
+    }
+}
+
+enum WeeklyCheckInSaveError: LocalizedError {
+    case cardRollbackFailed(original: Error, rollback: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case let .cardRollbackFailed(original, rollback):
+            return "FairNest could not save this check-in (\(original.localizedDescription)) or restore the previous board state (\(rollback.localizedDescription))."
+        }
+    }
+}
+
 private struct RuleBasedOwnershipParser {
     func parse(_ text: String) -> [OwnershipChange] {
         let changes = text

@@ -296,10 +296,13 @@ struct WeeklyCheckInView: View {
             do {
                 try checkInStore.save(record)
             } catch {
-                if updatedCards != previousCards {
-                    try? cardStore.replaceAllThrowing(with: previousCards)
+                try WeeklyCheckInSaveCoordinator.handleCheckInSaveFailure(
+                    previousCards: previousCards,
+                    updatedCards: updatedCards,
+                    originalError: error
+                ) {
+                    try cardStore.replaceAllThrowing(with: previousCards)
                 }
-                throw error
             }
 
             changes = finalChanges
