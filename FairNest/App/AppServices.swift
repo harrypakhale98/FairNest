@@ -301,7 +301,7 @@ final class AppServices: ObservableObject {
         suppressNextCardPush = false
         acceptedSharePrivateCardIDs = []
         CloudKitHouseholdSelection.clearSelectedSharedZone()
-        writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
+        writeWidgetSnapshot(cards: [], syncPending: false)
         lastSyncMessage = FairNestIssueCopy.sharedHouseholdUnavailable
     }
 

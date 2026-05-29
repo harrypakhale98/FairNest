@@ -324,6 +324,10 @@ final class SyncAndCloudKitTests: XCTestCase {
         UserDefaults.standard.set([UUID().uuidString], forKey: "acceptedSharePrivateCardIDs")
         let cardStore = LocalCardStore(fileURL: tempURL())
         _ = cardStore.add(BrainDumpSuggestion(title: "Stale shared card", type: .task))
+        let widgetDefaults = try XCTUnwrap(FairNestShared.sharedDefaults)
+        defer { widgetDefaults.removeObject(forKey: FairNestShared.widgetSnapshotKey) }
+        XCTAssertTrue(WidgetSnapshotStore.write(cards: cardStore.cards, defaults: widgetDefaults))
+        XCTAssertFalse(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
         let syncEngine = CapturingSyncEngine(
             status: .available,
             remoteCards: [],
@@ -343,6 +347,7 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
         XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
         XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs"), [])
+        XCTAssertTrue(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
     }
 
