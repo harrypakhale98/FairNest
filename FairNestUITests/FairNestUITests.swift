@@ -173,6 +173,35 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(result.label.contains("Export file is ready"), "Actual label: \(result.label)")
     }
 
+    func testPrivacyDeleteRequiresTypedConfirmation() {
+        let app = launchCompletedApp()
+
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        let privacyLink = app.buttons["Privacy"].firstMatch
+        XCTAssertTrue(privacyLink.waitForExistence(timeout: 3))
+        privacyLink.tap()
+
+        XCTAssertTrue(app.navigationBars["Privacy"].waitForExistence(timeout: 3))
+        let deleteButton = app.buttons["Delete Local Data"].firstMatch
+        if !deleteButton.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 3))
+        deleteButton.tap()
+
+        let confirmationInput = app.textFields["privacyDeletionConfirmationInput"]
+        XCTAssertTrue(confirmationInput.waitForExistence(timeout: 3))
+        let confirmDelete = app.buttons["privacyDeletionConfirmButton"]
+        XCTAssertTrue(confirmDelete.waitForExistence(timeout: 3))
+        XCTAssertFalse(confirmDelete.isEnabled)
+
+        confirmationInput.tap()
+        confirmationInput.typeText("DELETE LOCAL")
+        XCTAssertTrue(confirmDelete.isEnabled)
+        app.buttons["Cancel"].tap()
+    }
+
     func testWeeklyCheckInSavesReviewedOwnershipChange() {
         let app = launchCompletedApp()
 

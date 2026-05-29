@@ -10,8 +10,7 @@ struct PrivacyView: View {
     @EnvironmentObject private var syncService: CloudKitSyncService
     @EnvironmentObject private var pairingService: CloudKitPairingService
     @State private var exportURL: URL?
-    @State private var showingDeleteConfirmation = false
-    @State private var showingSharedDeleteConfirmation = false
+    @State private var deletionReview: PrivacyDeletionReview?
     @State private var message: String?
     @State private var messageDetails: String?
     @State private var deletionOperation: PrivacyDeletionOperation?
@@ -52,14 +51,14 @@ struct PrivacyView: View {
                 }
 
                 Button(role: .destructive) {
-                    showingDeleteConfirmation = true
+                    deletionReview = .local
                 } label: {
                     Label(localDeleteTitle, systemImage: localDeleteSymbol)
                 }
                 .disabled(isDeleting)
 
                 Button(role: .destructive) {
-                    showingSharedDeleteConfirmation = true
+                    deletionReview = .shared
                 } label: {
                     Label(sharedDeleteTitle, systemImage: sharedDeleteSymbol)
                 }
@@ -121,29 +120,24 @@ struct PrivacyView: View {
         .onDisappear {
             discardPreparedExportFile()
         }
-        .confirmationDialog(
-            "Delete all local FairNest data?",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete Local Data", role: .destructive) {
-                Task { await deleteLocalData() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This removes cards, check-ins, temporary exports, and scheduled FairNest reminders from this device. iCloud Sync will be turned off so cloud data is not pulled back automatically.")
-        }
-        .confirmationDialog(
-            "Delete shared household data?",
-            isPresented: $showingSharedDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete Shared Household Data", role: .destructive) {
-                Task { await deleteSharedHouseholdData() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This removes iCloud household cards where this account has permission, then clears local cards, check-ins, temporary exports, and scheduled FairNest reminders on this device. iCloud Sync will be turned off.")
+        .sheet(item: $deletionReview) { review in
+            PrivacyDeletionReviewSheet(
+                review: review,
+                exportURL: $exportURL,
+                isDeleting: isDeleting,
+                onExport: export,
+                onConfirm: {
+                    deletionReview = nil
+                    Task {
+                        switch review {
+                        case .local:
+                            await deleteLocalData()
+                        case .shared:
+                            await deleteSharedHouseholdData()
+                        }
+                    }
+                }
+            )
         }
     }
 
@@ -283,6 +277,128 @@ private enum PrivacyDeletionOperation {
         case .shared:
             return "Deleting shared household data, local data, temporary exports, and reminders..."
         }
+    }
+}
+
+private enum PrivacyDeletionReview: String, Identifiable {
+    case local
+    case shared
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .local:
+            return "Delete local FairNest data?"
+        case .shared:
+            return "Delete shared household data?"
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .local:
+            return "This removes cards, check-ins, temporary exports, and scheduled FairNest reminders from this device. iCloud Sync will be turned off so cloud data is not pulled back automatically."
+        case .shared:
+            return "This removes iCloud household cards where this account has permission, then clears local cards, check-ins, temporary exports, and scheduled FairNest reminders on this device. iCloud Sync will be turned off."
+        }
+    }
+
+    var confirmationPhrase: String {
+        switch self {
+        case .local:
+            return "DELETE LOCAL"
+        case .shared:
+            return "DELETE SHARED"
+        }
+    }
+
+    var confirmTitle: String {
+        switch self {
+        case .local:
+            return "Delete Local Data"
+        case .shared:
+            return "Delete Shared Household Data"
+        }
+    }
+}
+
+private struct PrivacyDeletionReviewSheet: View {
+    let review: PrivacyDeletionReview
+    @Binding var exportURL: URL?
+    var isDeleting: Bool
+    var onExport: () -> Void
+    var onConfirm: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmationText = ""
+    @AccessibilityFocusState private var titleFocused: Bool
+
+    private var typedConfirmationMatches: Bool {
+        confirmationText.trimmingCharacters(in: .whitespacesAndNewlines) == review.confirmationPhrase
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(review.summary)
+                        .foregroundStyle(.secondary)
+
+                    Button {
+                        onExport()
+                    } label: {
+                        Label("Export Data First", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(isDeleting)
+
+                    if let exportURL {
+                        ShareLink(item: exportURL) {
+                            Label("Share Export File", systemImage: "doc")
+                        }
+                        .disabled(isDeleting)
+                    }
+                } header: {
+                    Text("Review first")
+                }
+
+                Section {
+                    Text("Type \(review.confirmationPhrase) to continue.")
+                        .foregroundStyle(.secondary)
+                    TextField(review.confirmationPhrase, text: $confirmationText)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .accessibilityIdentifier("privacyDeletionConfirmationInput")
+                } header: {
+                    Text("Confirmation")
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        onConfirm()
+                    } label: {
+                        Label(review.confirmTitle, systemImage: "trash")
+                    }
+                    .disabled(!typedConfirmationMatches || isDeleting)
+                    .accessibilityIdentifier("privacyDeletionConfirmButton")
+                }
+            }
+            .navigationTitle(review.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                Task { @MainActor in
+                    await Task.yield()
+                    titleFocused = true
+                }
+            }
+        }
+        .accessibilityFocused($titleFocused)
     }
 }
 
