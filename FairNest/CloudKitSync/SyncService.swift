@@ -570,9 +570,10 @@ enum ConflictResolver {
     }
 
     static func resolve(local: LoadCard, remote: LoadCard) -> LoadCard {
+        if local.isDeleted, !remote.isDeleted { return local }
+        if remote.isDeleted, !local.isDeleted { return remote }
         if remote.updatedAt > local.updatedAt { return remote }
         if local.updatedAt > remote.updatedAt { return local }
-        if remote.deletedAt != nil, local.deletedAt == nil { return remote }
         return local
     }
 }

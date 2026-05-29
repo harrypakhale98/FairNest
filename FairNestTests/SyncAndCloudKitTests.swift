@@ -13,6 +13,24 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(ConflictResolver.resolve(local: newer, remote: older).title, "Newer")
     }
 
+    func testConflictResolutionPrefersDeletedTombstoneOverActiveCard() {
+        let id = UUID()
+        var olderDeleted = LoadCard(
+            id: id,
+            title: "Deleted",
+            updatedAt: Date(timeIntervalSince1970: 10)
+        )
+        olderDeleted.softDelete(at: Date(timeIntervalSince1970: 10))
+        let newerActive = LoadCard(
+            id: id,
+            title: "Stale device edit",
+            updatedAt: Date(timeIntervalSince1970: 20)
+        )
+
+        XCTAssertTrue(ConflictResolver.resolve(local: newerActive, remote: olderDeleted).isDeleted)
+        XCTAssertTrue(ConflictResolver.resolve(local: olderDeleted, remote: newerActive).isDeleted)
+    }
+
     func testCloudKitMappingRoundTripsCardFields() throws {
         let card = LoadCard(
             id: UUID(),
