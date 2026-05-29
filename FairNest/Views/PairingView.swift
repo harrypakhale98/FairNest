@@ -31,6 +31,8 @@ struct PairingView: View {
                 Section {
                     Button {
                         Task {
+                            shareError = nil
+                            shareErrorDetails = nil
                             await syncService.refreshStatus()
                             await pairingService.refresh()
                         }
@@ -155,6 +157,8 @@ struct PairingView: View {
     }
 
     private func enableICloudSyncForPairing() async {
+        shareError = nil
+        shareErrorDetails = nil
         services.iCloudSyncEnabled = true
         await syncService.refreshStatus()
         await pairingService.refresh()
