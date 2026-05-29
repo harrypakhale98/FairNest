@@ -207,7 +207,7 @@ struct PrivacyView: View {
 }
 
 enum PrivacyPolicyContent {
-    static let summary = "FairNest stores household cards locally and only syncs through CloudKit when iCloud Sync is turned on. Removed cards use minimal deletion markers in iCloud and exports. Weekly check-ins stay on this device and can be exported. FairNest has no ads, subscriptions, third-party analytics, or custom backend."
+    static let summary = "FairNest stores household cards locally and only syncs through CloudKit when iCloud Sync is turned on. Removed cards use minimal deletion markers in local storage, iCloud, and exports. Weekly check-ins stay on this device and can be exported. FairNest has no ads, subscriptions, third-party analytics, or custom backend."
 
     static let fallbackMarkdown = """
     # FairNest Privacy Policy
@@ -220,7 +220,7 @@ enum PrivacyPolicyContent {
 
     FairNest uses local notifications only after permission is granted. Users can export local data, delete local data and scheduled FairNest reminders from this device, and delete shared household data where their iCloud permissions allow it.
 
-    When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in iCloud sync records and exported data.
+    When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in local storage, iCloud sync records, and exported data.
     """
 
     static func bundledMarkdown(bundle: Bundle = .main) -> String? {

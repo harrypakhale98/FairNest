@@ -252,8 +252,10 @@ final class StorePrivacyWidgetTests: XCTestCase {
         let bundledPolicy = try XCTUnwrap(PrivacyPolicyContent.bundledMarkdown())
 
         XCTAssertTrue(PrivacyPolicyContent.summary.contains("minimal deletion markers"))
+        XCTAssertTrue(PrivacyPolicyContent.summary.contains("local storage"))
         XCTAssertTrue(bundledPolicy.contains("minimal deletion marker"))
         XCTAssertTrue(bundledPolicy.contains("omit the card title"))
+        XCTAssertTrue(bundledPolicy.contains("local storage"))
     }
 
     func testCorruptLocalStoresAreBackedUpBeforeReset() throws {
