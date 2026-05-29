@@ -95,7 +95,7 @@ struct PairingView: View {
                 }
 
                 Section {
-                    LabeledContent("Sync", value: syncService.status.label)
+                    LabeledContent("Sync", value: syncStatusLabel)
                     LabeledContent("Mode", value: pairingService.state.modeLabel)
                     if pairingService.state == .paired {
                         Text("This iPhone is already part of a shared household. Manage participants from the iCloud sharing sheet when this device owns the share.")
@@ -134,6 +134,10 @@ struct PairingView: View {
 
     private var canCreateInvite: Bool {
         pairingService.state.allowsCreatingInvite(iCloudSyncEnabled: services.iCloudSyncEnabled)
+    }
+
+    private var syncStatusLabel: String {
+        services.iCloudSyncEnabled ? syncService.status.label : "iCloud Sync Off"
     }
 
     private var inviteButtonAccessibilityHint: String {

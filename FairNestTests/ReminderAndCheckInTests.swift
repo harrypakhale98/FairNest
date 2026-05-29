@@ -203,6 +203,29 @@ final class ReminderAndCheckInTests: XCTestCase {
         XCTAssertTrue(reminderScheduler.scheduledCardIDs.isEmpty)
     }
 
+    func testSchedulingCurrentCardsCancelsStaleRemindersWhenPermissionOff() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        reminderScheduler.authorizationStatusValue = .denied
+        let orphanedCardID = UUID()
+        let overdueCard = LoadCard(title: "Overdue", status: .planned, dueDate: Date(timeIntervalSinceNow: -3600))
+        reminderScheduler.pendingIdentifiers = [
+            ReminderRequestFactory.cardReminderIdentifier(for: orphanedCardID),
+            ReminderRequestFactory.cardReminderIdentifier(for: overdueCard.id)
+        ]
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        cardStore.upsert(overdueCard)
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            reminderScheduler: reminderScheduler
+        )
+
+        try await services.scheduleRemindersForCurrentCards()
+
+        XCTAssertEqual(reminderScheduler.cancelledCardIDs, [orphanedCardID, overdueCard.id])
+        XCTAssertTrue(reminderScheduler.scheduledCardIDs.isEmpty)
+    }
+
     func testPrivacyDeleteClearsDataDisablesSyncAndCancelsReminders() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         defer {
@@ -296,9 +319,10 @@ private final class CapturingReminderScheduler: ReminderScheduler {
     var pendingIdentifiers: [String] = []
     var scheduleDueTaskError: Error?
     var cancelledAllFairNestReminders = false
+    var authorizationStatusValue: UNAuthorizationStatus = .authorized
 
     func authorizationStatus() async -> UNAuthorizationStatus {
-        .authorized
+        authorizationStatusValue
     }
 
     func requestAuthorization() async throws -> Bool {

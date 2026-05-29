@@ -17,6 +17,7 @@ struct SettingsView: View {
     @State private var cloudStatusRefreshInProgress = false
     @State private var notificationActionInProgress = false
     @State private var reminderRemovalInProgress = false
+    @AccessibilityFocusState private var notificationMessageFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -34,18 +35,20 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settingsICloudSync")
                     if services.iCloudSyncEnabled {
                         LabeledContent("Status", value: syncService.status.label)
-                        if let lastSyncMessage = services.lastSyncMessage {
-                            Text(FairNestIssueCopy.syncDelay)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            TechnicalDetailsDisclosure(details: lastSyncMessage)
-                        }
                         Button {
                             Task { await refreshCloudStatus() }
                         } label: {
                             Label("Refresh iCloud Status", systemImage: "arrow.clockwise")
                         }
                         .disabled(cloudStatusRefreshInProgress)
+                    }
+                    if let lastSyncMessage = services.lastSyncMessage {
+                        Text(services.iCloudSyncEnabled ? FairNestIssueCopy.syncDelay : lastSyncMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if services.iCloudSyncEnabled {
+                            TechnicalDetailsDisclosure(details: lastSyncMessage)
+                        }
                     }
                     Text("Off by default. When on, FairNest syncs cards through the signed-in iCloud account and keeps check-ins local to this device.")
                         .font(.footnote)
@@ -116,6 +119,8 @@ struct SettingsView: View {
                         Text(notificationMessage)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("settingsReminderResult")
+                            .accessibilityFocused($notificationMessageFocused)
                     }
 
                     if let lastReminderMessage = services.lastReminderMessage {
@@ -318,12 +323,12 @@ struct SettingsView: View {
                     minute: Self.weeklyCheckInMinute
                 )
                 try await services.scheduleRemindersForCurrentCards()
-                notificationMessage = "Reminders are enabled. Weekly check-in is scheduled for \(weeklyReminderScheduleLabel)."
+                showNotificationMessage("Reminders are enabled. Weekly check-in is scheduled for \(weeklyReminderScheduleLabel).")
             } else {
-                notificationMessage = "Reminders are off. You can change this in Settings."
+                showNotificationMessage("Reminders are off. You can change this in Settings.")
             }
         } catch {
-            notificationMessage = FairNestIssueCopy.reminderSchedulingFailure(scheduleLabel: weeklyReminderScheduleLabel)
+            showNotificationMessage(FairNestIssueCopy.reminderSchedulingFailure(scheduleLabel: weeklyReminderScheduleLabel))
         }
         await refreshNotificationStatus()
     }
@@ -334,7 +339,22 @@ struct SettingsView: View {
         defer { reminderRemovalInProgress = false }
         await services.reminderScheduler.cancelAllFairNestReminders()
         await refreshNotificationStatus()
-        notificationMessage = "All scheduled FairNest reminders were removed."
+        showNotificationMessage("All scheduled FairNest reminders were removed.")
+    }
+
+    private func showNotificationMessage(_ message: String) {
+        notificationMessage = message
+        announce(message)
+        Task { @MainActor in
+            await Task.yield()
+            notificationMessageFocused = true
+        }
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 
     private func openAppSettings() {

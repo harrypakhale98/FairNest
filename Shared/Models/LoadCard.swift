@@ -94,6 +94,10 @@ enum CardStatus: String, Codable, CaseIterable, Identifiable, Hashable {
             return [.planned, .doing, .inbox].contains(next)
         }
     }
+
+    var allowedEditorTransitions: [CardStatus] {
+        Self.allCases.filter { canTransition(to: $0) }
+    }
 }
 
 enum Effort: Int, Codable, CaseIterable, Identifiable, Hashable, Comparable {

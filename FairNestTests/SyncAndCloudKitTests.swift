@@ -527,7 +527,7 @@ final class SyncAndCloudKitTests: XCTestCase {
     }
 
     @MainActor
-    func testSharedHouseholdAccessLossTurnsOffSyncAndPreventsUpload() async throws {
+    func testSharedHouseholdAccessLossPreservesLocalCardsWhenSharedIDsAreUnknown() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
         let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
@@ -573,10 +573,10 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertFalse(services.iCloudSyncEnabled)
         XCTAssertEqual(syncEngine.fetchCount, 1)
         XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
-        XCTAssertTrue(cardStore.cards.isEmpty)
+        XCTAssertEqual(cardStore.cards.map(\.title), ["Stale shared card"])
         XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
         XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs"), [])
-        XCTAssertTrue(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
+        XCTAssertFalse(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
     }
 

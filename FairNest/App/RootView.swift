@@ -29,7 +29,7 @@ struct RootView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .fairNestFailedCloudKitShareAcceptance)) { notification in
-            services.pairingService.markShareAcceptanceFailed(notification.object as? Error)
+            services.handleFailedCloudKitShareAcceptance(notification.object as? Error)
         }
         .onChange(of: services.iCloudSyncEnabled) { _, enabled in
             Task {

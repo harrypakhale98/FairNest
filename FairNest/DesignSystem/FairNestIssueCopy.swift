@@ -13,6 +13,7 @@ enum FairNestIssueCopy {
     static let syncDelay = "FairNest is keeping changes on this iPhone and will try iCloud again."
     static let reminderUpdateFailure = "FairNest couldn't update every reminder. Your cards are still saved."
     static let pairingFailure = "FairNest couldn't finish the iCloud pairing step. Check iCloud and try again."
+    static let invalidCardStatusTransition = "That card cannot move directly to the selected status. Choose one of the available status options."
     static let exportFailure = "FairNest couldn't prepare the export file. Check available storage and try again."
     static let clearExportFailure = "FairNest couldn't clear the temporary export file. Try again from this screen."
     static let localDeleteFailure = "FairNest couldn't finish deleting all local data. Your previous iCloud Sync setting was restored; check details before trying again."

@@ -136,6 +136,11 @@ final class AppServices: ObservableObject {
         await syncCardsIfAvailable()
     }
 
+    func handleFailedCloudKitShareAcceptance(_ error: Error?) {
+        pairingService.markShareAcceptanceFailed(error)
+        lastSyncMessage = error?.localizedDescription ?? FairNestIssueCopy.pairingFailure
+    }
+
     func syncCardsIfAvailable() async {
         guard iCloudSyncEnabled else {
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
@@ -254,21 +259,32 @@ final class AppServices: ObservableObject {
     }
 
     private func reconcileDueReminders(for cards: [LoadCard]) async throws {
-        let status = await reminderScheduler.authorizationStatus()
-        guard status == .authorized || status == .provisional || status == .ephemeral else { return }
-        let currentCardIDs = Set(cards.map(\.id))
+        let now = Date()
+        let cardsByID = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
         let pendingIdentifiers = await reminderScheduler.pendingFairNestReminderIdentifiers()
-        for identifier in pendingIdentifiers where ReminderRequestFactory.isCardReminderIdentifier(identifier) {
-            guard let cardID = ReminderRequestFactory.cardID(fromReminderIdentifier: identifier),
-                  !currentCardIDs.contains(cardID) else { continue }
+        var cancelledReminderCardIDs = Set<UUID>()
+        func cancelReminderIfNeeded(for cardID: UUID) async {
+            guard cancelledReminderCardIDs.insert(cardID).inserted else { return }
             await reminderScheduler.cancelReminder(for: cardID)
         }
 
+        for identifier in pendingIdentifiers where ReminderRequestFactory.isCardReminderIdentifier(identifier) {
+            guard let cardID = ReminderRequestFactory.cardID(fromReminderIdentifier: identifier) else { continue }
+            if let card = cardsByID[cardID] {
+                guard !ReminderRequestFactory.shouldScheduleDueTask(for: card, now: now) else { continue }
+                await cancelReminderIfNeeded(for: cardID)
+            } else {
+                await cancelReminderIfNeeded(for: cardID)
+            }
+        }
+
+        let status = await reminderScheduler.authorizationStatus()
+        guard status == .authorized || status == .provisional || status == .ephemeral else { return }
+
         var firstSchedulingError: Error?
-        let now = Date()
         for card in cards {
             if !ReminderRequestFactory.shouldScheduleDueTask(for: card, now: now) {
-                await reminderScheduler.cancelReminder(for: card.id)
+                await cancelReminderIfNeeded(for: card.id)
             } else {
                 do {
                     try await reminderScheduler.scheduleDueTask(card)
@@ -336,13 +352,13 @@ final class AppServices: ObservableObject {
     }
 
     private func removeUnavailableSharedCards(sharedCardIDs: Set<UUID>) -> Bool {
+        guard !sharedCardIDs.isEmpty else {
+            return true
+        }
         let privateCardIDs = acceptedSharePrivateCardIDs
         let remainingCards = cardStore.cards.filter { card in
             if privateCardIDs.contains(card.id) {
                 return true
-            }
-            guard !sharedCardIDs.isEmpty else {
-                return false
             }
             return !sharedCardIDs.contains(card.id)
         }

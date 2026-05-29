@@ -242,7 +242,7 @@ struct PrivacyView: View {
         do {
             try await services.deleteSharedHouseholdDataForPrivacy()
             exportURL = nil
-            showResult("Shared household data was deleted where this iCloud account has permission.")
+            showResult("Shared household data was deleted where this iCloud account has permission. Local FairNest data, temporary exports, and scheduled reminders were also deleted on this device. iCloud Sync is off.")
         } catch {
             showResult(FairNestIssueCopy.sharedDeleteFailureMessage(for: error), details: error.localizedDescription)
         }
@@ -285,21 +285,9 @@ enum PrivacyPolicyContent {
     static let fallbackMarkdown = """
     # FairNest Privacy Policy
 
-    Last updated: May 28, 2026
+    \(summary)
 
-    FairNest is a private household organization app. It does not sell data, show ads, use third-party analytics, use a custom server, or use paid APIs.
-
-    Household cards, reminder settings, and pairing state are stored locally on device. iCloud Sync is off by default. When turned on, FairNest uses iCloud to sync card data and Apple's private sharing flow to share a household with invited participants. Invited participants can see shared household card data inside the private CloudKit share. Weekly check-ins stay on this device and can be exported.
-
-    Brain dump suggestions are prepared on this iPhone. Raw brain dump text is never automatically shared.
-
-    FairNest uses local notifications only after permission is granted. Users can export local data, delete local data and scheduled FairNest reminders from this device, and delete shared household data where their iCloud permissions allow it. Users can withdraw optional iCloud Sync by turning it off in Settings. Users can stop partner sharing or remove participants from the iCloud sharing sheet where their iCloud permissions allow it.
-
-    Local FairNest data remains on the device until the user edits or deletes it, uses FairNest's deletion controls, deletes the app, or removes it through operating system storage controls. iCloud card data remains in the user's iCloud account and private CloudKit shares until removed by the user, a permitted share participant, FairNest's deletion controls, or Apple iCloud controls.
-
-    When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in local storage, iCloud sync records, and exported data.
-
-    For support, email harry.pakhale98@gmail.com. Support email is optional and handled through the sender's and developer's email providers. Do not include private household card details unless they are needed to explain the issue.
+    For the complete policy, reinstall or update FairNest so the bundled privacy policy resource is available. For support, email harry.pakhale98@gmail.com.
     """
 
     static func bundledMarkdown(bundle: Bundle = .main) -> String? {

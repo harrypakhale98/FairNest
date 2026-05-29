@@ -17,6 +17,11 @@ final class CardModelTests: XCTestCase {
         XCTAssertNoThrow(try card.transition(to: .planned))
     }
 
+    func testEditorStatusOptionsMatchAllowedTransitions() {
+        XCTAssertEqual(CardStatus.done.allowedEditorTransitions, [.inbox, .planned, .doing, .done])
+        XCTAssertEqual(CardStatus.inbox.allowedEditorTransitions, CardStatus.allCases)
+    }
+
     func testCompletingRecurringCardAdvancesDueDateInsteadOfClosingForever() throws {
         let now = Date()
         var card = LoadCard(title: "Water plants", status: .planned, dueDate: now, recurrence: .daily)

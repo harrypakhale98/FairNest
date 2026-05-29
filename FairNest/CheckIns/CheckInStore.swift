@@ -89,7 +89,7 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         }
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             try? fileManager.removeItem(at: self.fileURL)
-            removeCorruptBackups()
+            removeCorruptBackupsBestEffort()
         }
         load()
     }
@@ -110,7 +110,7 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         records = []
         do {
             try persistThrowing()
-            removeCorruptBackups()
+            try removeCorruptBackups()
         } catch {
             records = previousRecords
             throw error
@@ -176,12 +176,16 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
         try? fileManager.moveItem(at: fileURL, to: backupURL)
     }
 
-    private func removeCorruptBackups() {
+    private func removeCorruptBackups() throws {
         let directory = fileURL.deletingLastPathComponent()
-        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         let backupPrefix = "\(fileURL.lastPathComponent).corrupt."
         for file in files where file.lastPathComponent.hasPrefix(backupPrefix) {
-            try? fileManager.removeItem(at: file)
+            try fileManager.removeItem(at: file)
         }
+    }
+
+    private func removeCorruptBackupsBestEffort() {
+        try? removeCorruptBackups()
     }
 }

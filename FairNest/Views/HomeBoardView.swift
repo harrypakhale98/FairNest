@@ -229,14 +229,14 @@ struct HomeBoardView: View {
                 technicalDetails: message
             )
         }
-        if services.iCloudSyncEnabled, let message = services.lastSyncMessage {
+        if let message = services.lastSyncMessage {
             return BoardStatus(
-                title: "iCloud sync needs attention",
-                message: FairNestIssueCopy.syncDelay,
+                title: services.iCloudSyncEnabled ? "iCloud sync needs attention" : "iCloud sync was turned off",
+                message: services.iCloudSyncEnabled ? FairNestIssueCopy.syncDelay : message,
                 symbol: "icloud.slash",
                 tint: .orange,
-                actionTitle: "Retry Sync",
-                technicalDetails: message
+                actionTitle: services.iCloudSyncEnabled ? "Retry Sync" : nil,
+                technicalDetails: services.iCloudSyncEnabled ? message : nil
             )
         }
         if services.iCloudSyncEnabled, services.syncInProgress {

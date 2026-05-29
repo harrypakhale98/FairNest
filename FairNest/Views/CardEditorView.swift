@@ -50,7 +50,7 @@ struct CardEditorView: View {
                     }
 
                     Picker("Status", selection: $card.status) {
-                        ForEach(CardStatus.allCases) { status in
+                        ForEach(statusOptions) { status in
                             Text(status.label).tag(status)
                         }
                     }
@@ -158,6 +158,14 @@ struct CardEditorView: View {
     private func save() {
         do {
             try onSave(card)
+        } catch let error as CardTransitionError {
+            saveErrorMessage = FairNestIssueCopy.invalidCardStatusTransition
+            saveErrorDetails = error.localizedDescription
+            announce(FairNestIssueCopy.invalidCardStatusTransition)
+            Task { @MainActor in
+                await Task.yield()
+                saveErrorFocused = true
+            }
         } catch {
             saveErrorMessage = FairNestIssueCopy.localCardSaveFailure
             saveErrorDetails = error.localizedDescription
@@ -167,6 +175,10 @@ struct CardEditorView: View {
                 saveErrorFocused = true
             }
         }
+    }
+
+    private var statusOptions: [CardStatus] {
+        originalCard.status.allowedEditorTransitions
     }
 
     private var isDirty: Bool {

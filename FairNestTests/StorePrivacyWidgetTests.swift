@@ -42,6 +42,28 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertEqual(export.checkIns, [record])
     }
 
+    func testPrivacyExportRefusesIncompleteCardStore() throws {
+        let unreadableCardURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: unreadableCardURL, withIntermediateDirectories: true)
+        let cardStore = LocalCardStore(fileURL: unreadableCardURL)
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+
+        XCTAssertThrowsError(try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportData()) { error in
+            XCTAssertTrue(error.localizedDescription.contains("did not create an incomplete export"))
+        }
+    }
+
+    func testPrivacyExportRefusesIncompleteCheckInStore() throws {
+        let unreadableCheckInURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: unreadableCheckInURL, withIntermediateDirectories: true)
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: unreadableCheckInURL)
+
+        XCTAssertThrowsError(try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportData()) { error in
+            XCTAssertTrue(error.localizedDescription.contains("did not create an incomplete export"))
+        }
+    }
+
     func testDeletedCardTombstoneRedactsLocalContentAndPrivacyExport() throws {
         let cardStore = LocalCardStore(fileURL: tempURL())
         let checkInStore = LocalCheckInStore(fileURL: tempURL())
@@ -396,6 +418,23 @@ final class StorePrivacyWidgetTests: XCTestCase {
         let backups = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         XCTAssertTrue(backups.contains { $0.hasPrefix("cards.json.corrupt.") })
         XCTAssertTrue(backups.contains { $0.hasPrefix("checkins.json.corrupt.") })
+    }
+
+    func testCorruptCardStoreClearsWidgetSnapshot() throws {
+        let defaults = try XCTUnwrap(FairNestShared.sharedDefaults)
+        WidgetSnapshotStore.clear(defaults: defaults)
+        defer { WidgetSnapshotStore.clear(defaults: defaults) }
+        let card = LoadCard(title: "Private widget title", type: .task, owner: .shared, status: .planned, effort: .medium)
+        XCTAssertTrue(WidgetSnapshotStore.write(cards: [card], defaults: defaults))
+        XCTAssertFalse(WidgetSnapshotStore.read(defaults: defaults).cards.isEmpty)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let cardURL = directory.appendingPathComponent("cards.json")
+        try Data("not json".utf8).write(to: cardURL)
+
+        _ = LocalCardStore(fileURL: cardURL)
+
+        XCTAssertTrue(WidgetSnapshotStore.read(defaults: defaults).cards.isEmpty)
     }
 
     func testDeletingLocalDataRemovesCorruptBackups() throws {

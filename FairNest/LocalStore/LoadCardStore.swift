@@ -83,7 +83,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         }
         if ProcessInfo.processInfo.arguments.contains("-resetFairNest") {
             try? fileManager.removeItem(at: self.fileURL)
-            removeCorruptBackups()
+            removeCorruptBackupsBestEffort()
         }
         load()
         if ProcessInfo.processInfo.arguments.contains("-seedDemoData"), cards.isEmpty {
@@ -116,6 +116,8 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         } catch is DecodingError {
             backupCorruptStore()
             cards = []
+            WidgetSnapshotStore.clear()
+            WidgetSnapshotStore.reloadTimelines()
             lastLoadErrorMessage = "FairNest found an unreadable local card store and moved it aside."
             storeUnavailableDueToLoadFailure = false
         } catch {
@@ -285,9 +287,9 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     func deleteAllLocalData() {
         let previousCards = cards
         cards = []
-        removeCorruptBackups()
         do {
             try persistThrowing()
+            try removeCorruptBackups()
         } catch {
             cards = previousCards
             assertionFailure(error.localizedDescription)
@@ -318,7 +320,7 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         cards = []
         do {
             try persistThrowing()
-            removeCorruptBackups()
+            try removeCorruptBackups()
         } catch {
             cards = previousCards
             throw error
@@ -385,13 +387,17 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         try? fileManager.moveItem(at: fileURL, to: backupURL)
     }
 
-    private func removeCorruptBackups() {
+    private func removeCorruptBackups() throws {
         let directory = fileURL.deletingLastPathComponent()
-        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         let backupPrefix = "\(fileURL.lastPathComponent).corrupt."
         for file in files where file.lastPathComponent.hasPrefix(backupPrefix) {
-            try? fileManager.removeItem(at: file)
+            try fileManager.removeItem(at: file)
         }
+    }
+
+    private func removeCorruptBackupsBestEffort() {
+        try? removeCorruptBackups()
     }
 
     private static func sampleCards(now: Date = Date()) -> [LoadCard] {

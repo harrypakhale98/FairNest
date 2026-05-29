@@ -14,6 +14,12 @@ struct PrivacyExportService {
     var checkInStore: LocalCheckInStore
 
     func exportData() throws -> Data {
+        guard !cardStore.isUnavailableDueToLoadFailure else {
+            throw PrivacyExportServiceError.cardStoreUnavailable
+        }
+        guard !checkInStore.isUnavailableDueToLoadFailure else {
+            throw PrivacyExportServiceError.checkInStoreUnavailable
+        }
         let envelope = FairNestExportEnvelope(
             version: 1,
             exportedAt: Date(),
@@ -62,10 +68,16 @@ struct PrivacyExportService {
 }
 
 enum PrivacyExportServiceError: LocalizedError {
+    case cardStoreUnavailable
+    case checkInStoreUnavailable
     case rollbackFailed(original: Error, rollback: Error)
 
     var errorDescription: String? {
         switch self {
+        case .cardStoreUnavailable:
+            return "FairNest could not read all local cards, so it did not create an incomplete export. Close and reopen FairNest after unlocking this iPhone, then try again."
+        case .checkInStoreUnavailable:
+            return "FairNest could not read all local check-ins, so it did not create an incomplete export. Close and reopen FairNest after unlocking this iPhone, then try again."
         case let .rollbackFailed(original, rollback):
             return "FairNest could not finish deleting local data (\(original.localizedDescription)) or restore the previous local data (\(rollback.localizedDescription))."
         }
