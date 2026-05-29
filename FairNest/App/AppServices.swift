@@ -92,6 +92,7 @@ final class AppServices: ObservableObject {
             acceptedSharePrivateCardIDs = []
             UserDefaults.standard.removeObject(forKey: Self.activeCloudKitAccountIdentifierKey)
             CloudKitHouseholdSelection.clearSelectedSharedZone()
+            CloudKitHouseholdErasureState.clearAllAcknowledgements()
             writeWidgetSnapshot(cards: [], syncPending: false)
         } catch {
             if restoresSyncOnFailure {

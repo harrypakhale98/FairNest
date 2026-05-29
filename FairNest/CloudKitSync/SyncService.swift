@@ -608,6 +608,12 @@ enum CloudKitHouseholdErasureState {
         defaults.set(erasedAt, forKey: key)
     }
 
+    static func clearAllAcknowledgements(defaults: UserDefaults = .standard) {
+        for key in defaults.dictionaryRepresentation().keys where isAcknowledgementKey(key) {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
     private static func acknowledgementKey(accountIdentifier: String?, zoneID: CKRecordZone.ID?) -> String {
         guard let accountIdentifier, let zoneID else {
             return acknowledgedErasedAtKey
@@ -618,6 +624,10 @@ enum CloudKitHouseholdErasureState {
             zoneID.ownerName,
             zoneID.zoneName
         ].joined(separator: ".")
+    }
+
+    private static func isAcknowledgementKey(_ key: String) -> Bool {
+        key == acknowledgedErasedAtKey || key.hasPrefix("\(acknowledgedErasedAtKey).")
     }
 }
 

@@ -754,6 +754,56 @@ final class SyncAndCloudKitTests: XCTestCase {
     }
 
     @MainActor
+    func testLocalPrivacyDeleteClearsCloudKitErasureAcknowledgements() async throws {
+        let previousAcknowledgements = UserDefaults.standard.dictionaryRepresentation().filter { key, _ in
+            key == CloudKitHouseholdErasureState.acknowledgedErasedAtKey ||
+                key.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).")
+        }
+        let unrelatedKey = "FairNestTests.unrelatedErasureValue"
+        let previousUnrelatedValue = UserDefaults.standard.object(forKey: unrelatedKey)
+        defer {
+            CloudKitHouseholdErasureState.clearAllAcknowledgements()
+            for (key, value) in previousAcknowledgements {
+                UserDefaults.standard.set(value, forKey: key)
+            }
+            if let previousUnrelatedValue {
+                UserDefaults.standard.set(previousUnrelatedValue, forKey: unrelatedKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: unrelatedKey)
+            }
+        }
+        CloudKitHouseholdErasureState.clearAllAcknowledgements()
+        UserDefaults.standard.set("keep me", forKey: unrelatedKey)
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_010)
+        CloudKitHouseholdErasureState.acknowledge(erasedAt)
+        CloudKitHouseholdErasureState.acknowledge(
+            erasedAt,
+            accountIdentifier: "account-a",
+            zoneID: CloudKitCardMapper.zoneID(ownerName: "owner-a")
+        )
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInStore = LocalCheckInStore(fileURL: tempURL())
+        _ = cardStore.add(BrainDumpSuggestion(title: "Delete locally", type: .task))
+        try checkInStore.save(CheckInRecord(
+            feltHeavy: "Admin",
+            gotDone: "Dishes",
+            needsOwnership: "Groceries",
+            appreciation: "Coffee",
+            changes: []
+        ))
+        let services = AppServices(cardStore: cardStore, checkInStore: checkInStore)
+
+        try await services.deleteAllLocalDataForPrivacy()
+
+        let remainingKeys = UserDefaults.standard.dictionaryRepresentation().keys
+        XCTAssertFalse(remainingKeys.contains(CloudKitHouseholdErasureState.acknowledgedErasedAtKey))
+        XCTAssertFalse(remainingKeys.contains { $0.hasPrefix("\(CloudKitHouseholdErasureState.acknowledgedErasedAtKey).") })
+        XCTAssertEqual(UserDefaults.standard.string(forKey: unrelatedKey), "keep me")
+        XCTAssertTrue(cardStore.cards.isEmpty)
+        XCTAssertTrue(checkInStore.records.isEmpty)
+    }
+
+    @MainActor
     func testSharedPrivacyDeleteDoesNotAcknowledgeCloudErasureWhenLocalDeleteFails() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         let previousErasureAck = UserDefaults.standard.object(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
