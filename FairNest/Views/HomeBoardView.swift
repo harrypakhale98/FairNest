@@ -16,11 +16,13 @@ enum BoardFilter: String, CaseIterable, Identifiable {
 
 enum BoardEmptyAction: Equatable {
     case addCard
+    case brainDump
     case showAll
 
     var accessibilityIdentifier: String {
         switch self {
         case .addCard: return "emptyAddCard"
+        case .brainDump: return "emptyBrainDump"
         case .showAll: return "showAllCards"
         }
     }
@@ -33,8 +35,25 @@ struct BoardEmptyState: Equatable {
     var actionTitle: String
     var actionSymbol: String
     var action: BoardEmptyAction
+    var secondaryActionTitle: String?
+    var secondaryActionSymbol: String?
+    var secondaryAction: BoardEmptyAction?
 
     static func make(filter: BoardFilter, activeCardCount: Int) -> BoardEmptyState {
+        if activeCardCount == 0 {
+            return BoardEmptyState(
+                title: "No cards yet",
+                symbol: "text.badge.plus",
+                description: "Start with a quick Brain Dump, or add one card manually.",
+                actionTitle: "Brain Dump",
+                actionSymbol: "text.badge.plus",
+                action: .brainDump,
+                secondaryActionTitle: "Add Card",
+                secondaryActionSymbol: "plus",
+                secondaryAction: .addCard
+            )
+        }
+
         if activeCardCount > 0, filter != .all {
             let noun = activeCardCount == 1 ? "card" : "cards"
             return BoardEmptyState(
@@ -43,7 +62,10 @@ struct BoardEmptyState: Equatable {
                 description: "You have \(activeCardCount) \(noun) in other views.",
                 actionTitle: "Show All",
                 actionSymbol: "rectangle.stack",
-                action: .showAll
+                action: .showAll,
+                secondaryActionTitle: nil,
+                secondaryActionSymbol: nil,
+                secondaryAction: nil
             )
         }
 
@@ -53,7 +75,10 @@ struct BoardEmptyState: Equatable {
             description: filter.defaultEmptyDescription,
             actionTitle: "Add Card",
             actionSymbol: "plus",
-            action: .addCard
+            action: .addCard,
+            secondaryActionTitle: nil,
+            secondaryActionSymbol: nil,
+            secondaryAction: nil
         )
     }
 }
@@ -91,6 +116,10 @@ struct HomeBoardView: View {
                             state: emptyState
                         ) {
                             handleEmptyAction(emptyState.action)
+                        } secondaryAction: {
+                            if let action = emptyState.secondaryAction {
+                                handleEmptyAction(action)
+                            }
                         }
                     }
                 } else {
@@ -275,7 +304,7 @@ struct HomeBoardView: View {
                 card: card,
                 deletedAt: cardStore.cards.first(where: { $0.id == card.id })?.deletedAt
             )
-            announce("Removed \(card.displayTitle). Undo is available.")
+            announce("Removed \(card.displayTitle). Undo restores the most recent removed card.")
         }
     }
 
@@ -335,6 +364,8 @@ struct HomeBoardView: View {
         switch action {
         case .addCard:
             showingAdd = true
+        case .brainDump:
+            NotificationCenter.default.post(name: .fairNestOpenBrainDump, object: nil)
         case .showAll:
             filter = .all
         }
@@ -551,6 +582,7 @@ private struct BoardStatusRow: View {
 private struct BoardEmptyRow: View {
     var state: BoardEmptyState
     var onAction: () -> Void
+    var secondaryAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -573,6 +605,18 @@ private struct BoardEmptyRow: View {
             }
             .buttonStyle(.bordered)
             .accessibilityIdentifier(state.action.accessibilityIdentifier)
+
+            if let title = state.secondaryActionTitle,
+               let symbol = state.secondaryActionSymbol,
+               let action = state.secondaryAction {
+                Button {
+                    secondaryAction()
+                } label: {
+                    Label(title, systemImage: symbol)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier(action.accessibilityIdentifier)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)

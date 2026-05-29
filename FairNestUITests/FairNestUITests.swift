@@ -50,6 +50,16 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Buy milk"].waitForExistence(timeout: 3))
     }
 
+    func testEmptyBoardRoutesToBrainDump() {
+        let app = launchCompletedApp()
+
+        XCTAssertTrue(app.staticTexts["No cards yet"].waitForExistence(timeout: 3))
+        app.buttons["emptyBrainDump"].tap()
+
+        XCTAssertTrue(app.navigationBars["Brain Dump"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textInput(named: "brainDumpText", timeout: 3).exists)
+    }
+
     func testCardSaveFailureShowsAccessibleErrorAndKeepsEditorOpen() {
         let app = launchCompletedApp(extraLaunchArguments: ["-uiTestingFailCardPersistence"])
 

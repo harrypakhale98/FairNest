@@ -80,6 +80,9 @@ struct MainTabView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(MainTab.settings)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .fairNestOpenBrainDump)) { _ in
+            openBrainDump()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .fairNestOpenWeeklyCheckIn)) { _ in
             openWeeklyCheckIn()
         }
@@ -88,6 +91,10 @@ struct MainTabView: View {
                 openWeeklyCheckIn()
             }
         }
+    }
+
+    private func openBrainDump() {
+        selection = .brainDump
     }
 
     private func openWeeklyCheckIn() {

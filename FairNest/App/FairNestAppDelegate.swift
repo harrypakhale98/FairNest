@@ -5,6 +5,7 @@ import UserNotifications
 extension Notification.Name {
     static let fairNestAcceptedCloudKitShare = Notification.Name("FairNestAcceptedCloudKitShare")
     static let fairNestFailedCloudKitShareAcceptance = Notification.Name("FairNestFailedCloudKitShareAcceptance")
+    static let fairNestOpenBrainDump = Notification.Name("FairNestOpenBrainDump")
     static let fairNestOpenWeeklyCheckIn = Notification.Name("FairNestOpenWeeklyCheckIn")
 }
 

@@ -93,12 +93,15 @@ final class BoardEmptyStateTests: XCTestCase {
         XCTAssertEqual(state.action, .showAll)
     }
 
-    func testTrulyEmptyBoardStartsWithAddCard() {
-        let state = BoardEmptyState.make(filter: .all, activeCardCount: 0)
+    func testTrulyEmptyBoardStartsWithBrainDumpAndManualAdd() {
+        let state = BoardEmptyState.make(filter: .today, activeCardCount: 0)
 
         XCTAssertEqual(state.title, "No cards yet")
-        XCTAssertEqual(state.actionTitle, "Add Card")
-        XCTAssertEqual(state.action, .addCard)
+        XCTAssertEqual(state.description, "Start with a quick Brain Dump, or add one card manually.")
+        XCTAssertEqual(state.actionTitle, "Brain Dump")
+        XCTAssertEqual(state.action, .brainDump)
+        XCTAssertEqual(state.secondaryActionTitle, "Add Card")
+        XCTAssertEqual(state.secondaryAction, .addCard)
     }
 }
 
