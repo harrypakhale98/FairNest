@@ -104,8 +104,9 @@ final class AppServices: ObservableObject {
     func deleteSharedHouseholdDataForPrivacy() async throws {
         iCloudSyncEnabled = false
         var sharedDeletionError: Error?
+        var sharedDeletionResult: CloudKitHouseholdDeletionResult?
         do {
-            try await syncEngine.deleteSharedHouseholdData()
+            sharedDeletionResult = try await syncEngine.deleteSharedHouseholdData()
         } catch let error as CloudKitHouseholdSelectionError {
             throw error
         } catch {
@@ -120,6 +121,8 @@ final class AppServices: ObservableObject {
             }
             throw error
         }
+
+        sharedDeletionResult?.acknowledgeErasedZones()
 
         if let sharedDeletionError {
             throw sharedDeletionError
@@ -299,16 +302,16 @@ final class AppServices: ObservableObject {
         iCloudSyncEnabled = false
         pendingCardsForPush = nil
         suppressNextCardPush = true
-        CloudKitHouseholdErasureState.acknowledge(
-            error.erasedAt,
-            accountIdentifier: error.accountIdentifier,
-            zoneID: error.zoneID
-        )
         CloudKitHouseholdSelection.clearSelectedSharedZone()
         do {
             try cardStore.replaceAllThrowing(with: [])
             await reminderScheduler.cancelAllFairNestReminders()
             writeWidgetSnapshot(cards: [], syncPending: false)
+            CloudKitHouseholdErasureState.acknowledge(
+                error.erasedAt,
+                accountIdentifier: error.accountIdentifier,
+                zoneID: error.zoneID
+            )
             lastSyncMessage = FairNestIssueCopy.sharedHouseholdErased
         } catch {
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)

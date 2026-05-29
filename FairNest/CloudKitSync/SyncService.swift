@@ -36,7 +36,7 @@ protocol SyncService: AnyObject {
     func upload(cards: [LoadCard]) async throws
     func fetchCards() async throws -> [LoadCard]
     func synchronize(local cards: [LoadCard]) async throws -> [LoadCard]
-    func deleteSharedHouseholdData() async throws
+    func deleteSharedHouseholdData() async throws -> CloudKitHouseholdDeletionResult
     func acceptShare(metadata: CKShare.Metadata) async throws
     func pinCardsToPrivateDatabase(_ cardIDs: Set<UUID>)
 }
@@ -48,6 +48,25 @@ struct CloudKitHouseholdErasedError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         "This shared household was erased from iCloud. FairNest kept this iPhone from re-uploading old household cards."
+    }
+}
+
+struct CloudKitHouseholdDeletionResult: Equatable {
+    var erasedAt: Date
+    var accountIdentifier: String?
+    var erasedZoneIDs: [CKRecordZone.ID]
+
+    static let empty = CloudKitHouseholdDeletionResult(erasedAt: Date.distantPast, accountIdentifier: nil, erasedZoneIDs: [])
+
+    func acknowledgeErasedZones(defaults: UserDefaults = .standard) {
+        for zoneID in erasedZoneIDs {
+            CloudKitHouseholdErasureState.acknowledge(
+                erasedAt,
+                accountIdentifier: accountIdentifier,
+                zoneID: zoneID,
+                defaults: defaults
+            )
+        }
     }
 }
 
@@ -205,7 +224,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         }
     }
 
-    func deleteSharedHouseholdData() async throws {
+    func deleteSharedHouseholdData() async throws -> CloudKitHouseholdDeletionResult {
         try ensureCloudKitEnabledForRuntime()
         let container = containerProvider()
         await refreshAccountIdentifierIfAvailable(using: container)
@@ -213,9 +232,20 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let sharedDatabase = container.sharedCloudDatabase
         let erasedAt = Date()
         var deletionProgress = CloudKitHouseholdDeletionProgress()
+        let privateZoneID = CloudKitCardMapper.zoneID()
+        let sharedZoneIDs: [CKRecordZone.ID]
 
         do {
-            let privateZoneID = CloudKitCardMapper.zoneID()
+            sharedZoneIDs = try await deletableSharedHouseholdZoneIDs(in: sharedDatabase)
+        } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
+            deletionProgress.recordPermissionFailure(error)
+            sharedZoneIDs = []
+        } catch {
+            status = .error(error.localizedDescription)
+            throw error
+        }
+
+        do {
             try await ensureHouseholdZone(in: privateDatabase)
             try await CloudKitHouseholdDeletionWorkflow.eraseHouseholdData(
                 in: cloudKitDeletionExecutor(for: privateDatabase),
@@ -233,8 +263,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         }
 
         do {
-            let zoneIDs = try await deletableSharedHouseholdZoneIDs(in: sharedDatabase)
-            for zoneID in zoneIDs {
+            for zoneID in sharedZoneIDs {
                 do {
                     try await CloudKitHouseholdDeletionWorkflow.eraseHouseholdData(
                         in: cloudKitDeletionExecutor(for: sharedDatabase),
@@ -260,15 +289,13 @@ final class CloudKitSyncService: ObservableObject, SyncService {
             throw error
         }
 
-        for zoneID in deletionProgress.erasedZoneIDs {
-            CloudKitHouseholdErasureState.acknowledge(
-                erasedAt,
-                accountIdentifier: accountIdentifier,
-                zoneID: zoneID
-            )
-        }
         forgetSharedHouseholdSelection()
         status = .available
+        return CloudKitHouseholdDeletionResult(
+            erasedAt: erasedAt,
+            accountIdentifier: accountIdentifier,
+            erasedZoneIDs: deletionProgress.erasedZoneIDs
+        )
     }
 
     func acceptShare(metadata: CKShare.Metadata) async throws {

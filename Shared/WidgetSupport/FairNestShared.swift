@@ -61,7 +61,7 @@ struct WidgetCardSummary: Codable, Equatable, Identifiable {
         effort = try container.decode(Effort.self, forKey: .effort)
         dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
         status = try container.decode(CardStatus.self, forKey: .status)
-        displayTitle = try container.decodeIfPresent(String.self, forKey: .displayTitle) ?? Self.safeTitle(for: type)
+        displayTitle = Self.safeTitle(for: type)
     }
 
     private static func safeTitle(for type: CardType) -> String {

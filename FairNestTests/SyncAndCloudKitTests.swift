@@ -484,6 +484,49 @@ final class SyncAndCloudKitTests: XCTestCase {
     }
 
     @MainActor
+    func testRemoteHouseholdErasureKeepsAcknowledgementPendingWhenLocalWipeFails() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousErasureAck = UserDefaults.standard.object(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousErasureAck {
+                UserDefaults.standard.set(previousErasureAck, forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_001)
+        let cardURL = tempURL()
+        let cardStore = LocalCardStore(fileURL: cardURL)
+        let card = cardStore.add(BrainDumpSuggestion(title: "Still local until deletion is durable", type: .task))
+        try FileManager.default.removeItem(at: cardURL)
+        try FileManager.default.createDirectory(at: cardURL, withIntermediateDirectories: true)
+        let syncEngine = CapturingSyncEngine(
+            status: .available,
+            remoteCards: [],
+            fetchError: CloudKitHouseholdErasedError(erasedAt: erasedAt)
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        await services.syncCardsIfAvailable()
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertEqual(cardStore.cards.map(\.id), [card.id])
+        XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.localCardSaveFailure)
+        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt))
+    }
+
+    @MainActor
     func testSharedHouseholdAccessLossTurnsOffSyncAndPreventsUpload() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
@@ -657,6 +700,68 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(checkInStore.records, [checkIn])
     }
 
+    @MainActor
+    func testSharedPrivacyDeleteDoesNotAcknowledgeCloudErasureWhenLocalDeleteFails() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousErasureAck = UserDefaults.standard.object(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousErasureAck {
+                UserDefaults.standard.set(previousErasureAck, forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: CloudKitHouseholdErasureState.acknowledgedErasedAtKey)
+        let erasedAt = Date(timeIntervalSince1970: 1_800_000_002)
+        let zoneID = CloudKitCardMapper.zoneID()
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let checkInURL = tempURL()
+        let checkInStore = LocalCheckInStore(fileURL: checkInURL)
+        _ = cardStore.add(BrainDumpSuggestion(title: "Do not acknowledge yet", type: .task))
+        let checkIn = CheckInRecord(
+            feltHeavy: "Planning",
+            gotDone: "Laundry",
+            needsOwnership: "Trash",
+            appreciation: "Dinner",
+            changes: []
+        )
+        try checkInStore.save(checkIn)
+        try FileManager.default.removeItem(at: checkInURL)
+        try FileManager.default.createDirectory(at: checkInURL, withIntermediateDirectories: true)
+        let syncEngine = CapturingSyncEngine(
+            status: .available,
+            remoteCards: [],
+            deleteSharedHouseholdDataResult: CloudKitHouseholdDeletionResult(
+                erasedAt: erasedAt,
+                accountIdentifier: nil,
+                erasedZoneIDs: [zoneID]
+            )
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: checkInStore,
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        do {
+            try await services.deleteSharedHouseholdDataForPrivacy()
+            XCTFail("Expected local deletion failure to keep CloudKit erasure acknowledgement pending.")
+        } catch {
+            XCTAssertFalse(error.localizedDescription.isEmpty)
+        }
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertEqual(syncEngine.deleteSharedHouseholdDataCallCount, 1)
+        XCTAssertEqual(checkInStore.records, [checkIn])
+        XCTAssertTrue(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt))
+    }
+
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
     }
@@ -707,6 +812,7 @@ private final class CapturingSyncEngine: SyncService {
     var remoteCards: [LoadCard]
     var fetchError: Error?
     var deleteSharedHouseholdDataError: Error?
+    var deleteSharedHouseholdDataResult: CloudKitHouseholdDeletionResult
     var uploadedBatches: [[LoadCard]] = []
     var fetchCount = 0
     var deleteSharedHouseholdDataCallCount = 0
@@ -717,12 +823,14 @@ private final class CapturingSyncEngine: SyncService {
         remoteCards: [LoadCard],
         fetchError: Error? = nil,
         deleteSharedHouseholdDataError: Error? = nil,
+        deleteSharedHouseholdDataResult: CloudKitHouseholdDeletionResult = .empty,
         accountIdentifier: String? = nil
     ) {
         self.status = status
         self.remoteCards = remoteCards
         self.fetchError = fetchError
         self.deleteSharedHouseholdDataError = deleteSharedHouseholdDataError
+        self.deleteSharedHouseholdDataResult = deleteSharedHouseholdDataResult
         self.accountIdentifier = accountIdentifier
     }
 
@@ -750,11 +858,12 @@ private final class CapturingSyncEngine: SyncService {
         return merged
     }
 
-    func deleteSharedHouseholdData() async throws {
+    func deleteSharedHouseholdData() async throws -> CloudKitHouseholdDeletionResult {
         deleteSharedHouseholdDataCallCount += 1
         if let deleteSharedHouseholdDataError {
             throw deleteSharedHouseholdDataError
         }
+        return deleteSharedHouseholdDataResult
     }
 
     func acceptShare(metadata: CKShare.Metadata) async throws {}

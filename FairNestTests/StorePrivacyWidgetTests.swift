@@ -200,6 +200,35 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertFalse(json.contains(privateTitle))
     }
 
+    func testWidgetSnapshotReadSanitizesLegacyPrivateDisplayTitles() throws {
+        let suiteName = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let privateTitle = "Private medication"
+        let legacySnapshot = WidgetHouseholdSnapshot(
+            generatedAt: Date(timeIntervalSince1970: 1_800_000_000),
+            syncPending: false,
+            cards: [
+                WidgetCardSummary(
+                    id: UUID(),
+                    type: .reminder,
+                    owner: .me,
+                    effort: .light,
+                    dueDate: nil,
+                    status: .planned,
+                    displayTitle: privateTitle
+                )
+            ]
+        )
+        let data = try JSONEncoder.fairNest.encode(legacySnapshot)
+        defaults.set(data, forKey: FairNestShared.widgetSnapshotKey)
+
+        let snapshot = WidgetSnapshotStore.read(defaults: defaults)
+
+        XCTAssertEqual(snapshot.cards.first?.displayTitle, "Reminder")
+        XCTAssertFalse(snapshot.cards.contains { $0.displayTitle == privateTitle })
+    }
+
     func testWidgetSnapshotKeepsOpenCardsWhenDoneCardsHitSnapshotLimit() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let openCard = LoadCard(
