@@ -25,3 +25,4 @@ Privacy:
 - Widgets avoid storing raw household card titles in App Group defaults.
 - Users can export local data, delete local data, and delete shared household card data where their CloudKit permissions allow it. Weekly check-ins are local-only and included in export/delete controls.
 - Removed card tombstones are minimal sync markers and omit card text, scheduling details, ownership, and effort in iCloud records and exported data.
+- If shared-household access is lost, FairNest turns iCloud Sync off on that device and clears pending pushes so stale shared cards are not uploaded privately.
