@@ -104,13 +104,41 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
         XCTAssertEqual(cardStore.cards.first?.title, "")
         XCTAssertThrowsError(try cardStore.restoreThrowing(id: sensitiveCard.id))
+        let deletedAt = try XCTUnwrap(cardStore.cards.first?.deletedAt)
 
-        try cardStore.restoreThrowing(sensitiveCard)
+        try cardStore.restoreThrowing(sensitiveCard, matchingDeletedAt: deletedAt)
 
         let restoredCard = try XCTUnwrap(cardStore.activeCards.first)
         XCTAssertEqual(restoredCard.title, "Private medication refill")
         XCTAssertEqual(restoredCard.notes, "Sensitive dosage note")
         XCTAssertFalse(restoredCard.isDeleted)
+    }
+
+    func testUndoRestoreCannotResurrectNewerDeletionTombstone() throws {
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let original = LoadCard(
+            id: UUID(),
+            title: "Private medication refill",
+            type: .reminder,
+            owner: .me,
+            status: .planned,
+            effort: .light,
+            updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        try cardStore.upsertThrowing(original, by: .me, at: Date(timeIntervalSince1970: 1_800_000_000))
+        try cardStore.deleteThrowing(id: original.id)
+        let localDeletedAt = try XCTUnwrap(cardStore.cards.first?.deletedAt)
+        var newerRemoteTombstone = original
+        let newerDeletedAt = localDeletedAt.addingTimeInterval(60)
+        newerRemoteTombstone.softDelete(at: newerDeletedAt, by: .partner)
+        try cardStore.replaceAllThrowing(with: [newerRemoteTombstone])
+
+        XCTAssertThrowsError(try cardStore.restoreThrowing(original, matchingDeletedAt: localDeletedAt))
+
+        let remainingCard = try XCTUnwrap(cardStore.cards.first)
+        XCTAssertTrue(remainingCard.isDeleted)
+        XCTAssertEqual(remainingCard.deletedAt, newerDeletedAt)
+        XCTAssertEqual(remainingCard.title, "")
     }
 
     func testOnboardingCompletionPersists() {

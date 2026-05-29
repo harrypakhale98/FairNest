@@ -65,7 +65,7 @@ struct HomeBoardView: View {
     @State private var filter: BoardFilter = .today
     @State private var editingCard: LoadCard?
     @State private var showingAdd = false
-    @State private var recentlyDeleted: LoadCard?
+    @State private var recentlyDeleted: RecentlyDeletedCard?
     @State private var boardError: BoardOperationError?
 
     var body: some View {
@@ -120,6 +120,7 @@ struct HomeBoardView: View {
 
                                 if dynamicTypeSize.isAccessibilitySize {
                                     CardActionMenu(
+                                        cardTitle: card.displayTitle,
                                         onDone: { markDone(card) },
                                         onSnooze: { snooze(card) },
                                         onRemove: { remove(card) }
@@ -191,13 +192,13 @@ struct HomeBoardView: View {
             .safeAreaInset(edge: .bottom) {
                 if let recentlyDeleted {
                     HStack {
-                        Text("Removed \(recentlyDeleted.displayTitle)")
+                        Text("Removed \(recentlyDeleted.card.displayTitle)")
                             .lineLimit(2)
                         Spacer()
                         Button("Undo") {
                             restore(recentlyDeleted)
                         }
-                        .accessibilityLabel("Undo remove \(recentlyDeleted.displayTitle)")
+                        .accessibilityLabel("Undo remove \(recentlyDeleted.card.displayTitle)")
                     }
                     .font(.footnote)
                     .padding()
@@ -270,16 +271,22 @@ struct HomeBoardView: View {
     private func remove(_ card: LoadCard) {
         performBoardOperation("remove this card") {
             try cardStore.deleteThrowing(id: card.id)
-            recentlyDeleted = card
+            recentlyDeleted = RecentlyDeletedCard(
+                card: card,
+                deletedAt: cardStore.cards.first(where: { $0.id == card.id })?.deletedAt
+            )
             announce("Removed \(card.displayTitle). Undo is available.")
         }
     }
 
-    private func restore(_ card: LoadCard) {
+    private func restore(_ recentlyDeleted: RecentlyDeletedCard) {
         performBoardOperation("restore this card") {
-            try cardStore.restoreThrowing(card)
-            recentlyDeleted = nil
-            announce("Restored \(card.displayTitle).")
+            try cardStore.restoreThrowing(
+                recentlyDeleted.card,
+                matchingDeletedAt: recentlyDeleted.deletedAt
+            )
+            self.recentlyDeleted = nil
+            announce("Restored \(recentlyDeleted.card.displayTitle).")
         }
     }
 
@@ -456,6 +463,7 @@ struct CardRow: View {
 }
 
 private struct CardActionMenu: View {
+    var cardTitle: String
     var onDone: () -> Void
     var onSnooze: () -> Void
     var onRemove: () -> Void
@@ -481,7 +489,7 @@ private struct CardActionMenu: View {
             Image(systemName: "ellipsis.circle")
                 .font(.title3)
         }
-        .accessibilityLabel("Card actions")
+        .accessibilityLabel("Actions for \(cardTitle)")
     }
 }
 
@@ -494,6 +502,11 @@ private extension LoadCard {
 private struct BoardOperationError: Identifiable {
     let id = UUID()
     let message: String
+}
+
+private struct RecentlyDeletedCard {
+    var card: LoadCard
+    var deletedAt: Date?
 }
 
 private struct BoardStatus {

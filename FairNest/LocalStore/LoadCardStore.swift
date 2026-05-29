@@ -27,6 +27,7 @@ enum LocalCardStoreError: LocalizedError {
     case cardDeleted
     case missingCard
     case restoreUnavailable
+    case staleRestore
     case storeUnavailable
 
     var errorDescription: String? {
@@ -39,6 +40,8 @@ enum LocalCardStoreError: LocalizedError {
             return "FairNest could not find that card."
         case .restoreUnavailable:
             return "FairNest no longer has the removed card details needed to restore it."
+        case .staleRestore:
+            return "This card changed after it was removed. FairNest left the newer removal in place."
         case .storeUnavailable:
             return "FairNest could not read the local card store. Close and reopen FairNest after unlocking this iPhone, then try again."
         }
@@ -254,11 +257,19 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         }
     }
 
-    func restoreThrowing(_ card: LoadCard, by member: HouseholdMember = .me, at date: Date = Date()) throws {
+    func restoreThrowing(
+        _ card: LoadCard,
+        matchingDeletedAt deletedAt: Date? = nil,
+        by member: HouseholdMember = .me,
+        at date: Date = Date()
+    ) throws {
         try mutateAndPersist {
             guard let index = cards.firstIndex(where: { $0.id == card.id }) else { throw LocalCardStoreError.missingCard }
             guard cards[index].isDeleted else { return }
             guard !card.title.isEmpty else { throw LocalCardStoreError.restoreUnavailable }
+            if let deletedAt, cards[index].deletedAt != deletedAt {
+                throw LocalCardStoreError.staleRestore
+            }
             var restoredCard = card
             restoredCard.deletedAt = nil
             restoredCard = restoredCard.normalizedForLocalSave(by: member, at: date)
