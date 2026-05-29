@@ -96,6 +96,9 @@ struct PrivacyView: View {
         .refreshable {
             await refreshPrivacyStatus()
         }
+        .onDisappear {
+            discardPreparedExportFile()
+        }
         .confirmationDialog(
             "Delete all local FairNest data?",
             isPresented: $showingDeleteConfirmation,
@@ -146,10 +149,7 @@ struct PrivacyView: View {
 
     private func clearExportFile() {
         do {
-            if let exportURL, FileManager.default.fileExists(atPath: exportURL.path) {
-                try FileManager.default.removeItem(at: exportURL)
-            }
-            try PrivacyExportService.removeTemporaryExports()
+            try removePreparedExportFile()
             exportURL = nil
             message = "Temporary export file cleared."
             messageDetails = nil
@@ -157,6 +157,23 @@ struct PrivacyView: View {
             message = FairNestIssueCopy.clearExportFailure
             messageDetails = error.localizedDescription
         }
+    }
+
+    private func discardPreparedExportFile() {
+        do {
+            try removePreparedExportFile()
+            exportURL = nil
+        } catch {
+            message = FairNestIssueCopy.clearExportFailure
+            messageDetails = error.localizedDescription
+        }
+    }
+
+    private func removePreparedExportFile() throws {
+        if let exportURL, FileManager.default.fileExists(atPath: exportURL.path) {
+            try FileManager.default.removeItem(at: exportURL)
+        }
+        try PrivacyExportService.removeTemporaryExports()
     }
 
     private func refreshPrivacyStatus() async {
