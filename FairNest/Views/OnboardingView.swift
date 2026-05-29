@@ -17,6 +17,7 @@ struct OnboardingView: View {
     @State private var validationMessage: String?
     @State private var lastParsedBrainDump: String?
     @FocusState private var focusedField: BrainDumpInputFocus?
+    @AccessibilityFocusState private var accessibilityFocus: OnboardingAccessibilityFocus?
 
     var body: some View {
         NavigationStack {
@@ -36,7 +37,8 @@ struct OnboardingView: View {
                             stepIntro(
                                 title: "Share the home load",
                                 symbol: "house.and.flag",
-                                text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards."
+                                text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards.",
+                                stepIndex: 0
                             )
                         }
                         .tag(0)
@@ -45,7 +47,8 @@ struct OnboardingView: View {
                             stepIntro(
                                 title: "Private by design",
                                 symbol: "lock.shield",
-                                text: "FairNest works offline, syncs with iCloud when available, and can suggest cards on this iPhone."
+                                text: "FairNest works offline, syncs with iCloud when available, and can suggest cards on this iPhone.",
+                                stepIndex: 1
                             )
                         }
                         .tag(1)
@@ -62,6 +65,12 @@ struct OnboardingView: View {
             }
             .navigationTitle("FairNest")
             .navigationBarTitleDisplayMode(dynamicTypeSize.isAccessibilitySize ? .inline : .automatic)
+            .onAppear {
+                focusCurrentStep()
+            }
+            .onChange(of: step) { _, _ in
+                focusCurrentStep()
+            }
         }
     }
 
@@ -72,13 +81,15 @@ struct OnboardingView: View {
             stepIntro(
                 title: "Share the home load",
                 symbol: "house.and.flag",
-                text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards."
+                text: "FairNest turns household work, decisions, reminders, and appreciation into clear shared cards.",
+                stepIndex: 0
             )
         case 1:
             stepIntro(
                 title: "Private by design",
                 symbol: "lock.shield",
-                text: "FairNest works offline, syncs with iCloud when available, and can suggest cards on this iPhone."
+                text: "FairNest works offline, syncs with iCloud when available, and can suggest cards on this iPhone.",
+                stepIndex: 1
             )
         default:
             firstBrainDumpStep
@@ -132,7 +143,7 @@ struct OnboardingView: View {
         step = max(0, step - 1)
     }
 
-    private func stepIntro(title: String, symbol: String, text: String) -> some View {
+    private func stepIntro(title: String, symbol: String, text: String, stepIndex: Int) -> some View {
         VStack(spacing: 20) {
             Image(systemName: symbol)
                 .font(.system(size: dynamicTypeSize.isAccessibilitySize ? 38 : 48, weight: .regular))
@@ -142,6 +153,8 @@ struct OnboardingView: View {
             Text(title)
                 .font(dynamicTypeSize.isAccessibilitySize ? .title.bold() : .largeTitle.bold())
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($accessibilityFocus, equals: .stepTitle(stepIndex))
 
             Text(text)
                 .font(.body)
@@ -173,6 +186,7 @@ struct OnboardingView: View {
                 }
             } header: {
                 Text("First brain dump")
+                    .accessibilityFocused($accessibilityFocus, equals: .firstBrainDumpHeading)
             } footer: {
                 Text("Try: laundry every Sunday, decide grocery budget, thank partner for dishes. You review every suggestion before saving.")
             }
@@ -230,6 +244,7 @@ struct OnboardingView: View {
                 }
             } header: {
                 Text("Review")
+                    .accessibilityFocused($accessibilityFocus, equals: .reviewHeading)
             }
 
             if let errorMessage {
@@ -238,6 +253,7 @@ struct OnboardingView: View {
                         .foregroundStyle(.red)
                         .accessibilityLabel("Onboarding error: \(errorMessage)")
                         .accessibilityIdentifier("onboardingBrainDumpError")
+                        .accessibilityFocused($accessibilityFocus, equals: .errorMessage)
                 }
             }
         }
@@ -329,10 +345,12 @@ struct OnboardingView: View {
             } else {
                 announce(count == 1 ? "1 starter card ready to review." : "\(count) starter cards ready to review.")
             }
+            focusAccessibility(.reviewHeading)
         } catch {
             lastParsedBrainDump = nil
             errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure
             announce("First brain dump could not be read.")
+            focusAccessibility(.errorMessage)
         }
     }
 
@@ -380,9 +398,31 @@ struct OnboardingView: View {
         focusedField = nil
     }
 
+    private func focusCurrentStep() {
+        if step == 2 {
+            focusAccessibility(.firstBrainDumpHeading)
+        } else {
+            focusAccessibility(.stepTitle(step))
+        }
+    }
+
+    private func focusAccessibility(_ target: OnboardingAccessibilityFocus) {
+        Task { @MainActor in
+            await Task.yield()
+            accessibilityFocus = target
+        }
+    }
+
     private func announce(_ message: String) {
         #if canImport(UIKit)
         UIAccessibility.post(notification: .announcement, argument: message)
         #endif
     }
+}
+
+private enum OnboardingAccessibilityFocus: Hashable {
+    case stepTitle(Int)
+    case firstBrainDumpHeading
+    case reviewHeading
+    case errorMessage
 }

@@ -23,6 +23,7 @@ struct WeeklyCheckInView: View {
     @State private var showsEmptyCheckInConfirmation = false
     @FocusState private var focusedPrompt: WeeklyCheckInFocus?
     @AccessibilityFocusState private var saveErrorFocused: Bool
+    @AccessibilityFocusState private var accessibilityFocus: WeeklyCheckInAccessibilityFocus?
 
     private let steps = [
         "What felt heavy",
@@ -43,6 +44,7 @@ struct WeeklyCheckInView: View {
                         Text(steps[step])
                             .font(.headline)
                             .accessibilityAddTraits(.isHeader)
+                            .accessibilityFocused($accessibilityFocus, equals: .stepHeader(step))
                     }
                 }
 
@@ -84,6 +86,9 @@ struct WeeklyCheckInView: View {
                 Button("Keep Editing", role: .cancel) {}
             } message: {
                 Text("This will save a blank local reflection with no board changes.")
+            }
+            .onAppear {
+                focusCurrentStep()
             }
         }
     }
@@ -166,6 +171,7 @@ struct WeeklyCheckInView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Check-in saved")
                             .font(.headline)
+                            .accessibilityFocused($accessibilityFocus, equals: .savedConfirmation)
                         Text("Your reflection is saved locally and reviewed ownership changes are on the board.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -243,6 +249,7 @@ struct WeeklyCheckInView: View {
         dismissKeyboard()
         step = max(0, step - 1)
         clearSaveError()
+        focusCurrentStep()
     }
 
     private func advance() {
@@ -261,6 +268,7 @@ struct WeeklyCheckInView: View {
             clearSaveError()
             step += 1
             announce("Review changes.")
+            focusCurrentStep()
             return
         }
 
@@ -282,6 +290,7 @@ struct WeeklyCheckInView: View {
 
         step += 1
         announce(steps[step])
+        focusCurrentStep()
     }
 
     private func save() {
@@ -323,6 +332,7 @@ struct WeeklyCheckInView: View {
             saved = true
             clearSaveError()
             announce("Check-in saved.")
+            focusAccessibility(.savedConfirmation)
         } catch {
             showSaveError(FairNestIssueCopy.localCheckInSaveFailure, details: error.localizedDescription)
         }
@@ -433,7 +443,24 @@ struct WeeklyCheckInView: View {
         clearSaveError()
         showsEmptyCheckInConfirmation = false
         focusedPrompt = nil
+        focusCurrentStep()
     }
+
+    private func focusCurrentStep() {
+        focusAccessibility(.stepHeader(step))
+    }
+
+    private func focusAccessibility(_ target: WeeklyCheckInAccessibilityFocus) {
+        Task { @MainActor in
+            await Task.yield()
+            accessibilityFocus = target
+        }
+    }
+}
+
+private enum WeeklyCheckInAccessibilityFocus: Hashable {
+    case stepHeader(Int)
+    case savedConfirmation
 }
 
 private struct CheckInStoreStatus {
