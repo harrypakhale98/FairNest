@@ -78,3 +78,15 @@ final class BoardEmptyStateTests: XCTestCase {
         XCTAssertEqual(state.action, .addCard)
     }
 }
+
+final class BoardFilterTests: XCTestCase {
+    func testDecisionsFilterShowsOnlyOpenDecisions() {
+        let openDecision = LoadCard(title: "Pick cleaner", type: .decision, status: .inbox)
+        let doneDecision = LoadCard(title: "Picked cleaner", type: .decision, status: .done)
+        let openTask = LoadCard(title: "Book cleaner", type: .task, status: .inbox)
+
+        XCTAssertTrue(BoardFilter.decisions.includes(openDecision))
+        XCTAssertFalse(BoardFilter.decisions.includes(doneDecision))
+        XCTAssertFalse(BoardFilter.decisions.includes(openTask))
+    }
+}

@@ -297,35 +297,18 @@ struct HomeBoardView: View {
         let active = cardStore.activeCards
         let calendar = Calendar.current
         let now = Date()
-        return active.filter { card in
-            switch filter {
-            case .today:
-                return card.isActionableToday
-            case .week:
-                guard card.status != .done else { return false }
-                guard let dueDate = card.dueDate else { return card.status == .inbox || card.status == .doing }
-                guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: now) else { return false }
-                return dueDate <= weekEnd
-            case .recurring:
-                return card.recurrence.isRecurring || card.type == .recurringResponsibility
-            case .decisions:
-                return card.type == .decision
-            case .appreciations:
-                return card.type == .appreciation
-            case .all:
-                return true
+        return active
+            .filter { filter.includes($0, now: now, calendar: calendar) }
+            .sorted { lhs, rhs in
+                if lhs.status == .done, rhs.status != .done { return false }
+                if rhs.status == .done, lhs.status != .done { return true }
+                switch (lhs.dueDate, rhs.dueDate) {
+                case let (left?, right?): return left < right
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil): return lhs.updatedAt > rhs.updatedAt
+                }
             }
-        }
-        .sorted { lhs, rhs in
-            if lhs.status == .done, rhs.status != .done { return false }
-            if rhs.status == .done, lhs.status != .done { return true }
-            switch (lhs.dueDate, rhs.dueDate) {
-            case let (left?, right?): return left < right
-            case (_?, nil): return true
-            case (nil, _?): return false
-            case (nil, nil): return lhs.updatedAt > rhs.updatedAt
-            }
-        }
     }
 
     private var emptyState: BoardEmptyState {
@@ -342,7 +325,27 @@ struct HomeBoardView: View {
     }
 }
 
-private extension BoardFilter {
+extension BoardFilter {
+    func includes(_ card: LoadCard, now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        switch self {
+        case .today:
+            return card.isActionableToday
+        case .week:
+            guard card.status != .done else { return false }
+            guard let dueDate = card.dueDate else { return card.status == .inbox || card.status == .doing }
+            guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: now) else { return false }
+            return dueDate <= weekEnd
+        case .recurring:
+            return card.recurrence.isRecurring || card.type == .recurringResponsibility
+        case .decisions:
+            return card.status != .done && card.type == .decision
+        case .appreciations:
+            return card.type == .appreciation
+        case .all:
+            return true
+        }
+    }
+
     var defaultEmptyTitle: String {
         switch self {
         case .today: return "Nothing due today"
