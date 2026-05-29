@@ -298,6 +298,54 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertFalse(CloudKitHouseholdErasureState.requiresAcknowledgement(erasedAt))
     }
 
+    @MainActor
+    func testSharedHouseholdAccessLossTurnsOffSyncAndPreventsUpload() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
+        let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousPins {
+                UserDefaults.standard.set(previousPins, forKey: "acceptedSharePrivateCardIDs")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
+            }
+            if let previousSelection {
+                UserDefaults.standard.set(previousSelection, forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
+            } else {
+                CloudKitHouseholdSelection.clearSelectedSharedZone()
+            }
+        }
+        CloudKitHouseholdSelection.rememberSharedZoneID(CloudKitCardMapper.zoneID(ownerName: "owner-a"))
+        UserDefaults.standard.set([UUID().uuidString], forKey: "acceptedSharePrivateCardIDs")
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        _ = cardStore.add(BrainDumpSuggestion(title: "Stale shared card", type: .task))
+        let syncEngine = CapturingSyncEngine(
+            status: .available,
+            remoteCards: [],
+            fetchError: CloudKitSharedHouseholdUnavailableError()
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        await services.pushCardsIfAvailable(cardStore.cards)
+
+        XCTAssertFalse(services.iCloudSyncEnabled)
+        XCTAssertEqual(syncEngine.fetchCount, 1)
+        XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
+        XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
+        XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs"), [])
+        XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
+    }
+
     private func tempURL() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
     }

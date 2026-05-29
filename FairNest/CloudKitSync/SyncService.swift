@@ -48,6 +48,21 @@ struct CloudKitHouseholdErasedError: LocalizedError, Equatable {
     }
 }
 
+struct CloudKitSharedHouseholdUnavailableError: LocalizedError {
+    var underlyingDescription: String?
+
+    init(underlying error: Error? = nil) {
+        underlyingDescription = error?.localizedDescription
+    }
+
+    var errorDescription: String? {
+        if let underlyingDescription {
+            return "\(FairNestIssueCopy.sharedHouseholdUnavailable) \(underlyingDescription)"
+        }
+        return FairNestIssueCopy.sharedHouseholdUnavailable
+    }
+}
+
 @MainActor
 final class CloudKitSyncService: ObservableObject, SyncService {
     @Published private(set) var status: SyncStatus = .checking
@@ -315,21 +330,37 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     }
 
     private func fetchSharedCards(in database: CKDatabase) async throws -> [LoadCard] {
+        let hadSharedSelection = preferredSharedZoneID != nil || CloudKitHouseholdSelection.selectedSharedZoneID() != nil
+        var resolvedSharedZone = false
         do {
             guard let zoneID = try await activeSharedHouseholdZoneID(in: database) else {
+                if hadSharedSelection {
+                    try throwSharedHouseholdUnavailable()
+                }
                 return []
             }
+            resolvedSharedZone = true
             try await throwIfHouseholdWasErased(in: database, zoneID: zoneID, clearsSharedSelection: true)
             return try await fetchCards(in: database, zoneID: zoneID, scope: .sharedDatabase)
         } catch let error as CloudKitHouseholdErasedError {
             throw error
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
-            forgetSharedHouseholdSelection()
+            if hadSharedSelection || resolvedSharedZone {
+                try throwSharedHouseholdUnavailable(underlying: error)
+            }
             return []
         } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
-            forgetSharedHouseholdSelection()
+            if hadSharedSelection || resolvedSharedZone {
+                try throwSharedHouseholdUnavailable(underlying: error)
+            }
             return []
         }
+    }
+
+    private func throwSharedHouseholdUnavailable(underlying error: Error? = nil) throws -> Never {
+        forgetSharedHouseholdSelection()
+        status = .permissionDenied
+        throw CloudKitSharedHouseholdUnavailableError(underlying: error)
     }
 
     private func fetchCards(in database: CKDatabase, zoneID: CKRecordZone.ID, scope: CloudKitDatabaseScope) async throws -> [LoadCard] {

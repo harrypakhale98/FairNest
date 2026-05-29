@@ -158,6 +158,8 @@ final class AppServices: ObservableObject {
             lastSyncMessage = nil
         } catch let error as CloudKitHouseholdErasedError {
             await handleRemoteHouseholdErasure(error)
+        } catch is CloudKitSharedHouseholdUnavailableError {
+            handleSharedHouseholdUnavailable()
         } catch {
             suppressNextCardPush = false
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: true)
@@ -221,6 +223,8 @@ final class AppServices: ObservableObject {
             lastSyncMessage = nil
         } catch let error as CloudKitHouseholdErasedError {
             await handleRemoteHouseholdErasure(error)
+        } catch is CloudKitSharedHouseholdUnavailableError {
+            handleSharedHouseholdUnavailable()
         } catch {
             suppressNextCardPush = false
             writeWidgetSnapshot(cards: cards, syncPending: true)
@@ -289,6 +293,16 @@ final class AppServices: ObservableObject {
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
             lastSyncMessage = FairNestIssueCopy.localCardSaveFailure
         }
+    }
+
+    private func handleSharedHouseholdUnavailable() {
+        iCloudSyncEnabled = false
+        pendingCardsForPush = nil
+        suppressNextCardPush = false
+        acceptedSharePrivateCardIDs = []
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
+        writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
+        lastSyncMessage = FairNestIssueCopy.sharedHouseholdUnavailable
     }
 
     private func protectCurrentLocalCardsFromSharedUpload() {
