@@ -105,10 +105,8 @@ struct RuleBasedBrainDumpParser: BrainDumpParser {
         if let match = weekdayPairs.first(where: { weekday, _ in
             lower.contains("every \(weekday)") ||
                 lower.contains("each \(weekday)") ||
-                lower.contains("on \(weekday)") ||
                 lower.contains("every \(weekday)s") ||
-                lower.contains("each \(weekday)s") ||
-                lower.contains("on \(weekday)s")
+                lower.contains("each \(weekday)s")
         }) {
             return .weekly(weekday: match.1)
         }

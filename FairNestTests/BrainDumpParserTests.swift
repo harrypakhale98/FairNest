@@ -20,13 +20,26 @@ final class BrainDumpParserTests: XCTestCase {
     func testWeekdayResponsibilityCreatesRealRecurrence() async throws {
         let parser = RuleBasedBrainDumpParser()
         let result = try await parser.parse(
-            "laundry every Sunday",
+            "laundry every Monday",
             context: BrainDumpContext(today: Date(timeIntervalSince1970: 1_800_000_000))
         )
 
         let suggestion = try XCTUnwrap(result.suggestions.first)
         XCTAssertEqual(suggestion.type, .recurringResponsibility)
-        XCTAssertEqual(suggestion.recurrence, .weekly(weekday: 1))
+        XCTAssertEqual(suggestion.recurrence, .weekly(weekday: 2))
+        XCTAssertNotNil(suggestion.dueDate)
+    }
+
+    func testBareWeekdayCreatesOneOffDueDate() async throws {
+        let parser = RuleBasedBrainDumpParser()
+        let result = try await parser.parse(
+            "appointment on Monday",
+            context: BrainDumpContext(today: Date(timeIntervalSince1970: 1_800_000_000))
+        )
+
+        let suggestion = try XCTUnwrap(result.suggestions.first)
+        XCTAssertEqual(suggestion.type, .reminder)
+        XCTAssertEqual(suggestion.recurrence, .none)
         XCTAssertNotNil(suggestion.dueDate)
     }
 
