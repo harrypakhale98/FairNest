@@ -50,6 +50,23 @@ final class FairNestUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Buy milk"].waitForExistence(timeout: 3))
     }
 
+    func testCardSaveFailureShowsAccessibleErrorAndKeepsEditorOpen() {
+        let app = launchCompletedApp(extraLaunchArguments: ["-uiTestingFailCardPersistence"])
+
+        app.buttons["addCard"].tap()
+        let title = app.textFields["cardTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 3))
+        title.tap()
+        title.typeText("Buy milk")
+        app.buttons["saveCard"].tap()
+
+        let expectedMessage = "FairNest couldn't save the latest board change. Keep FairNest open and try again before closing the app."
+        let saveError = app.descendants(matching: .any).matching(identifier: "cardSaveError").firstMatch
+        XCTAssertTrue(saveError.waitForExistence(timeout: 3))
+        XCTAssertTrue(saveError.label.contains(expectedMessage), "Actual label: \(saveError.label)")
+        XCTAssertTrue(app.textFields["cardTitle"].exists)
+    }
+
     func testStandaloneBrainDumpSavesReviewedCardToBoard() {
         let app = launchCompletedApp()
 
@@ -239,9 +256,9 @@ final class FairNestUITests: XCTestCase {
         try captureAppStoreScreenshot("appstore-iphone17promax-settings-light", in: screenshotDirectory)
     }
 
-    private func launchCompletedApp() -> XCUIApplication {
+    private func launchCompletedApp(extraLaunchArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"]
+        app.launchArguments = ["-resetFairNest", "-uiTestingCompleteOnboarding", "-useRuleBasedParser"] + extraLaunchArguments
         app.launch()
         if !app.navigationBars["Home Board"].waitForExistence(timeout: 5) {
             completeOnboardingIfNeeded(in: app)

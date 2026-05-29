@@ -358,6 +358,11 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         guard !storeUnavailableDueToLoadFailure else {
             throw LocalCardStoreError.storeUnavailable
         }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-uiTestingFailCardPersistence"), !cards.isEmpty {
+            throw LocalCardStoreError.persistenceFailed
+        }
+        #endif
         do {
             let directory = fileURL.deletingLastPathComponent()
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)

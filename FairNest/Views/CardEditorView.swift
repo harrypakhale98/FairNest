@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private enum CardEditorFocus: Hashable {
     case title
@@ -14,6 +17,7 @@ struct CardEditorView: View {
     @State private var saveErrorMessage: String?
     @State private var saveErrorDetails: String?
     @FocusState private var focusedField: CardEditorFocus?
+    @AccessibilityFocusState private var saveErrorFocused: Bool
     private let originalCard: LoadCard
     var onSave: (LoadCard) throws -> Void
 
@@ -104,7 +108,10 @@ struct CardEditorView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
                                 .foregroundStyle(.red)
+                                .accessibilityElement(children: .ignore)
                                 .accessibilityIdentifier("cardSaveError")
+                                .accessibilityLabel("Card save error: \(saveErrorMessage)")
+                                .accessibilityFocused($saveErrorFocused)
                             if let saveErrorDetails {
                                 TechnicalDetailsDisclosure(details: saveErrorDetails)
                             }
@@ -130,6 +137,7 @@ struct CardEditorView: View {
             .onChange(of: card) { _, _ in
                 saveErrorMessage = nil
                 saveErrorDetails = nil
+                saveErrorFocused = false
             }
             .task {
                 guard originalCard.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -153,6 +161,11 @@ struct CardEditorView: View {
         } catch {
             saveErrorMessage = FairNestIssueCopy.localCardSaveFailure
             saveErrorDetails = error.localizedDescription
+            announce(FairNestIssueCopy.localCardSaveFailure)
+            Task { @MainActor in
+                await Task.yield()
+                saveErrorFocused = true
+            }
         }
     }
 
@@ -195,5 +208,11 @@ struct CardEditorView: View {
             options.append(card.recurrence)
         }
         return options
+    }
+
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 }
