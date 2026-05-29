@@ -264,13 +264,20 @@ final class FairNestUITests: XCTestCase {
 
     func testCaptureAppStoreScreenshotsWhenDirectoryProvided() throws {
         let screenshotDirectory = try appStoreScreenshotDirectory()
-        let app = launchCompletedApp()
+        let emptyApp = launchCompletedApp()
+        XCTAssertTrue(emptyApp.staticTexts["No cards yet"].waitForExistence(timeout: 3))
+        try captureAppStoreScreenshot("appstore-iphone17promax-empty-light", in: screenshotDirectory)
+        emptyApp.terminate()
+
+        let app = launchCompletedApp(extraLaunchArguments: ["-seedDemoData"])
+        XCTAssertTrue(app.staticTexts["Set out recycling"].waitForExistence(timeout: 3))
+        try captureAppStoreScreenshot("appstore-iphone17promax-board-light", in: screenshotDirectory)
 
         app.tabBars.buttons["Brain Dump"].tap()
         let brainDumpEditor = app.textInput(named: "brainDumpText", timeout: 3)
         XCTAssertTrue(brainDumpEditor.exists)
         brainDumpEditor.tap()
-        brainDumpEditor.typeText("meal plan. laundry every Sunday. thank Alex for dinner")
+        brainDumpEditor.typeText("meal plan")
         app.buttons["dismissBrainDumpKeyboard"].tap()
         app.buttons["Suggest Cards"].tap()
         XCTAssertTrue(app.textFields["brainDumpSuggestionTitle"].waitForExistence(timeout: 10))
