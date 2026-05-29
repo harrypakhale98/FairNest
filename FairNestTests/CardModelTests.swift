@@ -59,3 +59,22 @@ final class CardModelTests: XCTestCase {
         XCTAssertEqual(components.minute, 30)
     }
 }
+
+final class BoardEmptyStateTests: XCTestCase {
+    func testFilteredEmptyStateShowsAllWhenCardsExistElsewhere() {
+        let state = BoardEmptyState.make(filter: .today, activeCardCount: 2)
+
+        XCTAssertEqual(state.title, "No cards in this view")
+        XCTAssertEqual(state.description, "You have 2 cards in other views.")
+        XCTAssertEqual(state.actionTitle, "Show All")
+        XCTAssertEqual(state.action, .showAll)
+    }
+
+    func testTrulyEmptyBoardStartsWithAddCard() {
+        let state = BoardEmptyState.make(filter: .all, activeCardCount: 0)
+
+        XCTAssertEqual(state.title, "No cards yet")
+        XCTAssertEqual(state.actionTitle, "Add Card")
+        XCTAssertEqual(state.action, .addCard)
+    }
+}

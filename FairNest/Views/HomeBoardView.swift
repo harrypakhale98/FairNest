@@ -14,6 +14,50 @@ enum BoardFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum BoardEmptyAction: Equatable {
+    case addCard
+    case showAll
+
+    var accessibilityIdentifier: String {
+        switch self {
+        case .addCard: return "emptyAddCard"
+        case .showAll: return "showAllCards"
+        }
+    }
+}
+
+struct BoardEmptyState: Equatable {
+    var title: String
+    var symbol: String
+    var description: String
+    var actionTitle: String
+    var actionSymbol: String
+    var action: BoardEmptyAction
+
+    static func make(filter: BoardFilter, activeCardCount: Int) -> BoardEmptyState {
+        if activeCardCount > 0, filter != .all {
+            let noun = activeCardCount == 1 ? "card" : "cards"
+            return BoardEmptyState(
+                title: "No cards in this view",
+                symbol: "tray",
+                description: "You have \(activeCardCount) \(noun) in other views.",
+                actionTitle: "Show All",
+                actionSymbol: "rectangle.stack",
+                action: .showAll
+            )
+        }
+
+        return BoardEmptyState(
+            title: filter.defaultEmptyTitle,
+            symbol: filter.defaultEmptySymbol,
+            description: filter.defaultEmptyDescription,
+            actionTitle: "Add Card",
+            actionSymbol: "plus",
+            action: .addCard
+        )
+    }
+}
+
 struct HomeBoardView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var services: AppServices
@@ -44,11 +88,9 @@ struct HomeBoardView: View {
                 if filteredCards.isEmpty {
                     Section {
                         BoardEmptyRow(
-                            title: emptyTitle,
-                            symbol: emptySymbol,
-                            description: emptyDescription
+                            state: emptyState
                         ) {
-                            showingAdd = true
+                            handleEmptyAction(emptyState.action)
                         }
                     }
                 } else {
@@ -274,8 +316,23 @@ struct HomeBoardView: View {
         }
     }
 
-    private var emptyTitle: String {
-        switch filter {
+    private var emptyState: BoardEmptyState {
+        BoardEmptyState.make(filter: filter, activeCardCount: cardStore.activeCards.count)
+    }
+
+    private func handleEmptyAction(_ action: BoardEmptyAction) {
+        switch action {
+        case .addCard:
+            showingAdd = true
+        case .showAll:
+            filter = .all
+        }
+    }
+}
+
+private extension BoardFilter {
+    var defaultEmptyTitle: String {
+        switch self {
         case .today: return "Nothing due today"
         case .week: return "This week is clear"
         case .recurring: return "No recurring responsibilities"
@@ -285,8 +342,8 @@ struct HomeBoardView: View {
         }
     }
 
-    private var emptySymbol: String {
-        switch filter {
+    var defaultEmptySymbol: String {
+        switch self {
         case .appreciations: return "heart"
         case .decisions: return "questionmark.diamond"
         case .recurring: return "arrow.trianglehead.2.clockwise"
@@ -294,8 +351,8 @@ struct HomeBoardView: View {
         }
     }
 
-    private var emptyDescription: String {
-        switch filter {
+    var defaultEmptyDescription: String {
+        switch self {
         case .all:
             "Use Brain Dump or the add button to create your first card."
         default:
@@ -444,31 +501,30 @@ private struct BoardStatusRow: View {
 }
 
 private struct BoardEmptyRow: View {
-    var title: String
-    var symbol: String
-    var description: String
-    var onAdd: () -> Void
+    var state: BoardEmptyState
+    var onAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label {
-                Text(title)
+                Text(state.title)
                     .font(.headline)
             } icon: {
-                Image(systemName: symbol)
+                Image(systemName: state.symbol)
                     .foregroundStyle(.tint)
             }
 
-            Text(description)
+            Text(state.description)
                 .font(.body)
                 .foregroundStyle(.secondary)
 
             Button {
-                onAdd()
+                onAction()
             } label: {
-                Label("Add Card", systemImage: "plus")
+                Label(state.actionTitle, systemImage: state.actionSymbol)
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier(state.action.accessibilityIdentifier)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)
