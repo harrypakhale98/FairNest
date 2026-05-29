@@ -214,10 +214,15 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         }
 
         do {
-            if let zoneID = try await activeSharedHouseholdZoneID(in: sharedDatabase) {
-                try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
-                try await saveHouseholdErasureMarker(in: sharedDatabase, zoneID: zoneID, erasedAt: erasedAt)
-                deletionProgress.markDeletedData()
+            let zoneIDs = try await deletableSharedHouseholdZoneIDs(in: sharedDatabase)
+            for zoneID in zoneIDs {
+                do {
+                    try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
+                    try await saveHouseholdErasureMarker(in: sharedDatabase, zoneID: zoneID, erasedAt: erasedAt)
+                    deletionProgress.markDeletedData()
+                } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
+                    deletionProgress.recordPermissionFailure(error)
+                }
             }
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
             deletionProgress.recordPermissionFailure(error)
@@ -274,6 +279,12 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let zoneID = CloudKitHouseholdSelection.selectedSharedZoneID(from: try await householdZoneIDs(in: database))
         preferredSharedZoneID = zoneID
         return zoneID
+    }
+
+    private func deletableSharedHouseholdZoneIDs(in database: CKDatabase) async throws -> [CKRecordZone.ID] {
+        let zoneIDs = CloudKitHouseholdSelection.deletableSharedZoneIDs(from: try await householdZoneIDs(in: database))
+        preferredSharedZoneID = zoneIDs.count == 1 ? zoneIDs.first : nil
+        return zoneIDs
     }
 
     private func deleteCardRecords(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws {

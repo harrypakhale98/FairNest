@@ -142,11 +142,7 @@ enum CloudKitHouseholdSelection {
     }
 
     static func selectedSharedZoneID(from zoneIDs: [CKRecordZone.ID]) -> CKRecordZone.ID? {
-        let householdZoneIDs = zoneIDs
-            .filter { $0.zoneName == CloudKitCardMapper.zoneName }
-            .sorted { lhs, rhs in
-                lhs.ownerName.localizedStandardCompare(rhs.ownerName) == .orderedAscending
-            }
+        let householdZoneIDs = sortedHouseholdZoneIDs(from: zoneIDs)
 
         guard !householdZoneIDs.isEmpty else {
             clearSelectedSharedZone()
@@ -164,6 +160,31 @@ enum CloudKitHouseholdSelection {
         }
         rememberSharedZoneID(selected)
         return selected
+    }
+
+    static func deletableSharedZoneIDs(from zoneIDs: [CKRecordZone.ID]) -> [CKRecordZone.ID] {
+        let householdZoneIDs = sortedHouseholdZoneIDs(from: zoneIDs)
+
+        guard !householdZoneIDs.isEmpty else {
+            clearSelectedSharedZone()
+            return []
+        }
+
+        if let selected = selectedSharedZoneID(),
+           let rememberedZoneID = householdZoneIDs.first(where: { matches($0, selected) }) {
+            return [rememberedZoneID]
+        }
+
+        clearSelectedSharedZone()
+        return householdZoneIDs
+    }
+
+    private static func sortedHouseholdZoneIDs(from zoneIDs: [CKRecordZone.ID]) -> [CKRecordZone.ID] {
+        zoneIDs
+            .filter { $0.zoneName == CloudKitCardMapper.zoneName }
+            .sorted { lhs, rhs in
+                lhs.ownerName.localizedStandardCompare(rhs.ownerName) == .orderedAscending
+            }
     }
 
     private static func matches(_ lhs: CKRecordZone.ID, _ rhs: CKRecordZone.ID) -> Bool {

@@ -151,6 +151,32 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(rememberedSelection?.ownerName, "owner-b")
     }
 
+    func testSharedHouseholdDeletionTargetsVisibleHouseholdZonesWhenSelectionIsAmbiguous() {
+        let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
+        defer {
+            if let previousSelection {
+                UserDefaults.standard.set(previousSelection, forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
+            } else {
+                CloudKitHouseholdSelection.clearSelectedSharedZone()
+            }
+        }
+
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
+        let ownerB = CloudKitCardMapper.zoneID(ownerName: "owner-b")
+        let ownerA = CloudKitCardMapper.zoneID(ownerName: "owner-a")
+        let unrelated = CKRecordZone.ID(zoneName: "OtherZone", ownerName: "owner-0")
+
+        let ambiguousDeletionTargets = CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerB, unrelated, ownerA])
+
+        XCTAssertEqual(ambiguousDeletionTargets.map(\.ownerName), ["owner-a", "owner-b"])
+        XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
+
+        CloudKitHouseholdSelection.rememberSharedZoneID(ownerB)
+        let rememberedDeletionTargets = CloudKitHouseholdSelection.deletableSharedZoneIDs(from: [ownerA, ownerB])
+
+        XCTAssertEqual(rememberedDeletionTargets.map(\.ownerName), ["owner-b"])
+    }
+
     @MainActor
     func testAcceptedSharePinsExistingLocalCardsToPrivateDatabase() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
