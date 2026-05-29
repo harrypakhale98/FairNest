@@ -358,6 +358,7 @@ struct LoadCard: Identifiable, Codable, Equatable, Hashable {
         deletedAt = date
         modifiedBy = member
         updatedAt = date
+        self = redactedDeletionTombstone
     }
 
     mutating func restore(at date: Date = Date(), by member: HouseholdMember = .me) {

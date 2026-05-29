@@ -260,7 +260,7 @@ struct HomeBoardView: View {
 
     private func restore(_ card: LoadCard) {
         performBoardOperation("restore this card") {
-            try cardStore.restoreThrowing(id: card.id)
+            try cardStore.restoreThrowing(card)
             recentlyDeleted = nil
             announce("Restored \(card.title).")
         }

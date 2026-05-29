@@ -42,7 +42,7 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertEqual(export.checkIns, [record])
     }
 
-    func testPrivacyExportRedactsDeletedCardContent() throws {
+    func testDeletedCardTombstoneRedactsLocalContentAndPrivacyExport() throws {
         let cardStore = LocalCardStore(fileURL: tempURL())
         let checkInStore = LocalCheckInStore(fileURL: tempURL())
         let sensitiveCard = LoadCard(
@@ -60,11 +60,13 @@ final class StorePrivacyWidgetTests: XCTestCase {
         )
         try cardStore.upsertThrowing(sensitiveCard)
         try cardStore.deleteThrowing(id: sensitiveCard.id)
+        let storedCard = try XCTUnwrap(cardStore.cards.first)
 
         let data = try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportData()
         let export = try JSONDecoder.fairNest.decode(FairNestExportEnvelope.self, from: data)
         let exportedCard = try XCTUnwrap(export.cards.first)
 
+        XCTAssertEqual(storedCard, exportedCard)
         XCTAssertTrue(exportedCard.isDeleted)
         XCTAssertEqual(exportedCard.id, sensitiveCard.id)
         XCTAssertEqual(exportedCard.title, "")
@@ -78,9 +80,31 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertEqual(exportedCard.doneCriteria, "")
         XCTAssertEqual(exportedCard.createdBy, .system)
         XCTAssertEqual(exportedCard.modifiedBy, .system)
+    }
 
-        XCTAssertEqual(cardStore.cards.first?.title, "Private medication refill")
-        XCTAssertEqual(cardStore.cards.first?.notes, "Sensitive dosage note")
+    func testDeletedCardCanBeRestoredFromTransientSnapshot() throws {
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let sensitiveCard = LoadCard(
+            title: "Private medication refill",
+            type: .reminder,
+            owner: .partner,
+            status: .planned,
+            effort: .heavy,
+            notes: "Sensitive dosage note",
+            doneCriteria: "Prescription picked up"
+        )
+        try cardStore.upsertThrowing(sensitiveCard)
+        try cardStore.deleteThrowing(id: sensitiveCard.id)
+
+        XCTAssertEqual(cardStore.cards.first?.title, "")
+        XCTAssertThrowsError(try cardStore.restoreThrowing(id: sensitiveCard.id))
+
+        try cardStore.restoreThrowing(sensitiveCard)
+
+        let restoredCard = try XCTUnwrap(cardStore.activeCards.first)
+        XCTAssertEqual(restoredCard.title, "Private medication refill")
+        XCTAssertEqual(restoredCard.notes, "Sensitive dosage note")
+        XCTAssertFalse(restoredCard.isDeleted)
     }
 
     func testOnboardingCompletionPersists() {
