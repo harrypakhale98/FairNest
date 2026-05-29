@@ -41,7 +41,7 @@ struct OnboardingView: View {
                             stepIntro(
                                 title: "Private by design",
                                 symbol: "lock.shield",
-                                text: "FairNest works offline, syncs with iCloud when available, and uses on-device intelligence with a deterministic fallback."
+                                text: "FairNest works offline, syncs with iCloud when available, and can suggest cards on this iPhone."
                             )
                         }
                         .tag(1)
@@ -74,7 +74,7 @@ struct OnboardingView: View {
             stepIntro(
                 title: "Private by design",
                 symbol: "lock.shield",
-                text: "FairNest works offline, syncs with iCloud when available, and uses on-device intelligence with a deterministic fallback."
+                text: "FairNest works offline, syncs with iCloud when available, and can suggest cards on this iPhone."
             )
         default:
             firstBrainDumpStep
@@ -185,20 +185,20 @@ struct OnboardingView: View {
                     .accessibilityElement(children: .combine)
                 }
 
-                if hasStaleReview {
+                if hasStaleReview, !suggestions.isEmpty {
                     Label("Text changed. Suggest cards again before saving.", systemImage: "arrow.triangle.2.circlepath")
                         .foregroundStyle(.secondary)
                 }
 
-                if let notice {
+                if let notice, !hasStaleReview {
                     safetyNoticeView(notice)
                 }
 
-                if suggestions.isEmpty, notice == nil {
+                if let reviewEmptyState {
                     ReviewEmptyStateRow(
-                        title: "No suggestions yet",
-                        systemImage: "text.badge.plus",
-                        message: "Add a few thoughts above and review the suggested cards before saving."
+                        title: reviewEmptyState.title,
+                        systemImage: reviewEmptyState.systemImage,
+                        message: reviewEmptyState.message
                     )
                 } else {
                     ForEach(suggestions.indices, id: \.self) { index in
@@ -217,12 +217,22 @@ struct OnboardingView: View {
 
             if let errorMessage {
                 Section {
-                    Text(errorMessage)
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.red)
+                        .accessibilityLabel("Onboarding error: \(errorMessage)")
+                        .accessibilityIdentifier("onboardingBrainDumpError")
                 }
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItem(placement: .keyboard) {
+                Button("Done") {
+                    dismissKeyboard()
+                }
+                .accessibilityIdentifier("dismissOnboardingReviewKeyboard")
+            }
+        }
     }
 
     private var primaryActionTitle: String {
@@ -248,7 +258,20 @@ struct OnboardingView: View {
     }
 
     private var hasStaleReview: Bool {
-        !suggestions.isEmpty && lastParsedBrainDump != normalized(brainDump)
+        lastParsedBrainDump != nil && !isReviewCurrent
+    }
+
+    private var isReviewCurrent: Bool {
+        lastParsedBrainDump == normalized(brainDump)
+    }
+
+    private var reviewEmptyState: BrainDumpReviewEmptyState? {
+        guard suggestions.isEmpty else { return nil }
+        if hasStaleReview {
+            return .needsRefresh
+        }
+        guard notice == nil else { return nil }
+        return lastParsedBrainDump == nil ? .initial : .nothingFound
     }
 
     private func selectionBinding(for id: UUID) -> Binding<Bool> {

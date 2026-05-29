@@ -64,20 +64,20 @@ struct BrainDumpView: View {
                         .accessibilityElement(children: .combine)
                     }
 
-                    if hasStaleReview {
+                    if hasStaleReview, !suggestions.isEmpty {
                         Label("Text changed. Suggest cards again before saving.", systemImage: "arrow.triangle.2.circlepath")
                             .foregroundStyle(.secondary)
                     }
 
-                    if let safetyNotice {
+                    if let safetyNotice, !hasStaleReview {
                         SafetyNoticeRow(notice: safetyNotice)
                     }
 
-                    if suggestions.isEmpty, safetyNotice == nil {
+                    if let reviewEmptyState {
                         ReviewEmptyStateRow(
-                            title: "No suggestions yet",
-                            systemImage: "text.badge.plus",
-                            message: "Add a few thoughts above and review the suggested cards before saving."
+                            title: reviewEmptyState.title,
+                            systemImage: reviewEmptyState.systemImage,
+                            message: reviewEmptyState.message
                         )
                     } else {
                         ForEach(suggestions.indices, id: \.self) { index in
@@ -125,6 +125,13 @@ struct BrainDumpView: View {
                     .disabled(!hasSavableSelection)
                     .accessibilityIdentifier("saveBrainDumpSuggestions")
                 }
+
+                ToolbarItem(placement: .keyboard) {
+                    Button("Done") {
+                        dismissKeyboard()
+                    }
+                    .accessibilityIdentifier("dismissBrainDumpReviewKeyboard")
+                }
             }
         }
     }
@@ -137,11 +144,20 @@ struct BrainDumpView: View {
     }
 
     private var hasStaleReview: Bool {
-        !suggestions.isEmpty && !isReviewCurrent
+        lastParsedText != nil && !isReviewCurrent
     }
 
     private var isReviewCurrent: Bool {
         lastParsedText == normalized(text)
+    }
+
+    private var reviewEmptyState: BrainDumpReviewEmptyState? {
+        guard suggestions.isEmpty else { return nil }
+        if hasStaleReview {
+            return .needsRefresh
+        }
+        guard safetyNotice == nil else { return nil }
+        return lastParsedText == nil ? .initial : .nothingFound
     }
 
     private func parse() async {
@@ -232,6 +248,45 @@ struct ReviewEmptyStateRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+enum BrainDumpReviewEmptyState {
+    case initial
+    case nothingFound
+    case needsRefresh
+
+    var title: String {
+        switch self {
+        case .initial:
+            return "No suggestions yet"
+        case .nothingFound:
+            return "Nothing to review"
+        case .needsRefresh:
+            return "Review needs refresh"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .initial:
+            return "text.badge.plus"
+        case .nothingFound:
+            return "checkmark.circle"
+        case .needsRefresh:
+            return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .initial:
+            return "Add a few thoughts above and review the suggested cards before saving."
+        case .nothingFound:
+            return "FairNest did not find a clear card in that text. Add a household task, reminder, decision, or appreciation and suggest cards again."
+        case .needsRefresh:
+            return "Text changed since the last read. Suggest cards again before saving."
+        }
     }
 }
 

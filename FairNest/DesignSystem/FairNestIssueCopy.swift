@@ -23,7 +23,7 @@ enum FairNestIssueCopy {
     }
 
     static func reminderSchedulingFailure(scheduleLabel: String) -> String {
-        "Some reminders could not be scheduled. Weekly check-in is still set for \(scheduleLabel)."
+        "FairNest couldn't update every reminder. Your cards are still saved. Try again from Settings; the weekly check-in target is \(scheduleLabel)."
     }
 }
 
