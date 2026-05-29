@@ -10,6 +10,7 @@ struct PrivacyView: View {
     @State private var showingDeleteConfirmation = false
     @State private var showingSharedDeleteConfirmation = false
     @State private var message: String?
+    @State private var messageDetails: String?
 
     var body: some View {
         List {
@@ -82,6 +83,9 @@ struct PrivacyView: View {
                 Section {
                     Text(message)
                         .foregroundStyle(.secondary)
+                    if let messageDetails {
+                        TechnicalDetailsDisclosure(details: messageDetails)
+                    }
                 }
             }
         }
@@ -133,8 +137,10 @@ struct PrivacyView: View {
         do {
             exportURL = try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).exportToTemporaryFile()
             message = "Export file is ready. Clear it from this screen when you are done sharing."
+            messageDetails = nil
         } catch {
-            message = error.localizedDescription
+            message = FairNestIssueCopy.exportFailure
+            messageDetails = error.localizedDescription
         }
     }
 
@@ -146,8 +152,10 @@ struct PrivacyView: View {
             try PrivacyExportService.removeTemporaryExports()
             exportURL = nil
             message = "Temporary export file cleared."
+            messageDetails = nil
         } catch {
-            message = "FairNest could not clear the temporary export file: \(error.localizedDescription)"
+            message = FairNestIssueCopy.clearExportFailure
+            messageDetails = error.localizedDescription
         }
     }
 
@@ -161,8 +169,10 @@ struct PrivacyView: View {
             try await services.deleteAllLocalDataForPrivacy()
             exportURL = nil
             message = "Local FairNest data, temporary exports, and scheduled reminders were deleted on this device. iCloud Sync is off."
+            messageDetails = nil
         } catch {
-            message = error.localizedDescription
+            message = FairNestIssueCopy.localDeleteFailure
+            messageDetails = error.localizedDescription
         }
     }
 
@@ -171,8 +181,10 @@ struct PrivacyView: View {
             try await services.deleteSharedHouseholdDataForPrivacy()
             exportURL = nil
             message = "Shared household data was deleted where this iCloud account has permission."
+            messageDetails = nil
         } catch {
-            message = error.localizedDescription
+            message = FairNestIssueCopy.sharedDeleteFailure
+            messageDetails = error.localizedDescription
         }
     }
 }

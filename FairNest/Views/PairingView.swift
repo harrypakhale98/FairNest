@@ -10,6 +10,7 @@ struct PairingView: View {
     @State private var showingICloudSyncConfirmation = false
     @State private var isCreatingInvite = false
     @State private var shareError: String?
+    @State private var shareErrorDetails: String?
 
     var body: some View {
         NavigationStack {
@@ -49,12 +50,14 @@ struct PairingView: View {
                         Task {
                             isCreatingInvite = true
                             shareError = nil
+                            shareErrorDetails = nil
                             await pairingService.createPrivateShare()
                             isCreatingInvite = false
                             if pairingService.currentShare != nil {
                                 showingCloudSharing = true
                             } else if case .error(let message) = pairingService.state {
-                                shareError = message
+                                shareError = FairNestIssueCopy.pairingFailure
+                                shareErrorDetails = message
                             } else if pairingService.state != .partnerNotJoined {
                                 shareError = pairingService.state.message
                             }
@@ -69,8 +72,13 @@ struct PairingView: View {
                     }
 
                     if let shareError {
-                        Label(shareError, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(shareError, systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.red)
+                            if let shareErrorDetails {
+                                TechnicalDetailsDisclosure(details: shareErrorDetails)
+                            }
+                        }
                     }
 
                     if pairingService.currentShare != nil {
@@ -111,7 +119,8 @@ struct PairingView: View {
             .sheet(isPresented: $showingCloudSharing) {
                 if let share = pairingService.currentShare {
                     CloudSharingSheet(share: share) { error in
-                        shareError = error.localizedDescription
+                        shareError = FairNestIssueCopy.pairingFailure
+                        shareErrorDetails = error.localizedDescription
                     } onStoppedSharing: {
                         pairingService.markSharingStopped()
                     }

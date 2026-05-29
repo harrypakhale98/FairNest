@@ -74,6 +74,10 @@ final class LocalCheckInStore: ObservableObject, CheckInStore {
     private let fileManager: FileManager
     private var storeUnavailableDueToLoadFailure = false
 
+    var isUnavailableDueToLoadFailure: Bool {
+        storeUnavailableDueToLoadFailure
+    }
+
     init(fileURL: URL? = nil, fileManager: FileManager = .default) {
         self.fileManager = fileManager
         if let fileURL {

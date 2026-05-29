@@ -282,7 +282,7 @@ struct OnboardingView: View {
             errorMessage = nil
         } catch {
             lastParsedBrainDump = nil
-            errorMessage = error.localizedDescription
+            errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure
         }
     }
 
@@ -296,7 +296,7 @@ struct OnboardingView: View {
             _ = try cardStore.addReviewed(selectedSuggestions)
             services.completeOnboarding()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = FairNestIssueCopy.brainDumpSaveFailure
         }
     }
 

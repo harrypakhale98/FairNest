@@ -271,7 +271,7 @@ final class AppServices: ObservableObject {
     }
 
     private func protectCurrentLocalCardsFromSharedUpload() {
-        let localCardIDs = Set(cardStore.cards.filter { !$0.isDeleted }.map(\.id))
+        let localCardIDs = Set(cardStore.cards.map(\.id))
         guard !localCardIDs.isEmpty else { return }
         var pinnedCardIDs = acceptedSharePrivateCardIDs
         pinnedCardIDs.formUnion(localCardIDs)

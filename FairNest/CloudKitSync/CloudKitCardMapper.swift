@@ -118,7 +118,10 @@ enum CloudKitHouseholdSelection {
             return selected
         }
 
-        let selected = householdZoneIDs[0]
+        guard householdZoneIDs.count == 1, let selected = householdZoneIDs.first else {
+            clearSelectedSharedZone()
+            return nil
+        }
         rememberSharedZoneID(selected)
         return selected
     }

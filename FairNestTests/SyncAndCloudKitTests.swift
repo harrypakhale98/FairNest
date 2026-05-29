@@ -45,7 +45,7 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(record.recordID.recordName, card.id.uuidString)
     }
 
-    func testSharedHouseholdZoneSelectionPersistsActiveOwnerAcrossMultipleShares() {
+    func testSharedHouseholdZoneSelectionRequiresRememberedOwnerWhenMultipleSharesExist() {
         let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
         defer {
             if let previousSelection {
@@ -62,7 +62,12 @@ final class SyncAndCloudKitTests: XCTestCase {
 
         let initialSelection = CloudKitHouseholdSelection.selectedSharedZoneID(from: [ownerB, unrelated, ownerA])
 
-        XCTAssertEqual(initialSelection?.ownerName, "owner-a")
+        XCTAssertNil(initialSelection)
+        XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
+
+        let singleSelection = CloudKitHouseholdSelection.selectedSharedZoneID(from: [ownerA, unrelated])
+
+        XCTAssertEqual(singleSelection?.ownerName, "owner-a")
         XCTAssertEqual(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey), "owner-a")
 
         CloudKitHouseholdSelection.rememberSharedZoneID(ownerB)
@@ -72,7 +77,7 @@ final class SyncAndCloudKitTests: XCTestCase {
     }
 
     @MainActor
-    func testAcceptedSharePinsExistingLocalCardsToPrivateDatabase() async {
+    func testAcceptedSharePinsExistingLocalCardsToPrivateDatabase() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
         defer {
@@ -90,12 +95,17 @@ final class SyncAndCloudKitTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
         let cardStore = LocalCardStore(fileURL: tempURL())
         let localCard = cardStore.add(BrainDumpSuggestion(title: "Local only", type: .task))
+        let deletedLocalCard = cardStore.add(BrainDumpSuggestion(title: "Deleted local only", type: .task))
+        try cardStore.deleteThrowing(id: deletedLocalCard.id)
         let services = AppServices(cardStore: cardStore, checkInStore: LocalCheckInStore(fileURL: tempURL()))
 
         await services.handleAcceptedCloudKitShare()
 
         XCTAssertTrue(services.syncService.isPinnedToPrivateDatabaseForTesting(localCard.id))
-        XCTAssertTrue(UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs")?.contains(localCard.id.uuidString) == true)
+        XCTAssertTrue(services.syncService.isPinnedToPrivateDatabaseForTesting(deletedLocalCard.id))
+        let pinnedIDs = UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs") ?? []
+        XCTAssertTrue(pinnedIDs.contains(localCard.id.uuidString))
+        XCTAssertTrue(pinnedIDs.contains(deletedLocalCard.id.uuidString))
     }
 
     func testCloudKitSaveResultValidatorThrowsOnPartialFailure() throws {

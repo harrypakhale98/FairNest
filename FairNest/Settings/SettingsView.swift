@@ -36,9 +36,10 @@ struct SettingsView: View {
                     if services.iCloudSyncEnabled {
                         LabeledContent("Status", value: syncService.status.label)
                         if let lastSyncMessage = services.lastSyncMessage {
-                            Text(lastSyncMessage)
+                            Text(FairNestIssueCopy.syncDelay)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                            TechnicalDetailsDisclosure(details: lastSyncMessage)
                         }
                         Button {
                             Task { await refreshCloudStatus() }
@@ -119,9 +120,10 @@ struct SettingsView: View {
                     }
 
                     if let lastReminderMessage = services.lastReminderMessage {
-                        Text("Reminder issue: \(lastReminderMessage)")
+                        Text("Reminder issue: \(FairNestIssueCopy.reminderUpdateFailure)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                        TechnicalDetailsDisclosure(details: lastReminderMessage)
                     }
                 } header: {
                     Text("Reminders")
@@ -314,7 +316,7 @@ struct SettingsView: View {
                 notificationMessage = "Reminders are off. You can change this in Settings."
             }
         } catch {
-            notificationMessage = "Some reminders could not be scheduled: \(error.localizedDescription)"
+            notificationMessage = FairNestIssueCopy.reminderSchedulingFailure(scheduleLabel: weeklyReminderScheduleLabel)
         }
         await refreshNotificationStatus()
     }

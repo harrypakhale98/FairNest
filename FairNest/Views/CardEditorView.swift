@@ -1,11 +1,19 @@
 import SwiftUI
 
+private enum CardEditorFocus: Hashable {
+    case title
+    case doneCriteria
+    case notes
+}
+
 struct CardEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var card: LoadCard
     @State private var hasDueDate: Bool
     @State private var showingDiscardConfirmation = false
     @State private var saveErrorMessage: String?
+    @State private var saveErrorDetails: String?
+    @FocusState private var focusedField: CardEditorFocus?
     private let originalCard: LoadCard
     var onSave: (LoadCard) throws -> Void
 
@@ -21,6 +29,8 @@ struct CardEditorView: View {
             Form {
                 Section {
                     TextField("Title", text: $card.title, axis: .vertical)
+                        .focused($focusedField, equals: .title)
+                        .submitLabel(.done)
                         .accessibilityIdentifier("cardTitle")
 
                     Picker("Type", selection: $card.type) {
@@ -80,22 +90,32 @@ struct CardEditorView: View {
 
                 Section {
                     TextField("Done criteria", text: $card.doneCriteria, axis: .vertical)
+                        .focused($focusedField, equals: .doneCriteria)
+                        .submitLabel(.done)
                     TextField("Notes", text: $card.notes, axis: .vertical)
+                        .focused($focusedField, equals: .notes)
+                        .submitLabel(.done)
                 } header: {
                     Text("Details")
                 }
 
                 if let saveErrorMessage {
                     Section {
-                        Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("cardSaveError")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("cardSaveError")
+                            if let saveErrorDetails {
+                                TechnicalDetailsDisclosure(details: saveErrorDetails)
+                            }
+                        }
                     }
                 }
             }
             .navigationTitle(card.title.isEmpty ? "New Card" : "Edit Card")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { cancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -106,9 +126,16 @@ struct CardEditorView: View {
                     .accessibilityIdentifier("saveCard")
                     .accessibilityHint(card.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Enter a title before saving." : "Saves this card.")
                 }
+                ToolbarItem(placement: .keyboard) {
+                    Button("Done") {
+                        focusedField = nil
+                    }
+                    .accessibilityIdentifier("dismissCardEditorKeyboard")
+                }
             }
             .onChange(of: card) { _, _ in
                 saveErrorMessage = nil
+                saveErrorDetails = nil
             }
             .interactiveDismissDisabled(isDirty)
             .confirmationDialog(
@@ -126,7 +153,8 @@ struct CardEditorView: View {
         do {
             try onSave(card)
         } catch {
-            saveErrorMessage = error.localizedDescription
+            saveErrorMessage = FairNestIssueCopy.localCardSaveFailure
+            saveErrorDetails = error.localizedDescription
         }
     }
 

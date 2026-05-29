@@ -58,6 +58,10 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
     private let fileManager: FileManager
     private var storeUnavailableDueToLoadFailure = false
 
+    var isUnavailableDueToLoadFailure: Bool {
+        storeUnavailableDueToLoadFailure
+    }
+
     var activeCards: [LoadCard] {
         cards.filter { !$0.isDeleted }
     }

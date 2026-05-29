@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private enum WeeklyCheckInFocus: Hashable {
     case feltHeavy
@@ -15,6 +18,7 @@ struct WeeklyCheckInView: View {
     @State private var changes: [OwnershipChange] = []
     @State private var saved = false
     @State private var saveErrorMessage: String?
+    @State private var saveErrorDetails: String?
     @State private var showsEmptyCheckInConfirmation = false
     @FocusState private var focusedPrompt: WeeklyCheckInFocus?
 
@@ -36,6 +40,10 @@ struct WeeklyCheckInView: View {
                     Text(steps[step])
                         .font(.headline)
                         .accessibilityAddTraits(.isHeader)
+                }
+
+                if let checkInStoreStatus {
+                    CheckInStoreStatusRow(status: checkInStoreStatus)
                 }
 
                 currentStep
@@ -62,7 +70,7 @@ struct WeeklyCheckInView: View {
 
                 ToolbarItem(placement: .keyboard) {
                     Button("Done") {
-                        focusedPrompt = nil
+                        dismissKeyboard()
                     }
                     .accessibilityIdentifier("dismissCheckInKeyboard")
                 }
@@ -200,8 +208,13 @@ struct WeeklyCheckInView: View {
                 }
 
                 if let saveErrorMessage {
-                    Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(saveErrorMessage, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                        if let saveErrorDetails {
+                            TechnicalDetailsDisclosure(details: saveErrorDetails)
+                        }
+                    }
                 }
             } header: {
                 Text("Review changes")
@@ -212,6 +225,7 @@ struct WeeklyCheckInView: View {
     }
 
     private func advance() {
+        dismissKeyboard()
         if saved {
             reset()
             return
@@ -238,6 +252,11 @@ struct WeeklyCheckInView: View {
 
     private func save() {
         guard !saved else { return }
+        guard !checkInStore.isUnavailableDueToLoadFailure else {
+            saveErrorMessage = FairNestIssueCopy.localCheckInReadUnavailable
+            saveErrorDetails = checkInStore.lastLoadErrorMessage
+            return
+        }
         let finalChanges = reviewedChanges
         let record = CheckInRecord(
             feltHeavy: draft.feltHeavy.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -267,8 +286,10 @@ struct WeeklyCheckInView: View {
             changes = finalChanges
             saved = true
             saveErrorMessage = nil
+            saveErrorDetails = nil
         } catch {
-            saveErrorMessage = error.localizedDescription
+            saveErrorMessage = FairNestIssueCopy.localCheckInSaveFailure
+            saveErrorDetails = error.localizedDescription
         }
     }
 
@@ -306,14 +327,71 @@ struct WeeklyCheckInView: View {
         isEmptyCheckIn && reviewedChanges.isEmpty
     }
 
+    private var checkInStoreStatus: CheckInStoreStatus? {
+        if let message = checkInStore.lastLoadErrorMessage {
+            return CheckInStoreStatus(
+                title: checkInStore.isUnavailableDueToLoadFailure ? "Check-ins need attention" : "Previous check-ins were repaired",
+                message: checkInStore.isUnavailableDueToLoadFailure ? FairNestIssueCopy.localCheckInReadUnavailable : FairNestIssueCopy.localCheckInLoadFailure,
+                symbol: checkInStore.isUnavailableDueToLoadFailure ? "exclamationmark.triangle" : "checkmark.circle",
+                tint: checkInStore.isUnavailableDueToLoadFailure ? .red : .orange,
+                technicalDetails: message
+            )
+        }
+        if let message = checkInStore.lastPersistenceErrorMessage {
+            return CheckInStoreStatus(
+                title: "Check-in is not saved yet",
+                message: FairNestIssueCopy.localCheckInSaveFailure,
+                symbol: "externaldrive.badge.exclamationmark",
+                tint: .red,
+                technicalDetails: message
+            )
+        }
+        return nil
+    }
+
+    private func dismissKeyboard() {
+        focusedPrompt = nil
+        #if canImport(UIKit)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
+    }
+
     private func reset() {
         step = 0
         draft = WeeklyCheckInDraft()
         changes = []
         saved = false
         saveErrorMessage = nil
+        saveErrorDetails = nil
         showsEmptyCheckInConfirmation = false
         focusedPrompt = nil
+    }
+}
+
+private struct CheckInStoreStatus {
+    var title: String
+    var message: String
+    var symbol: String
+    var tint: Color
+    var technicalDetails: String
+}
+
+private struct CheckInStoreStatusRow: View {
+    var status: CheckInStoreStatus
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(status.title, systemImage: status.symbol)
+                    .font(.headline)
+                    .foregroundStyle(status.tint)
+                Text(status.message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                TechnicalDetailsDisclosure(details: status.technicalDetails)
+            }
+            .accessibilityIdentifier("checkInStoreStatusMessage")
+        }
     }
 }
 
@@ -327,6 +405,7 @@ private struct OwnershipChangeReviewRow: View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("Responsibility", text: $change.title, axis: .vertical)
                 .font(.headline)
+                .accessibilityLabel("Responsibility for ownership change")
                 .accessibilityIdentifier("checkInOwnershipTitle")
 
             Picker("Owner", selection: $change.owner) {

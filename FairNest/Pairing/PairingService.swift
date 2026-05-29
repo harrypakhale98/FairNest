@@ -52,8 +52,8 @@ enum PairingState: Equatable {
             return "The shared household was removed. You can continue in solo mode."
         case .paired:
             return "This household is shared through iCloud."
-        case .error(let message):
-            return message
+        case .error:
+            return FairNestIssueCopy.pairingFailure
         }
     }
 

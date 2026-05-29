@@ -163,7 +163,7 @@ struct BrainDumpView: View {
             errorMessage = nil
         } catch {
             lastParsedText = nil
-            errorMessage = error.localizedDescription
+            errorMessage = (error as? BrainDumpParserError)?.localizedDescription ?? FairNestIssueCopy.brainDumpParseFailure
         }
     }
 
@@ -186,7 +186,7 @@ struct BrainDumpView: View {
             lastParsedText = nil
         } catch {
             saveConfirmation = nil
-            errorMessage = error.localizedDescription
+            errorMessage = FairNestIssueCopy.brainDumpSaveFailure
         }
     }
 

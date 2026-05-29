@@ -89,7 +89,7 @@ targets:
         DEVELOPMENT_TEAM: DUHVN68KBA
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "1"
     info:
       path: FairNestWidgets/Supporting/Info.plist
       properties:

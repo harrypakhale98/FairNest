@@ -156,28 +156,31 @@ struct HomeBoardView: View {
         if let message = cardStore.lastLoadErrorMessage {
             return BoardStatus(
                 title: "Local cards need attention",
-                message: "FairNest moved an unreadable card file aside so the board can keep working. Details: \(message)",
+                message: cardStore.isUnavailableDueToLoadFailure ? FairNestIssueCopy.localCardReadUnavailable : FairNestIssueCopy.localCardLoadFailure,
                 symbol: "exclamationmark.triangle",
                 tint: .red,
-                actionTitle: nil
+                actionTitle: nil,
+                technicalDetails: message
             )
         }
         if let message = cardStore.lastPersistenceErrorMessage {
             return BoardStatus(
                 title: "Changes are not saved yet",
-                message: "FairNest could not write the latest board change. Try again before closing the app. Details: \(message)",
+                message: FairNestIssueCopy.localCardSaveFailure,
                 symbol: "externaldrive.badge.exclamationmark",
                 tint: .red,
-                actionTitle: nil
+                actionTitle: nil,
+                technicalDetails: message
             )
         }
         if services.iCloudSyncEnabled, let message = services.lastSyncMessage {
             return BoardStatus(
                 title: "iCloud sync needs attention",
-                message: "FairNest is keeping changes on this iPhone until iCloud responds. Details: \(message)",
+                message: FairNestIssueCopy.syncDelay,
                 symbol: "icloud.slash",
                 tint: .orange,
-                actionTitle: "Retry Sync"
+                actionTitle: "Retry Sync",
+                technicalDetails: message
             )
         }
         if services.iCloudSyncEnabled, services.syncInProgress {
@@ -186,7 +189,8 @@ struct HomeBoardView: View {
                 message: "FairNest is syncing household cards with iCloud.",
                 symbol: "arrow.triangle.2.circlepath.icloud",
                 tint: Color.secondary,
-                actionTitle: nil
+                actionTitle: nil,
+                technicalDetails: nil
             )
         }
         return nil
@@ -224,7 +228,7 @@ struct HomeBoardView: View {
         do {
             try operation()
         } catch {
-            boardError = BoardOperationError(message: "FairNest could not \(actionDescription). \(error.localizedDescription)")
+            boardError = BoardOperationError(message: FairNestIssueCopy.boardOperationFailure(actionDescription: actionDescription))
             announce("Board update failed.")
         }
     }
@@ -406,6 +410,7 @@ private struct BoardStatus {
     var symbol: String
     var tint: Color
     var actionTitle: String?
+    var technicalDetails: String?
 }
 
 private struct BoardStatusRow: View {
@@ -421,6 +426,9 @@ private struct BoardStatusRow: View {
                 Text(status.message)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                if let technicalDetails = status.technicalDetails {
+                    TechnicalDetailsDisclosure(details: technicalDetails)
+                }
                 if let actionTitle = status.actionTitle {
                     Button {
                         Task { await services.syncCardsIfAvailable() }
