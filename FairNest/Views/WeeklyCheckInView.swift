@@ -34,26 +34,30 @@ struct WeeklyCheckInView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    ProgressView(value: Double(step + 1), total: Double(steps.count))
-                        .accessibilityLabel("Check-in progress")
-                        .accessibilityValue("Step \(step + 1) of \(steps.count)")
-                    Text(steps[step])
-                        .font(.headline)
-                        .accessibilityAddTraits(.isHeader)
+                if canEditCheckIn {
+                    Section {
+                        ProgressView(value: Double(step + 1), total: Double(steps.count))
+                            .accessibilityLabel("Check-in progress")
+                            .accessibilityValue("Step \(step + 1) of \(steps.count)")
+                        Text(steps[step])
+                            .font(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                    }
                 }
 
                 if let checkInStoreStatus {
                     CheckInStoreStatusRow(status: checkInStoreStatus)
                 }
 
-                currentStep
+                if canEditCheckIn {
+                    currentStep
+                }
             }
             .navigationTitle("Weekly Check-In")
             .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if !saved {
+                    if !saved, canEditCheckIn {
                         Button("Back") {
                             goBack()
                         }
@@ -62,10 +66,12 @@ struct WeeklyCheckInView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(primaryActionTitle) {
-                        advance()
+                    if canEditCheckIn || saved {
+                        Button(primaryActionTitle) {
+                            advance()
+                        }
+                        .accessibilityIdentifier("checkInNext")
                     }
-                    .accessibilityIdentifier("checkInNext")
                 }
 
             }
@@ -240,6 +246,12 @@ struct WeeklyCheckInView: View {
             reset()
             return
         }
+        guard canEditCheckIn else {
+            saveErrorMessage = FairNestIssueCopy.localCheckInReadUnavailable
+            saveErrorDetails = checkInStore.lastLoadErrorMessage
+            announce("Check-in store needs attention.")
+            return
+        }
 
         if step == 3 {
             changes = WeeklyCheckInEngine.generateChanges(from: draft, cards: cardStore.activeCards)
@@ -357,6 +369,10 @@ struct WeeklyCheckInView: View {
 
     private var requiresEmptyCheckInConfirmation: Bool {
         isEmptyCheckIn && reviewedChanges.isEmpty
+    }
+
+    private var canEditCheckIn: Bool {
+        !checkInStore.isUnavailableDueToLoadFailure
     }
 
     private var checkInStoreStatus: CheckInStoreStatus? {
