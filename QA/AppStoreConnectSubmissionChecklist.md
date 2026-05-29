@@ -61,7 +61,13 @@ Claim only what has been manually checked. The SwiftUI UI uses native controls a
 
 ## Screenshot Readiness
 
-Current local screenshots in `QA/Screenshots` are 1206 x 2622 and 750 x 1334 pixels. Apple lists 1206 x 2622 as a 6.3-inch iPhone size and 750 x 1334 as a 4.7-inch iPhone size, not the primary 6.9-inch or 6.5-inch submission sizes. Capture a clean App Store screenshot set at an accepted 6.9-inch size, or at an accepted 6.5-inch size if a 6.9-inch set will not be provided, before submission. Reference: https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications
+Accepted 6.9-inch iPhone screenshots were captured at 1320 x 2868 pixels and visually checked for framing, legibility, and obvious overlap:
+
+- `QA/Screenshots/appstore-iphone17promax-board-light.png`
+- `QA/Screenshots/appstore-iphone17promax-board-dark.png`
+- `QA/Screenshots/appstore-iphone17promax-empty-light.png`
+
+Reference: https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications
 
 ## Remaining Technical Risk
 
@@ -71,4 +77,3 @@ Current local screenshots in `QA/Screenshots` are 1206 x 2622 and 750 x 1334 pix
 
 - App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport/FairNest.ipa` or rerun the upload export.
 - Host the privacy policy at a public HTTPS URL before submission and paste that URL into App Store Connect.
-- Capture and upload accepted App Store screenshots for the required iPhone display size.
