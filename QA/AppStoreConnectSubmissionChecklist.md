@@ -1,14 +1,15 @@
 # App Store Connect Submission Checklist
 
-Updated: May 29, 2026, 01:19 CDT
+Updated: May 29, 2026, 02:04 CDT
 
 ## Build Evidence
 
-- App artifact evidence commit: `2006dba`.
-- Release archive succeeded at `/tmp/FairNest-2006dba.xcarchive`.
-- App Store export succeeded at `/tmp/FairNest-AppStoreExport-2006dba/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
-- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyze-2006dba-code` with `COMPRESS_PNG_FILES=NO`. The normal compressed-asset Release path is covered by the successful archive and App Store export.
-- Full scheme tests completed at `2006dba` on iOS Simulator 26.5 (iPhone 17) with result bundle `/tmp/FairNestFullTest-2006dba.xcresult`: 101 total tests, 100 passed, 1 intentional App Store screenshot-capture skip, 0 failures.
+- App artifact evidence commit: `853a86d`.
+- Release archive succeeded at `/tmp/FairNest-853a86d.xcarchive`.
+- App Store export succeeded at `/tmp/FairNest-AppStoreExport-853a86d/FairNest.ipa` using `QA/AppStoreExportOptions.plist`.
+- Static analysis passed with the full FairNest scheme for generic iOS using `/tmp/FairNestAnalyze-853a86d` with `COMPRESS_PNG_FILES=NO`.
+- Full scheme tests completed at `853a86d` on iOS Simulator 26.5 (iPhone 17) with result bundle `/tmp/FairNestFullTest-853a86d.xcresult`: 104 executed tests, 104 passed, 0 failures. The App Store screenshot-capture test was intentionally excluded with `-skip-testing`.
+- Focused UI regressions passed for card editor save failures, Settings iCloud confirmation state, and Privacy export result accessibility.
 - Focused privacy and CloudKit regressions passed for ambiguous shared deletion, local-wipe failure after remote erasure, local-wipe failure after shared privacy deletion, and legacy widget snapshot title sanitization.
 - `plutil -lint` passed for archived and exported app and widget Info.plists, exported privacy manifests, `QA/AppStoreExportOptions.plist`, and `QA/AppStoreUploadOptions.plist`.
 - The archive and exported IPA include the app privacy manifest, widget privacy manifest, bundled `PrivacyPolicy.md`, and `FairNestWidgets.appex`.
@@ -16,7 +17,7 @@ Updated: May 29, 2026, 01:19 CDT
 - Exported IPA uses Cloud Managed Apple Distribution signing, Store provisioning profiles, `get-task-allow=false`, the `iCloud.com.hardikpakhale.fairnest` container, and the `group.com.hardikpakhale.fairnest` app group.
 - The exported app signature contains CloudKit `Production`; the embedded Store provisioning profile exposes both `Production` and `Development` iCloud environments, which is normal profile metadata and does not override the signed app entitlement.
 - The exported app is iPhone-only: `UIDeviceFamily = [1]`.
-- `/tmp/FairNest-AppStoreExport-2006dba/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
+- `/tmp/FairNest-AppStoreExport-853a86d/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
 - Shared household erase writes a content-free CloudKit erasure marker so stale devices acknowledge the reset before uploading local shared cards again.
 - Shared household erase deletes visible FairNest shared zones where permission allows, even when the remembered share owner is unavailable.
 - Removed cards are kept in local storage, sync to iCloud, and export as minimal deletion markers without title, notes, done criteria, scheduling, ownership, or effort fields.
@@ -101,5 +102,5 @@ Reference: https://developer.apple.com/help/app-store-connect/reference/screensh
 
 ## Current External Blockers
 
-- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-2006dba/FairNest.ipa` or rerun the upload export.
+- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-853a86d/FairNest.ipa` or rerun the upload export.
 - Public support and privacy URLs are still not live until `main` is pushed, GitHub Pages is set to deploy from GitHub Actions, and `.github/workflows/deploy-website.yml` completes successfully.
