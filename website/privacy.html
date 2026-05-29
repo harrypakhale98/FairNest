@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FairNest Privacy Policy</title>
+    <meta
+      name="description"
+      content="FairNest privacy policy: local-first household cards, optional iCloud Sync, private CloudKit Sharing, no ads, no tracking, and no custom backend."
+    >
+    <meta name="theme-color" content="#f5f5f7">
+    <link rel="icon" href="assets/icons/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script defer src="script.js"></script>
+  </head>
+  <body class="policy-page">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header is-solid" data-header>
+      <nav class="nav-shell" aria-label="Main navigation">
+        <a class="brand-mark" href="index.html" aria-label="FairNest home">
+          <img src="assets/icons/icon-192.png" width="36" height="36" alt="">
+          <span>FairNest</span>
+        </a>
+        <div class="nav-links">
+          <a href="index.html#features">Features</a>
+          <a href="index.html#privacy">Privacy</a>
+          <a href="privacy.html" aria-current="page">Policy</a>
+        </div>
+        <a class="nav-cta" href="index.html#waitlist">
+          <span>Coming to iPhone</span>
+          <i data-lucide="smartphone" aria-hidden="true"></i>
+        </a>
+      </nav>
+    </header>
+
+    <main id="main" class="policy-main">
+      <section class="policy-hero">
+        <p class="eyebrow">Privacy Policy</p>
+        <h1>FairNest Privacy Policy</h1>
+        <p>
+          FairNest is a private household organization app. It does not sell data, show ads, use third-party analytics, use a custom server, or use paid APIs.
+        </p>
+      </section>
+
+      <article class="policy-content">
+        <h2>Storage and Sharing</h2>
+        <p>
+          Household cards, reminder settings, and pairing state are stored locally on the device. iCloud Sync is off by default. When the user turns it on, FairNest uses CloudKit to sync card data and private CloudKit Sharing to share a household with invited participants.
+        </p>
+        <p>
+          Weekly check-ins stay on the device and can be exported by the user. Apple provides iCloud and CloudKit infrastructure; FairNest&apos;s developer does not operate a separate backend for this data.
+        </p>
+
+        <h2>Brain Dump Suggestions</h2>
+        <p>
+          Brain dump suggestions are prepared on device. When Apple Foundation Models are available, FairNest may use Apple&apos;s on-device model to suggest structured cards. When that model is unavailable, FairNest uses a private local parser. Raw brain dump text is never automatically shared.
+        </p>
+
+        <h2>Notifications</h2>
+        <p>
+          FairNest uses local notifications only, after permission is granted, for due responsibilities, recurring responsibilities, and weekly check-ins. The app does not use remote push notifications.
+        </p>
+
+        <h2>User Controls</h2>
+        <p>
+          Users can export their local FairNest data from the Privacy screen, delete local app data and scheduled FairNest reminders from this device, and delete shared household data where CloudKit permissions allow it.
+        </p>
+
+        <h2>Deletion Markers</h2>
+        <p>
+          When a card is removed, FairNest may keep a minimal deletion marker so that other devices know the card was removed. These markers omit the card title, notes, done criteria, due dates, recurrence, owner, and effort in local storage, iCloud sync records, and exported data.
+        </p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <a class="brand-mark" href="index.html" aria-label="FairNest home">
+          <img src="assets/icons/icon-192.png" width="32" height="32" alt="">
+          <span>FairNest</span>
+        </a>
+        <p>Free. No ads. No subscriptions. iCloud Sync optional.</p>
+        <div class="footer-links">
+          <a href="index.html#features">Features</a>
+          <a href="privacy.html">Privacy Policy</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
