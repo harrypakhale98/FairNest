@@ -235,9 +235,16 @@ struct OnboardingView: View {
                 Button("Done") {
                     dismissKeyboard()
                 }
-                .accessibilityIdentifier("dismissOnboardingReviewKeyboard")
+                .accessibilityIdentifier(onboardingKeyboardDismissIdentifier)
             }
         }
+    }
+
+    private var onboardingKeyboardDismissIdentifier: String {
+        if focusedField == .firstBrainDump {
+            return "dismissOnboardingBrainDumpKeyboard"
+        }
+        return "dismissOnboardingReviewKeyboard"
     }
 
     private var primaryActionTitle: String {

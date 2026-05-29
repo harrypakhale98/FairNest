@@ -93,8 +93,12 @@ final class FairNestUITests: XCTestCase {
         ).firstMatch
 
         XCTAssertTrue(firstTitle.waitForExistence(timeout: 10))
-        XCTAssertTrue(secondTitle.exists)
         XCTAssertTrue(firstToggle.exists)
+
+        if !secondTitle.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(secondTitle.waitForExistence(timeout: 3))
     }
 
     func testSettingsShowsPrivacySyncAndReminderControls() {
