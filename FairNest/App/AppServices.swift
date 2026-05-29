@@ -48,6 +48,7 @@ final class AppServices: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Self.acceptedSharePrivateCardIDsKey)
             UserDefaults.standard.removeObject(forKey: Self.activeCloudKitAccountIdentifierKey)
             CloudKitHouseholdSelection.clearSelectedSharedZone()
+            UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
             UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
             UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
         }
@@ -135,9 +136,11 @@ final class AppServices: ObservableObject {
 
     func handleAcceptedCloudKitShare() async {
         UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+        UserDefaults.standard.set(true, forKey: FairNestRouteRequest.openPairingOnLaunchKey)
         protectCurrentLocalCardsFromSharedUpload()
         iCloudSyncEnabled = true
         pairingService.markShareAccepted()
+        NotificationCenter.default.post(name: .fairNestOpenPairing, object: nil)
         await syncCardsIfAvailable()
     }
 
@@ -151,8 +154,10 @@ final class AppServices: ObservableObject {
     }
 
     func handleFailedCloudKitShareAcceptance(_ error: Error?) {
+        UserDefaults.standard.set(true, forKey: FairNestRouteRequest.openPairingOnLaunchKey)
         pairingService.markShareAcceptanceFailed(error)
         lastSyncMessage = error?.localizedDescription ?? FairNestIssueCopy.pairingFailure
+        NotificationCenter.default.post(name: .fairNestOpenPairing, object: nil)
     }
 
     func syncCardsIfAvailable() async {

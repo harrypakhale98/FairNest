@@ -106,17 +106,20 @@ enum PairingState: Equatable {
 protocol PairingService: AnyObject {
     var state: PairingState { get }
     var currentShare: CKShare? { get }
+    var shareAcceptanceMessage: String? { get }
     func refresh() async
     func createPrivateShare() async
     func markShareAccepted()
     func markShareAcceptanceFailed(_ error: Error?)
     func markSharingStopped()
+    func clearShareAcceptanceMessage()
 }
 
 @MainActor
 final class CloudKitPairingService: ObservableObject, PairingService {
     @Published private(set) var state: PairingState = .solo
     @Published private(set) var currentShare: CKShare?
+    @Published private(set) var shareAcceptanceMessage: String?
 
     private let containerProvider: () -> CKContainer
 
@@ -172,6 +175,7 @@ final class CloudKitPairingService: ObservableObject, PairingService {
     }
 
     func createPrivateShare() async {
+        shareAcceptanceMessage = nil
         #if targetEnvironment(simulator)
         guard ProcessInfo.processInfo.environment["FAIRNEST_ENABLE_CLOUDKIT"] == "1" else {
             state = .iCloudUnavailable
@@ -201,16 +205,23 @@ final class CloudKitPairingService: ObservableObject, PairingService {
 
     func markShareAccepted() {
         state = .paired
+        shareAcceptanceMessage = "You're paired. Shared household cards will sync through iCloud."
     }
 
     func markShareAcceptanceFailed(_ error: Error?) {
+        shareAcceptanceMessage = nil
         state = .error(error?.localizedDescription ?? "FairNest could not accept this iCloud share. Ask for a fresh invite and try again.")
     }
 
     func markSharingStopped() {
+        shareAcceptanceMessage = nil
         currentShare = nil
         CloudKitHouseholdSelection.clearSelectedSharedZone()
         state = .sharingRemoved
+    }
+
+    func clearShareAcceptanceMessage() {
+        shareAcceptanceMessage = nil
     }
 
     private func existingZoneShare(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws -> CKShare? {

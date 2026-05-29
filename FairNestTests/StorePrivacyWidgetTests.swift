@@ -245,6 +245,7 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
         XCTAssertEqual(service.state, .error("Invite expired"))
         XCTAssertEqual(service.state.message, "Invite expired")
+        XCTAssertNil(service.shareAcceptanceMessage)
     }
 
     func testPairingModeLabelsMatchPendingAndErrorStates() {
@@ -258,20 +259,58 @@ final class StorePrivacyWidgetTests: XCTestCase {
 
     func testAcceptedShareEnablesSyncBeforeMarkingPaired() async {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousPairingRoute = UserDefaults.standard.object(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
         defer {
             if let previousSyncValue {
                 UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
             } else {
                 UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
             }
+            if let previousPairingRoute {
+                UserDefaults.standard.set(previousPairingRoute, forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+            }
         }
+        UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
         let services = AppServices(cardStore: LocalCardStore(fileURL: tempURL()), checkInStore: LocalCheckInStore(fileURL: tempURL()))
         services.iCloudSyncEnabled = false
+        let routeExpectation = expectation(description: "Accepted share routes to Pair")
+        let observer = NotificationCenter.default.addObserver(forName: .fairNestOpenPairing, object: nil, queue: nil) { _ in
+            routeExpectation.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
 
         await services.handleAcceptedCloudKitShare()
+        await fulfillment(of: [routeExpectation], timeout: 1)
 
         XCTAssertTrue(services.iCloudSyncEnabled)
         XCTAssertEqual(services.pairingService.state, .paired)
+        XCTAssertEqual(services.pairingService.shareAcceptanceMessage, "You're paired. Shared household cards will sync through iCloud.")
+    }
+
+    func testFailedShareAcceptanceRoutesToPairing() async {
+        let previousPairingRoute = UserDefaults.standard.object(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+        defer {
+            if let previousPairingRoute {
+                UserDefaults.standard.set(previousPairingRoute, forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+        let services = AppServices(cardStore: LocalCardStore(fileURL: tempURL()), checkInStore: LocalCheckInStore(fileURL: tempURL()))
+        let routeExpectation = expectation(description: "Failed share routes to Pair")
+        let observer = NotificationCenter.default.addObserver(forName: .fairNestOpenPairing, object: nil, queue: nil) { _ in
+            routeExpectation.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        services.handleFailedCloudKitShareAcceptance(TestPairingError.expiredInvite)
+        await fulfillment(of: [routeExpectation], timeout: 1)
+
+        XCTAssertEqual(services.pairingService.state, .error("Invite expired"))
+        XCTAssertEqual(services.lastSyncMessage, "Invite expired")
     }
 
     func testInviteCreationIsBlockedWhenAlreadyPaired() {

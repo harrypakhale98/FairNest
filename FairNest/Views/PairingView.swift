@@ -11,6 +11,7 @@ struct PairingView: View {
     @State private var isCreatingInvite = false
     @State private var shareError: String?
     @State private var shareErrorDetails: String?
+    @AccessibilityFocusState private var shareSuccessFocused: Bool
     @AccessibilityFocusState private var shareErrorFocused: Bool
 
     var body: some View {
@@ -21,6 +22,19 @@ struct PairingView: View {
                         .font(.headline)
                     Text(pairingService.state.message)
                         .foregroundStyle(.secondary)
+                    if let shareAcceptanceMessage = pairingService.shareAcceptanceMessage {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(shareAcceptanceMessage, systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityIdentifier("pairingShareAcceptedMessage")
+                                .accessibilityLabel("Pairing success: \(shareAcceptanceMessage)")
+                                .accessibilityFocused($shareSuccessFocused)
+                            Button("Dismiss") {
+                                pairingService.clearShareAcceptanceMessage()
+                            }
+                        }
+                    }
                     if !services.iCloudSyncEnabled {
                         Text("Turn on iCloud Sync before creating or managing a partner invite.")
                             .foregroundStyle(.secondary)
@@ -139,6 +153,14 @@ struct PairingView: View {
                     }
                 }
             }
+            .onAppear {
+                focusShareSuccessIfNeeded()
+            }
+            .onChange(of: pairingService.shareAcceptanceMessage) { _, message in
+                guard let message else { return }
+                announce(message)
+                focusShareSuccessIfNeeded()
+            }
         }
     }
 
@@ -182,10 +204,19 @@ struct PairingView: View {
     private func showShareError(_ message: String, details: String? = nil) {
         shareError = message
         shareErrorDetails = details
+        shareSuccessFocused = false
         announce(message)
         Task { @MainActor in
             await Task.yield()
             shareErrorFocused = true
+        }
+    }
+
+    private func focusShareSuccessIfNeeded() {
+        guard pairingService.shareAcceptanceMessage != nil else { return }
+        Task { @MainActor in
+            await Task.yield()
+            shareSuccessFocused = true
         }
     }
 

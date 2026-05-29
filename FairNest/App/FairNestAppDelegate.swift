@@ -6,10 +6,12 @@ extension Notification.Name {
     static let fairNestAcceptedCloudKitShare = Notification.Name("FairNestAcceptedCloudKitShare")
     static let fairNestFailedCloudKitShareAcceptance = Notification.Name("FairNestFailedCloudKitShareAcceptance")
     static let fairNestOpenBrainDump = Notification.Name("FairNestOpenBrainDump")
+    static let fairNestOpenPairing = Notification.Name("FairNestOpenPairing")
     static let fairNestOpenWeeklyCheckIn = Notification.Name("FairNestOpenWeeklyCheckIn")
 }
 
 enum FairNestRouteRequest {
+    static let openPairingOnLaunchKey = "FairNestOpenPairingOnLaunch"
     static let openWeeklyCheckInOnLaunchKey = "FairNestOpenWeeklyCheckInOnLaunch"
     static let pendingAcceptedCloudKitShareKey = "FairNestPendingAcceptedCloudKitShare"
 }

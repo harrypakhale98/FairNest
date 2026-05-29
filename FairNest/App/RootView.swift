@@ -83,10 +83,17 @@ struct MainTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: .fairNestOpenBrainDump)) { _ in
             openBrainDump()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .fairNestOpenPairing)) { _ in
+            openPairing()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .fairNestOpenWeeklyCheckIn)) { _ in
             openWeeklyCheckIn()
         }
         .onAppear {
+            if UserDefaults.standard.bool(forKey: FairNestRouteRequest.openPairingOnLaunchKey) {
+                openPairing()
+                return
+            }
             if UserDefaults.standard.bool(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey) {
                 openWeeklyCheckIn()
             }
@@ -100,6 +107,11 @@ struct MainTabView: View {
     private func openWeeklyCheckIn() {
         UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
         selection = .checkIn
+    }
+
+    private func openPairing() {
+        UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openPairingOnLaunchKey)
+        selection = .pair
     }
 }
 
