@@ -1,6 +1,6 @@
 # App Store Connect Submission Checklist
 
-Updated: May 29, 2026, 03:32 CDT
+Updated: May 29, 2026, 03:37 CDT
 
 ## Build Evidence
 
@@ -19,7 +19,7 @@ Updated: May 29, 2026, 03:32 CDT
 - The exported app is iPhone-only: `UIDeviceFamily = [1]`.
 - `/tmp/FairNest-AppStoreExport-7e5edd9/Packaging.log` was scanned for warning, error, failed, and invalid markers; no matches were found.
 - Common secret-pattern scan with `rg` returned no matches, and `git status --ignored --short` was empty in the clean `/tmp/FairNestRemoteWork` verification clone.
-- GitHub Pages deploy workflow run `26625793634` completed successfully, and the public home, support, and privacy URLs returned HTTP 200.
+- GitHub Pages deploy completed successfully, and the public home, support, and privacy URLs returned HTTP 200.
 - Shared household erase writes a content-free CloudKit erasure marker so stale devices acknowledge the reset before uploading local shared cards again.
 - Shared household erase deletes visible FairNest shared zones where permission allows, even when the remembered share owner is unavailable.
 - Removed cards are kept in local storage, sync to iCloud, and export as minimal deletion markers without title, notes, done criteria, scheduling, ownership, or effort fields.
@@ -66,7 +66,7 @@ Use `FairNest/Resources/AppReviewNotes.md` as the base review note. It is a repo
 
 Based on the current repo, the privacy label should be "Data Not Collected" by the developer, assuming there is no external service outside Apple CloudKit and the developer does not access user private CloudKit records. Re-check this before submission if analytics, crash SDKs, support forms, email capture, logging, or any backend is added.
 
-Privacy policy URL is required in App Store Connect. Use the text in `FairNest/Resources/PrivacyPolicy.md` and the matching static `website/privacy.html`, but host it at a public HTTPS URL before submission. The policy markdown is bundled in the app and rendered by the in-app Privacy Policy screen, but App Store Connect still requires a public URL.
+Privacy policy URL is required in App Store Connect. Use `https://harrypakhale98.github.io/FairNest/privacy.html`, which matches `FairNest/Resources/PrivacyPolicy.md` and the static `website/privacy.html`. The policy markdown is bundled in the app and rendered by the in-app Privacy Policy screen, while App Store Connect uses the public HTTPS URL.
 
 The policy now discloses invited participant access to shared CloudKit card data, retention duration, deletion markers, optional iCloud Sync withdrawal, stopping CloudKit sharing where permissions allow it, and optional support email handling.
 
