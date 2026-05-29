@@ -135,7 +135,7 @@ struct SettingsView: View {
                     LabeledContent("Price", value: "Free")
                     LabeledContent("Ads", value: "None")
                     LabeledContent("Subscriptions", value: "None")
-                    LabeledContent("Backend", value: "iCloud only")
+                    LabeledContent("Cloud storage", value: "iCloud only")
                 } header: {
                     Text("App")
                 }

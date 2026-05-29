@@ -194,8 +194,8 @@ private struct PrivacyPolicyDetailView: View {
         List {
             Section {
                 Text("FairNest is a private household organization app. It does not sell data, show ads, use third-party analytics, use a custom server, or use paid APIs.")
-                Text("Household cards, reminder settings, and pairing state are stored locally on device. iCloud Sync is off by default. When turned on, FairNest uses CloudKit to sync card data and private CloudKit Sharing to share a household with invited participants. Weekly check-ins stay on this device and can be exported.")
-                Text("Brain dump parsing happens on device. When Apple Foundation Models are unavailable, FairNest uses a deterministic local parser. Raw brain dump text is never automatically shared.")
+                Text("Household cards, reminder settings, and pairing state are stored locally on device. iCloud Sync is off by default. When turned on, FairNest uses iCloud to sync card data and Apple's private sharing flow to share a household with invited participants. Weekly check-ins stay on this device and can be exported.")
+                Text("Brain dump suggestions are prepared on this iPhone. Raw brain dump text is never automatically shared.")
                 Text("FairNest uses local notifications only after permission is granted. Users can export local data, delete local data and scheduled FairNest reminders from this device, and delete shared household data where their iCloud permissions allow it.")
             }
         }
