@@ -1,6 +1,6 @@
 # App Store Connect Submission Checklist
 
-Updated: May 29, 2026, 04:12 CDT
+Updated: May 29, 2026, 04:15 CDT
 
 ## Build Evidence
 
@@ -105,4 +105,5 @@ Reference: https://developer.apple.com/help/app-store-connect/reference/screensh
 
 ## Current External Blockers
 
-- App Store Connect upload previously failed because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`. Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-6f3fb62/FairNest.ipa` or rerun the upload export.
+- A fresh App Store Connect upload export attempt at `6f3fb62` failed before upload because App Store Connect returned zero apps for bundle ID `com.hardikpakhale.fairnest`; Xcode logged `IDEDistribution.DistributionAppRecordProviderError.missingApp(bundleId: "com.hardikpakhale.fairnest")` in `/var/folders/wx/sxnmpk8d6xj670t2p63z7c4c0000gn/T/FairNest_2026-05-29_04-14-47.399.xcdistributionlogs`.
+- Create the app record in App Store Connect first, then upload `/tmp/FairNest-AppStoreExport-6f3fb62/FairNest.ipa` or rerun the upload export.
