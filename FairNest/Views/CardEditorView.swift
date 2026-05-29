@@ -166,6 +166,14 @@ struct CardEditorView: View {
                 await Task.yield()
                 saveErrorFocused = true
             }
+        } catch LocalCardStoreError.staleCardEdit {
+            saveErrorMessage = FairNestIssueCopy.staleCardEdit
+            saveErrorDetails = nil
+            announce(FairNestIssueCopy.staleCardEdit)
+            Task { @MainActor in
+                await Task.yield()
+                saveErrorFocused = true
+            }
         } catch {
             saveErrorMessage = FairNestIssueCopy.localCardSaveFailure
             saveErrorDetails = error.localizedDescription

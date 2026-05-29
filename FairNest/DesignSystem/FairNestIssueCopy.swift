@@ -5,6 +5,7 @@ enum FairNestIssueCopy {
     static let localCardLoadFailure = "FairNest moved an unreadable card file aside so the board can keep working."
     static let localCardReadUnavailable = "FairNest couldn't read the local card file. Close and reopen FairNest after unlocking this iPhone, then try again."
     static let localCardSaveFailure = "FairNest couldn't save the latest board change. Keep FairNest open and try again before closing the app."
+    static let staleCardEdit = "This card changed after you opened it. Reopen the card and apply your edits to the latest version."
     static let localCheckInLoadFailure = "FairNest moved an unreadable check-in file aside so check-ins can keep working."
     static let localCheckInReadUnavailable = "FairNest couldn't read previous check-ins. Close and reopen FairNest after unlocking this iPhone, then try again."
     static let localCheckInSaveFailure = "FairNest couldn't save this check-in. Keep FairNest open and try again before closing the app."

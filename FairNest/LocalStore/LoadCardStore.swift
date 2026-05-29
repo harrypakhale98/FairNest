@@ -8,6 +8,7 @@ protocol LoadCardStore: AnyObject {
     func load()
     func upsert(_ card: LoadCard)
     func upsertThrowing(_ card: LoadCard) throws
+    func upsertThrowing(_ card: LoadCard, expectedRevision: CardRevision) throws
     func add(_ suggestion: BrainDumpSuggestion) -> LoadCard
     func transition(id: UUID, to status: CardStatus) throws
     func reassign(id: UUID, to owner: CardOwner)
@@ -28,6 +29,7 @@ enum LocalCardStoreError: LocalizedError {
     case missingCard
     case restoreUnavailable
     case staleRestore
+    case staleCardEdit
     case storeUnavailable
 
     var errorDescription: String? {
@@ -42,9 +44,21 @@ enum LocalCardStoreError: LocalizedError {
             return "FairNest no longer has the removed card details needed to restore it."
         case .staleRestore:
             return "This card changed after it was removed. FairNest left the newer removal in place."
+        case .staleCardEdit:
+            return FairNestIssueCopy.staleCardEdit
         case .storeUnavailable:
             return "FairNest could not read the local card store. Close and reopen FairNest after unlocking this iPhone, then try again."
         }
+    }
+}
+
+struct CardRevision: Equatable {
+    var updatedAt: Date
+    var deletedAt: Date?
+
+    init(card: LoadCard) {
+        updatedAt = card.updatedAt
+        deletedAt = card.deletedAt
     }
 }
 
@@ -141,11 +155,23 @@ final class LocalCardStore: ObservableObject, LoadCardStore {
         try upsertThrowing(card, by: .me, at: Date())
     }
 
-    func upsertThrowing(_ card: LoadCard, by member: HouseholdMember = .me, at date: Date = Date()) throws {
+    func upsertThrowing(_ card: LoadCard, expectedRevision: CardRevision) throws {
+        try upsertThrowing(card, by: .me, at: Date(), expectedRevision: expectedRevision)
+    }
+
+    func upsertThrowing(
+        _ card: LoadCard,
+        by member: HouseholdMember = .me,
+        at date: Date = Date(),
+        expectedRevision: CardRevision? = nil
+    ) throws {
         try mutateAndPersist {
             var savedCard = card.normalizedForLocalSave(by: member, at: date)
             if let index = cards.firstIndex(where: { $0.id == card.id }) {
                 let existingCard = cards[index]
+                if let expectedRevision, CardRevision(card: existingCard) != expectedRevision {
+                    throw LocalCardStoreError.staleCardEdit
+                }
                 if existingCard.isDeleted && savedCard.deletedAt == nil {
                     throw LocalCardStoreError.cardDeleted
                 }

@@ -788,6 +788,26 @@ final class StorePrivacyWidgetTests: XCTestCase {
         XCTAssertGreaterThan(cardStore.cards.first!.dueDate!, now)
     }
 
+    func testStaleEditorSaveDoesNotOverwriteNewerCard() throws {
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let openedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let syncedAt = Date(timeIntervalSince1970: 1_800_000_100)
+        let openedCard = LoadCard(title: "Original", updatedAt: openedAt)
+        try cardStore.upsertThrowing(openedCard, at: openedAt)
+        let revision = CardRevision(card: try XCTUnwrap(cardStore.cards.first))
+        let newerSyncedCard = LoadCard(id: openedCard.id, title: "Synced title", updatedAt: syncedAt)
+        try cardStore.replaceAllThrowing(with: [newerSyncedCard])
+        var staleEdit = openedCard
+        staleEdit.title = "Stale edit"
+
+        XCTAssertThrowsError(try cardStore.upsertThrowing(staleEdit, expectedRevision: revision)) { error in
+            XCTAssertEqual(error.localizedDescription, FairNestIssueCopy.staleCardEdit)
+        }
+
+        XCTAssertEqual(cardStore.cards.first?.title, "Synced title")
+        XCTAssertEqual(cardStore.cards.first?.updatedAt, syncedAt)
+    }
+
     func testStaleEditorSaveCannotResurrectRemovedCard() throws {
         let cardStore = LocalCardStore(fileURL: tempURL())
         let card = LoadCard(title: "Remove me")

@@ -201,7 +201,7 @@ struct HomeBoardView: View {
             }
             .sheet(item: $editingCard) { card in
                 CardEditorView(card: card) { updated in
-                    try cardStore.upsertThrowing(updated)
+                    try cardStore.upsertThrowing(updated, expectedRevision: CardRevision(card: card))
                     editingCard = nil
                 }
             }
