@@ -165,8 +165,8 @@ final class AppServices: ObservableObject {
             lastSyncMessage = nil
         } catch let error as CloudKitHouseholdErasedError {
             await handleRemoteHouseholdErasure(error)
-        } catch is CloudKitSharedHouseholdUnavailableError {
-            handleSharedHouseholdUnavailable()
+        } catch let error as CloudKitSharedHouseholdUnavailableError {
+            handleSharedHouseholdUnavailable(sharedCardIDs: error.sharedCardIDs)
         } catch {
             suppressNextCardPush = false
             writeWidgetSnapshot(cards: cardStore.cards, syncPending: true)
@@ -238,8 +238,8 @@ final class AppServices: ObservableObject {
             lastSyncMessage = nil
         } catch let error as CloudKitHouseholdErasedError {
             await handleRemoteHouseholdErasure(error)
-        } catch is CloudKitSharedHouseholdUnavailableError {
-            handleSharedHouseholdUnavailable()
+        } catch let error as CloudKitSharedHouseholdUnavailableError {
+            handleSharedHouseholdUnavailable(sharedCardIDs: error.sharedCardIDs)
         } catch {
             suppressNextCardPush = false
             writeWidgetSnapshot(cards: cards, syncPending: true)
@@ -310,14 +310,40 @@ final class AppServices: ObservableObject {
         }
     }
 
-    private func handleSharedHouseholdUnavailable() {
+    private func handleSharedHouseholdUnavailable(sharedCardIDs: Set<UUID>) {
         iCloudSyncEnabled = false
         pendingCardsForPush = nil
         suppressNextCardPush = false
+        let removedUnavailableCards = removeUnavailableSharedCards(sharedCardIDs: sharedCardIDs)
         acceptedSharePrivateCardIDs = []
         CloudKitHouseholdSelection.clearSelectedSharedZone()
-        writeWidgetSnapshot(cards: [], syncPending: false)
-        lastSyncMessage = FairNestIssueCopy.sharedHouseholdUnavailable
+        if removedUnavailableCards {
+            writeWidgetSnapshot(cards: cardStore.cards, syncPending: false)
+            lastSyncMessage = FairNestIssueCopy.sharedHouseholdUnavailable
+        } else {
+            writeWidgetSnapshot(cards: [], syncPending: false)
+            lastSyncMessage = FairNestIssueCopy.localCardSaveFailure
+        }
+    }
+
+    private func removeUnavailableSharedCards(sharedCardIDs: Set<UUID>) -> Bool {
+        let privateCardIDs = acceptedSharePrivateCardIDs
+        let remainingCards = cardStore.cards.filter { card in
+            if privateCardIDs.contains(card.id) {
+                return true
+            }
+            guard !sharedCardIDs.isEmpty else {
+                return false
+            }
+            return !sharedCardIDs.contains(card.id)
+        }
+        guard remainingCards != cardStore.cards else { return true }
+        do {
+            try cardStore.replaceAllThrowing(with: remainingCards)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func allowSyncForCurrentCloudKitAccount() -> Bool {

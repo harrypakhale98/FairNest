@@ -51,9 +51,11 @@ struct CloudKitHouseholdErasedError: LocalizedError, Equatable {
 
 struct CloudKitSharedHouseholdUnavailableError: LocalizedError {
     var underlyingDescription: String?
+    var sharedCardIDs: Set<UUID>
 
-    init(underlying error: Error? = nil) {
+    init(underlying error: Error? = nil, sharedCardIDs: Set<UUID> = []) {
         underlyingDescription = error?.localizedDescription
+        self.sharedCardIDs = sharedCardIDs
     }
 
     var errorDescription: String? {
@@ -384,9 +386,12 @@ final class CloudKitSyncService: ObservableObject, SyncService {
     }
 
     private func throwSharedHouseholdUnavailable(underlying error: Error? = nil) throws -> Never {
+        let sharedCardIDs = Set(recordLocations.compactMap { cardID, location in
+            location.scope == .sharedDatabase ? cardID : nil
+        })
         forgetSharedHouseholdSelection()
         status = .permissionDenied
-        throw CloudKitSharedHouseholdUnavailableError(underlying: error)
+        throw CloudKitSharedHouseholdUnavailableError(underlying: error, sharedCardIDs: sharedCardIDs)
     }
 
     private func fetchCards(in database: CKDatabase, zoneID: CKRecordZone.ID, scope: CloudKitDatabaseScope) async throws -> [LoadCard] {

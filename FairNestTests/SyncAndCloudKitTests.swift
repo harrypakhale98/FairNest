@@ -444,9 +444,49 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertFalse(services.iCloudSyncEnabled)
         XCTAssertEqual(syncEngine.fetchCount, 1)
         XCTAssertTrue(syncEngine.uploadedBatches.isEmpty)
+        XCTAssertTrue(cardStore.cards.isEmpty)
         XCTAssertNil(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey))
         XCTAssertEqual(UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs"), [])
         XCTAssertTrue(WidgetSnapshotStore.read(defaults: widgetDefaults).cards.isEmpty)
+        XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
+    }
+
+    @MainActor
+    func testSharedHouseholdAccessLossPreservesPinnedPrivateCards() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousPins {
+                UserDefaults.standard.set(previousPins, forKey: "acceptedSharePrivateCardIDs")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
+            }
+        }
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let privateCard = cardStore.add(BrainDumpSuggestion(title: "Private card", type: .task))
+        let sharedCard = cardStore.add(BrainDumpSuggestion(title: "Shared card", type: .task))
+        UserDefaults.standard.set([privateCard.id.uuidString], forKey: "acceptedSharePrivateCardIDs")
+        let syncEngine = CapturingSyncEngine(
+            status: .available,
+            remoteCards: [],
+            fetchError: CloudKitSharedHouseholdUnavailableError(sharedCardIDs: [sharedCard.id])
+        )
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            syncEngine: syncEngine
+        )
+        services.iCloudSyncEnabled = true
+
+        await services.pushCardsIfAvailable(cardStore.cards)
+
+        XCTAssertEqual(cardStore.cards.map(\.id), [privateCard.id])
+        XCTAssertFalse(services.iCloudSyncEnabled)
         XCTAssertEqual(services.lastSyncMessage, FairNestIssueCopy.sharedHouseholdUnavailable)
     }
 
