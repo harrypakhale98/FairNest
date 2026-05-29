@@ -43,6 +43,7 @@ final class AppServices: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "onboardingComplete")
             UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
             UserDefaults.standard.removeObject(forKey: Self.acceptedSharePrivateCardIDsKey)
+            CloudKitHouseholdSelection.clearSelectedSharedZone()
             UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
         }
         if ProcessInfo.processInfo.arguments.contains("-uiTestingCompleteOnboarding") {
@@ -86,6 +87,7 @@ final class AppServices: ObservableObject {
             lastSyncMessage = nil
             lastReminderMessage = nil
             acceptedSharePrivateCardIDs = []
+            CloudKitHouseholdSelection.clearSelectedSharedZone()
             writeWidgetSnapshot(cards: [], syncPending: false)
         } catch {
             if restoresSyncOnFailure {

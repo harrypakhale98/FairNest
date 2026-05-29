@@ -45,6 +45,32 @@ final class SyncAndCloudKitTests: XCTestCase {
         XCTAssertEqual(record.recordID.recordName, card.id.uuidString)
     }
 
+    func testSharedHouseholdZoneSelectionPersistsActiveOwnerAcrossMultipleShares() {
+        let previousSelection = UserDefaults.standard.object(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
+        defer {
+            if let previousSelection {
+                UserDefaults.standard.set(previousSelection, forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey)
+            } else {
+                CloudKitHouseholdSelection.clearSelectedSharedZone()
+            }
+        }
+
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
+        let ownerB = CloudKitCardMapper.zoneID(ownerName: "owner-b")
+        let ownerA = CloudKitCardMapper.zoneID(ownerName: "owner-a")
+        let unrelated = CKRecordZone.ID(zoneName: "OtherZone", ownerName: "owner-0")
+
+        let initialSelection = CloudKitHouseholdSelection.selectedSharedZoneID(from: [ownerB, unrelated, ownerA])
+
+        XCTAssertEqual(initialSelection?.ownerName, "owner-a")
+        XCTAssertEqual(UserDefaults.standard.string(forKey: CloudKitHouseholdSelection.selectedSharedZoneOwnerNameKey), "owner-a")
+
+        CloudKitHouseholdSelection.rememberSharedZoneID(ownerB)
+        let rememberedSelection = CloudKitHouseholdSelection.selectedSharedZoneID(from: [ownerA, ownerB])
+
+        XCTAssertEqual(rememberedSelection?.ownerName, "owner-b")
+    }
+
     @MainActor
     func testAcceptedSharePinsExistingLocalCardsToPrivateDatabase() async {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")

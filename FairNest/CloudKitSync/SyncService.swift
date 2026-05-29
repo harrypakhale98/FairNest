@@ -100,6 +100,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let container = containerProvider()
         let privateDatabase = container.privateCloudDatabase
         let sharedDatabase = container.sharedCloudDatabase
+        preferredSharedZoneID = preferredSharedZoneID ?? CloudKitHouseholdSelection.selectedSharedZoneID()
         try await ensureHouseholdZone(in: privateDatabase)
 
         var privateRecords: [CKRecord] = []
@@ -182,8 +183,7 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         }
 
         do {
-            let sharedZoneIDs = try await householdZoneIDs(in: sharedDatabase)
-            for zoneID in sharedZoneIDs {
+            if let zoneID = try await activeSharedHouseholdZoneID(in: sharedDatabase) {
                 try await deleteCardRecords(in: sharedDatabase, zoneID: zoneID)
                 deletedData = true
             }
@@ -208,7 +208,9 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         let results = try await containerProvider().accept([metadata])
         for result in results.values {
             switch result {
-            case .success:
+            case .success(let share):
+                CloudKitHouseholdSelection.rememberSharedZoneID(share.recordID.zoneID)
+                preferredSharedZoneID = share.recordID.zoneID
                 status = .available
             case .failure(let error):
                 status = .error(error.localizedDescription)
@@ -236,6 +238,12 @@ final class CloudKitSyncService: ObservableObject, SyncService {
         return zones
             .map(\.zoneID)
             .filter { $0.zoneName == CloudKitCardMapper.zoneName }
+    }
+
+    private func activeSharedHouseholdZoneID(in database: CKDatabase) async throws -> CKRecordZone.ID? {
+        let zoneID = CloudKitHouseholdSelection.selectedSharedZoneID(from: try await householdZoneIDs(in: database))
+        preferredSharedZoneID = zoneID
+        return zoneID
     }
 
     private func deleteCardRecords(in database: CKDatabase, zoneID: CKRecordZone.ID) async throws {
@@ -290,14 +298,10 @@ final class CloudKitSyncService: ObservableObject, SyncService {
 
     private func fetchSharedCards(in database: CKDatabase) async throws -> [LoadCard] {
         do {
-            let zones = try await database.allRecordZones()
-            let householdZones = zones.filter { $0.zoneID.zoneName == CloudKitCardMapper.zoneName }
-            preferredSharedZoneID = householdZones.first?.zoneID
-            var cards: [LoadCard] = []
-            for zone in householdZones {
-                cards.append(contentsOf: try await fetchCards(in: database, zoneID: zone.zoneID, scope: .sharedDatabase))
+            guard let zoneID = try await activeSharedHouseholdZoneID(in: database) else {
+                return []
             }
-            return cards
+            return try await fetchCards(in: database, zoneID: zoneID, scope: .sharedDatabase)
         } catch let error as CKError where error.code == .notAuthenticated || error.code == .permissionFailure {
             preferredSharedZoneID = nil
             return []

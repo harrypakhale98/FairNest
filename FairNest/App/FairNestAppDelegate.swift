@@ -24,7 +24,10 @@ final class FairNestAppDelegate: NSObject, UIApplicationDelegate, @preconcurrenc
                 let container = CKContainer(identifier: CloudKitSyncService.containerIdentifier)
                 let results = try await container.accept([cloudKitShareMetadata])
                 for result in results.values {
-                    if case .failure(let error) = result {
+                    switch result {
+                    case .success(let share):
+                        CloudKitHouseholdSelection.rememberSharedZoneID(share.recordID.zoneID)
+                    case .failure(let error):
                         NotificationCenter.default.post(
                             name: .fairNestFailedCloudKitShareAcceptance,
                             object: error

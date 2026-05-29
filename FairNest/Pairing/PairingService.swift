@@ -114,7 +114,7 @@ final class CloudKitPairingService: ObservableObject, PairingService {
                 if let share = try await existingZoneShare(in: privateDatabase, zoneID: zoneID) {
                     currentShare = share
                     state = shareHasAcceptedParticipant(share) ? .paired : .partnerNotJoined
-                } else if try await hasAcceptedHouseholdShare(in: sharedDatabase) {
+                } else if try await selectedAcceptedHouseholdShareZoneID(in: sharedDatabase) != nil {
                     currentShare = nil
                     state = .paired
                 } else {
@@ -175,6 +175,7 @@ final class CloudKitPairingService: ObservableObject, PairingService {
 
     func markSharingStopped() {
         currentShare = nil
+        CloudKitHouseholdSelection.clearSelectedSharedZone()
         state = .sharingRemoved
     }
 
@@ -201,8 +202,8 @@ final class CloudKitPairingService: ObservableObject, PairingService {
         }
     }
 
-    private func hasAcceptedHouseholdShare(in database: CKDatabase) async throws -> Bool {
+    private func selectedAcceptedHouseholdShareZoneID(in database: CKDatabase) async throws -> CKRecordZone.ID? {
         let zones = try await database.allRecordZones()
-        return zones.contains { $0.zoneID.zoneName == CloudKitCardMapper.zoneName }
+        return CloudKitHouseholdSelection.selectedSharedZoneID(from: zones.map(\.zoneID))
     }
 }
