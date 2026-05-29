@@ -10,6 +10,7 @@ extension Notification.Name {
 
 enum FairNestRouteRequest {
     static let openWeeklyCheckInOnLaunchKey = "FairNestOpenWeeklyCheckInOnLaunch"
+    static let pendingAcceptedCloudKitShareKey = "FairNestPendingAcceptedCloudKitShare"
 }
 
 final class FairNestAppDelegate: NSObject, UIApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
@@ -35,6 +36,7 @@ final class FairNestAppDelegate: NSObject, UIApplicationDelegate, @preconcurrenc
                         return
                     }
                 }
+                UserDefaults.standard.set(true, forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
                 NotificationCenter.default.post(name: .fairNestAcceptedCloudKitShare, object: nil)
             } catch {
                 NotificationCenter.default.post(

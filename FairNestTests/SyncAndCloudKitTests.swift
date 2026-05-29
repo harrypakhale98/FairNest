@@ -303,6 +303,7 @@ final class SyncAndCloudKitTests: XCTestCase {
     func testAcceptedSharePinsExistingLocalCardsToPrivateDatabase() async throws {
         let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
         let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
+        let previousPendingShare = UserDefaults.standard.object(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
         defer {
             if let previousSyncValue {
                 UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
@@ -314,8 +315,14 @@ final class SyncAndCloudKitTests: XCTestCase {
             } else {
                 UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
             }
+            if let previousPendingShare {
+                UserDefaults.standard.set(previousPendingShare, forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+            }
         }
         UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
+        UserDefaults.standard.set(true, forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
         let cardStore = LocalCardStore(fileURL: tempURL())
         let localCard = cardStore.add(BrainDumpSuggestion(title: "Local only", type: .task))
         let deletedLocalCard = cardStore.add(BrainDumpSuggestion(title: "Deleted local only", type: .task))
@@ -329,6 +336,51 @@ final class SyncAndCloudKitTests: XCTestCase {
         let pinnedIDs = UserDefaults.standard.stringArray(forKey: "acceptedSharePrivateCardIDs") ?? []
         XCTAssertTrue(pinnedIDs.contains(localCard.id.uuidString))
         XCTAssertTrue(pinnedIDs.contains(deletedLocalCard.id.uuidString))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey))
+    }
+
+    @MainActor
+    func testPendingAcceptedShareIsConsumedBeforeStartupSync() async throws {
+        let previousSyncValue = UserDefaults.standard.object(forKey: "iCloudSyncEnabled")
+        let previousPins = UserDefaults.standard.object(forKey: "acceptedSharePrivateCardIDs")
+        let previousPendingShare = UserDefaults.standard.object(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+        defer {
+            if let previousSyncValue {
+                UserDefaults.standard.set(previousSyncValue, forKey: "iCloudSyncEnabled")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "iCloudSyncEnabled")
+            }
+            if let previousPins {
+                UserDefaults.standard.set(previousPins, forKey: "acceptedSharePrivateCardIDs")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
+            }
+            if let previousPendingShare {
+                UserDefaults.standard.set(previousPendingShare, forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: "acceptedSharePrivateCardIDs")
+        UserDefaults.standard.set(false, forKey: "iCloudSyncEnabled")
+        UserDefaults.standard.set(true, forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let localCard = cardStore.add(BrainDumpSuggestion(title: "Local before invite", type: .task))
+        let syncEngine = CapturingSyncEngine(status: .available, remoteCards: [])
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            syncEngine: syncEngine
+        )
+
+        let consumed = await services.consumePendingAcceptedCloudKitShareIfNeeded()
+
+        XCTAssertTrue(consumed)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey))
+        XCTAssertTrue(services.iCloudSyncEnabled)
+        XCTAssertTrue(syncEngine.pinnedCardIDs.contains(localCard.id))
+        XCTAssertEqual(syncEngine.fetchCount, 1)
+        XCTAssertEqual(syncEngine.uploadedBatches.count, 1)
     }
 
     func testCloudKitSaveResultValidatorThrowsOnPartialFailure() throws {

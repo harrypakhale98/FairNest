@@ -13,10 +13,7 @@ struct RootView: View {
             }
         }
         .task {
-            if services.iCloudSyncEnabled {
-                await services.pairingService.refresh()
-            }
-            await services.syncCardsIfAvailable()
+            await refreshAndSync()
         }
         .onChange(of: services.cardStore.cards) { _, cards in
             Task {
@@ -42,12 +39,19 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             Task {
-                if services.iCloudSyncEnabled {
-                    await services.pairingService.refresh()
-                }
-                await services.syncCardsIfAvailable()
+                await refreshAndSync()
             }
         }
+    }
+
+    private func refreshAndSync() async {
+        if await services.consumePendingAcceptedCloudKitShareIfNeeded() {
+            return
+        }
+        if services.iCloudSyncEnabled {
+            await services.pairingService.refresh()
+        }
+        await services.syncCardsIfAvailable()
     }
 }
 

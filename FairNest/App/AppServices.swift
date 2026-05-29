@@ -47,6 +47,7 @@ final class AppServices: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Self.activeCloudKitAccountIdentifierKey)
             CloudKitHouseholdSelection.clearSelectedSharedZone()
             UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.openWeeklyCheckInOnLaunchKey)
+            UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
         }
         if ProcessInfo.processInfo.arguments.contains("-uiTestingCompleteOnboarding") {
             UserDefaults.standard.set(true, forKey: "onboardingComplete")
@@ -130,10 +131,20 @@ final class AppServices: ObservableObject {
     }
 
     func handleAcceptedCloudKitShare() async {
+        UserDefaults.standard.removeObject(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey)
         protectCurrentLocalCardsFromSharedUpload()
         iCloudSyncEnabled = true
         pairingService.markShareAccepted()
         await syncCardsIfAvailable()
+    }
+
+    @discardableResult
+    func consumePendingAcceptedCloudKitShareIfNeeded() async -> Bool {
+        guard UserDefaults.standard.bool(forKey: FairNestRouteRequest.pendingAcceptedCloudKitShareKey) else {
+            return false
+        }
+        await handleAcceptedCloudKitShare()
+        return true
     }
 
     func handleFailedCloudKitShareAcceptance(_ error: Error?) {
