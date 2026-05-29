@@ -32,7 +32,8 @@ Open `FairNest.xcodeproj` in Xcode after regenerating the project when `project.
 
 ```sh
 xcodegen generate
-xcodebuild -project FairNest.xcodeproj -scheme FairNest -destination 'platform=iOS Simulator,name=iPhone 17' test
+DEVELOPER_DIR=/Users/hardik/Downloads/Xcode.app/Contents/Developer \
+  xcodebuild -project FairNest.xcodeproj -scheme FairNest -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
-The exact simulator name may vary by installed Xcode runtime.
+Use the `DEVELOPER_DIR` prefix when `xcode-select -p` points at Command Line Tools instead of the full Xcode app. The exact simulator name may vary by installed Xcode runtime.
