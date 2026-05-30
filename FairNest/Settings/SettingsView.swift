@@ -338,7 +338,7 @@ struct SettingsView: View {
         guard !reminderRemovalInProgress else { return }
         reminderRemovalInProgress = true
         defer { reminderRemovalInProgress = false }
-        await services.reminderScheduler.cancelAllFairNestReminders()
+        await services.cancelAllFairNestReminders()
         await refreshNotificationStatus()
         showNotificationMessage("All scheduled FairNest reminders were removed.")
     }

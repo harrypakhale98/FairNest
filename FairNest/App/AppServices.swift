@@ -90,9 +90,8 @@ final class AppServices: ObservableObject {
         iCloudSyncEnabled = false
         do {
             try PrivacyExportService(cardStore: cardStore, checkInStore: checkInStore).deleteAllLocalData()
-            await reminderScheduler.cancelAllFairNestReminders()
+            await cancelAllFairNestReminders()
             lastSyncMessage = nil
-            lastReminderMessage = nil
             acceptedSharePrivateCardIDs = []
             UserDefaults.standard.removeObject(forKey: Self.activeCloudKitAccountIdentifierKey)
             CloudKitHouseholdSelection.clearSelectedSharedZone()
@@ -270,6 +269,11 @@ final class AppServices: ObservableObject {
             lastReminderMessage = error.localizedDescription
             throw error
         }
+    }
+
+    func cancelAllFairNestReminders() async {
+        await reminderScheduler.cancelAllFairNestReminders()
+        lastReminderMessage = nil
     }
 
     func pushCardsIfAvailable(_ cards: [LoadCard]) async {

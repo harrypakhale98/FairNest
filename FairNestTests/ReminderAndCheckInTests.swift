@@ -295,6 +295,32 @@ final class ReminderAndCheckInTests: XCTestCase {
         XCTAssertEqual(services.lastReminderMessage, TestReminderError.schedulingFailed.localizedDescription)
     }
 
+    func testCancellingAllRemindersClearsStaleReminderIssue() async throws {
+        let reminderScheduler = CapturingReminderScheduler()
+        reminderScheduler.scheduleDueTaskError = TestReminderError.schedulingFailed
+        reminderScheduler.pendingIdentifiers = [ReminderRequestFactory.weeklyCheckInIdentifier]
+        let cardStore = LocalCardStore(fileURL: tempURL())
+        let services = AppServices(
+            cardStore: cardStore,
+            checkInStore: LocalCheckInStore(fileURL: tempURL()),
+            reminderScheduler: reminderScheduler
+        )
+        cardStore.upsert(LoadCard(title: "Pay rent", status: .planned, dueDate: Date(timeIntervalSinceNow: 3600)))
+
+        do {
+            try await services.scheduleRemindersForCurrentCards()
+            XCTFail("Expected reminder scheduling to surface the scheduler error.")
+        } catch {
+            XCTAssertEqual(services.lastReminderMessage, TestReminderError.schedulingFailed.localizedDescription)
+        }
+
+        await services.cancelAllFairNestReminders()
+
+        XCTAssertNil(services.lastReminderMessage)
+        XCTAssertTrue(reminderScheduler.cancelledAllFairNestReminders)
+        XCTAssertTrue(reminderScheduler.pendingIdentifiers.isEmpty)
+    }
+
     func testSchedulingCurrentCardsCancelsOrphanedDueReminder() async throws {
         let reminderScheduler = CapturingReminderScheduler()
         let orphanedCardID = UUID()
